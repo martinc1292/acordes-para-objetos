@@ -11,6 +11,17 @@ import {
   normalizeSongs,
   updateSongMeta
 } from './api.js';
+import {
+  dbDeleteChatMessage,
+  dbDeleteComment,
+  dbDeleteSuggestion,
+  dbGetComments,
+  dbGetChatMessages,
+  dbGetSuggestions,
+  dbPutChatMessages,
+  dbPutComments,
+  dbPutSuggestions
+} from './db.js';
 
 test('maps Supabase song rows to the local song shape', () => {
   assert.deepEqual(mapRemoteSong({
@@ -228,4 +239,62 @@ test('lists and creates comments through Supabase', async () => {
     ['insert', { song_id: 'song-1', author: 'Martin', text: 'Cierre en seco', color: 'green' }],
     ['insertSelect', 'id,song_id,author,text,color,created_at']
   ]);
+});
+
+// Reproduce la race condition: tras borrar, un fetch en vuelo que leyó la fila
+// ANTES del DELETE reescribe la caché. Sin tombstones la fila revive.
+
+test('a stale background fetch cannot resurrect a deleted comment', async () => {
+  const songId = 'song-race-comment';
+  const stale = {
+    id: 'comment-race',
+    songId,
+    author: 'Martin',
+    text: 'Comentario viejo',
+    color: 'blue',
+    createdAt: '2026-05-22T15:00:00.000Z'
+  };
+
+  await dbPutComments([stale], songId);
+  await dbDeleteComment('comment-race');
+  assert.deepEqual(await dbGetComments(songId), []);
+
+  // El fetch en background termina tarde y trae la fila ya borrada.
+  await dbPutComments([stale], songId);
+  assert.deepEqual(await dbGetComments(songId), [], 'comment must stay deleted');
+});
+
+test('a stale background fetch cannot resurrect a deleted suggestion', async () => {
+  const stale = {
+    id: 'suggestion-race',
+    title: 'Sugerencia vieja',
+    artist: 'Artista',
+    suggestedBy: 'Banda',
+    notes: '',
+    status: 'pending',
+    createdAt: '2026-05-22T15:00:00.000Z'
+  };
+
+  await dbPutSuggestions([stale]);
+  await dbDeleteSuggestion('suggestion-race');
+  assert.deepEqual(await dbGetSuggestions(), []);
+
+  await dbPutSuggestions([stale]);
+  assert.deepEqual(await dbGetSuggestions(), [], 'suggestion must stay deleted');
+});
+
+test('a stale background fetch cannot resurrect a deleted chat message', async () => {
+  const stale = {
+    id: 'chat-race',
+    author: 'Martin',
+    text: 'Mensaje viejo',
+    createdAt: '2026-05-22T15:00:00.000Z'
+  };
+
+  await dbPutChatMessages([stale]);
+  await dbDeleteChatMessage('chat-race');
+  assert.deepEqual(await dbGetChatMessages(), []);
+
+  await dbPutChatMessages([stale]);
+  assert.deepEqual(await dbGetChatMessages(), [], 'chat message must stay deleted');
 });

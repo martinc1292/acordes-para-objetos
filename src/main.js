@@ -32,6 +32,7 @@ import {
   tap as metronomeTap,
   toggle as metronomeToggle
 } from './lib/metronome.js';
+import { dbPruneTombstones } from './lib/db.js';
 import { navigate, route, startRouter } from './lib/router.js';
 
 const app = document.querySelector('#app');
@@ -1567,6 +1568,9 @@ route('/admin', () => {
 
 async function init() {
   renderListLoading();
+
+  // Poda tombstones vencidos para que el store no crezca sin límite.
+  dbPruneTombstones().catch(() => {});
 
   try {
     [songs, adminMode] = await Promise.all([getSongs(), isAdmin()]);
