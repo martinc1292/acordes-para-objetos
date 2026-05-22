@@ -1264,6 +1264,28 @@ body.presenting { overflow: hidden; }
 .comment:hover .comment-delete-btn { opacity: 1; }
 .comment-delete-btn:hover { color: #ff5252; }
 
+/* ── Botón eliminar genérico (setlist, sugerencias, chat) ────────────────────── */
+
+.item-delete-btn {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.item-delete-btn:hover { color: #ff5252; opacity: 1; }
+.item-delete-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+.song-item:hover .item-delete-btn,
+.suggestion-card:hover .item-delete-btn,
+.chat-msg:hover .item-delete-btn { opacity: 1; }
+
 /* ── Vista Favoritos ─────────────────────────────────────────────────────────── */
 
 /* Reutiliza los estilos de .songs / .song-item de la vista lista */
@@ -1377,13 +1399,19 @@ body.presenting { overflow: hidden; }
   border-left: 3px solid var(--accent);
 }
 
+.chat-msg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
 .chat-msg-author {
   font-family: var(--mono);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--ink-dim);
-  margin-bottom: 4px;
 }
 
 .chat-msg--me .chat-msg-author { color: var(--accent); }

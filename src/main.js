@@ -4,8 +4,10 @@ import {
   addSongComment,
   addSuggestion,
   createSong,
+  deleteChatMessage,
   deleteSong,
   deleteSongComment,
+  deleteSuggestion,
   getChatMessages,
   getPendingCount,
   getSongComments,
@@ -312,7 +314,7 @@ function renderListView(filter = '') {
           <div class="song-status status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>
           <div class="song-key">${escapeHtml(song.key)}</div>
         </div>
-        <div class="song-arrow">→</div>
+        <button class="item-delete-btn" data-id="${escapeHtml(song.id)}" aria-label="Eliminar canción" title="Eliminar">✕</button>
       </li>
     `;
   }).join('');
@@ -351,7 +353,25 @@ function renderListView(filter = '') {
   searchInput.addEventListener('input', (e) => renderListView(e.target.value));
   searchInput.focus({ preventScroll: true });
 
-  view.querySelector('#song-list').addEventListener('click', (e) => {
+  view.querySelector('#song-list').addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.item-delete-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const id = deleteBtn.dataset.id;
+      const song = songs.find((s) => s.id === id);
+      if (!song) return;
+      if (!confirm(`¿Eliminar "${song.title}" del setlist?`)) return;
+      deleteBtn.disabled = true;
+      songs = songs.filter((s) => s.id !== id);
+      renderListView(view.querySelector('#search')?.value || '');
+      try {
+        await deleteSong(id);
+      } catch {
+        songs = await getSongs();
+        renderListView(view.querySelector('#search')?.value || '');
+      }
+      return;
+    }
     const item = e.target.closest('.song-item');
     if (item) navigate(`/song/${item.dataset.id}`);
   });
@@ -1198,19 +1218,42 @@ async function renderSuggestionsView() {
       return;
     }
 
-    listEl.innerHTML = suggestions.map((s) => `
-      <div class="suggestion-card">
-        <div class="suggestion-info">
-          <div class="suggestion-title">${escapeHtml(s.title)}</div>
-          <div class="suggestion-artist">${escapeHtml(s.artist)}</div>
-          ${s.notes ? `<div class="suggestion-notes">${escapeHtml(s.notes)}</div>` : ''}
+    let currentSuggestions = suggestions;
+
+    const renderList = () => {
+      listEl.innerHTML = currentSuggestions.map((s) => `
+        <div class="suggestion-card" data-id="${escapeHtml(s.id)}">
+          <div class="suggestion-info">
+            <div class="suggestion-title">${escapeHtml(s.title)}</div>
+            <div class="suggestion-artist">${escapeHtml(s.artist)}</div>
+            ${s.notes ? `<div class="suggestion-notes">${escapeHtml(s.notes)}</div>` : ''}
+          </div>
+          <div class="suggestion-meta">
+            <span class="suggestion-by">${escapeHtml(s.suggestedBy || 'Banda')}</span>
+            <span class="suggestion-status suggestion-status--${escapeHtml(s.status)}">${escapeHtml(s.status)}</span>
+            <button class="item-delete-btn suggestion-delete-btn" data-id="${escapeHtml(s.id)}" aria-label="Eliminar sugerencia" title="Eliminar">✕</button>
+          </div>
         </div>
-        <div class="suggestion-meta">
-          <span class="suggestion-by">${escapeHtml(s.suggestedBy || 'Banda')}</span>
-          <span class="suggestion-status suggestion-status--${escapeHtml(s.status)}">${escapeHtml(s.status)}</span>
-        </div>
-      </div>
-    `).join('');
+      `).join('') || '<div class="empty">Sin sugerencias todavía.</div>';
+    };
+
+    renderList();
+
+    listEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.suggestion-delete-btn');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      btn.disabled = true;
+      currentSuggestions = currentSuggestions.filter((s) => s.id !== id);
+      const countEl = view.querySelector('.suggestions-loading');
+      if (countEl) countEl.textContent = `${currentSuggestions.length} sugerencia${currentSuggestions.length === 1 ? '' : 's'}`;
+      renderList();
+      try {
+        await deleteSuggestion(id);
+      } catch {
+        // best-effort, ya se eliminó localmente
+      }
+    });
   } catch {
     const listEl = view.querySelector('#suggestions-list');
     if (listEl) listEl.innerHTML = '<div class="empty">No se pudieron cargar las sugerencias.</div>';
@@ -1225,8 +1268,11 @@ function renderChatMessages(msgs) {
   return msgs.map((m) => {
     const isMe = myAuthor && myAuthor === m.author;
     return `
-      <div class="chat-msg ${isMe ? 'chat-msg--me' : ''}">
-        <div class="chat-msg-author">${escapeHtml(m.author)}</div>
+      <div class="chat-msg ${isMe ? 'chat-msg--me' : ''}" data-id="${escapeHtml(m.id)}">
+        <div class="chat-msg-header">
+          <div class="chat-msg-author">${escapeHtml(m.author)}</div>
+          <button class="item-delete-btn chat-delete-btn" data-id="${escapeHtml(m.id)}" aria-label="Eliminar mensaje" title="Eliminar">✕</button>
+        </div>
         <div class="chat-msg-text">${escapeHtml(m.text)}</div>
         <div class="chat-msg-time">${escapeHtml(formatDate(m.createdAt))}</div>
       </div>
@@ -1286,8 +1332,10 @@ async function renderChatView() {
     try {
       const fresh = await getChatMessages();
       const prevIds = new Set(chatMessages.map((m) => m.id));
+      const freshIds = new Set(fresh.map((m) => m.id));
       const hasNew = fresh.some((m) => !prevIds.has(m.id));
-      if (!hasNew) return;
+      const hasResolved = chatMessages.some((m) => m.id.startsWith('local-') && !freshIds.has(m.id));
+      if (!hasNew && !hasResolved) return;
       chatMessages = fresh;
       const el = view.querySelector('#chat-messages');
       if (el) {
@@ -1297,6 +1345,20 @@ async function renderChatView() {
       }
     } catch { /* silencioso */ }
   }, 8000);
+
+  messagesEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.chat-delete-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    btn.disabled = true;
+    chatMessages = chatMessages.filter((m) => m.id !== id);
+    messagesEl.innerHTML = renderChatMessages(chatMessages);
+    try {
+      await deleteChatMessage(id);
+    } catch {
+      // best-effort
+    }
+  });
 
   view.querySelector('#chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();

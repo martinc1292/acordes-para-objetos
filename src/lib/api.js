@@ -2,8 +2,11 @@ import { SONGS } from '../data/songs.js';
 import { supabase } from './supabase.js';
 import {
   dbCountPending,
+  dbDeleteChatMessage,
   dbDeleteComment,
   dbDeletePending,
+  dbDeleteSong,
+  dbDeleteSuggestion,
   dbEnqueue,
   dbGetChatMessages,
   dbGetComments,
@@ -210,7 +213,7 @@ async function fetchAndCacheComments(songId, client) {
   if (error) throw new Error(error.message);
 
   const comments = data.map(mapRemoteComment);
-  await dbPutComments(comments);
+  await dbPutComments(comments, songId);
   return comments;
 }
 
@@ -510,10 +513,30 @@ export async function updateSong(id, data, client = supabase) {
 }
 
 export async function deleteSong(id, client = supabase) {
-  if (!client) throw new Error('Supabase no configurado.');
-
+  await dbDeleteSong(id);
+  if (!client) return;
   const { error } = await client.from('songs').delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+export async function deleteSuggestion(id, client = supabase) {
+  await dbDeleteSuggestion(id);
+  if (!client || id.startsWith('local-')) return;
+  try {
+    await client.from('suggestions').delete().eq('id', id);
+  } catch {
+    // best-effort
+  }
+}
+
+export async function deleteChatMessage(id, client = supabase) {
+  await dbDeleteChatMessage(id);
+  if (!client || id.startsWith('local-chat-')) return;
+  try {
+    await client.from('chat_messages').delete().eq('id', id);
+  } catch {
+    // best-effort
+  }
 }
 
 // ── Realtime ──────────────────────────────────────────────────────────────────

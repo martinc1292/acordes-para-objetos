@@ -79,9 +79,13 @@ export async function dbPutComment(comment) {
   await db.put('comments', comment);
 }
 
-export async function dbPutComments(comments) {
+export async function dbPutComments(comments, songId) {
   const db = await getDB();
   const tx = db.transaction('comments', 'readwrite');
+  if (songId) {
+    const existing = await tx.store.index('by_song').getAllKeys(songId);
+    await Promise.all(existing.map((k) => tx.store.delete(k)));
+  }
   await Promise.all(comments.map((c) => tx.store.put(c)));
   await tx.done;
 }
@@ -107,6 +111,7 @@ export async function dbPutChatMessage(msg) {
 export async function dbPutChatMessages(msgs) {
   const db = await getDB();
   const tx = db.transaction('chat_messages', 'readwrite');
+  await tx.store.clear();
   await Promise.all(msgs.map((m) => tx.store.put(m)));
   await tx.done;
 }
@@ -124,6 +129,21 @@ export async function dbGetSuggestions() {
   const db = await getDB();
   const all = await db.getAll('suggestions');
   return all.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+}
+
+export async function dbDeleteSuggestion(id) {
+  const db = await getDB();
+  await db.delete('suggestions', id);
+}
+
+export async function dbDeleteChatMessage(id) {
+  const db = await getDB();
+  await db.delete('chat_messages', id);
+}
+
+export async function dbDeleteSong(id) {
+  const db = await getDB();
+  await db.delete('songs', id);
 }
 
 // ── Pending changes ───────────────────────────────────────────────────────────
