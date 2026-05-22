@@ -4,9 +4,15 @@ import {
   addSuggestion,
   createSong,
   deleteSong,
+  getPendingCount,
   getSongComments,
   getSongs,
   getSuggestions,
+  processPendingQueue,
+  subscribeToComments,
+  subscribeToSongMeta,
+  syncFromRemote,
+  unsubscribe,
   updateSong,
   updateSongMeta
 } from './lib/api.js';
@@ -17,10 +23,74 @@ const app = document.querySelector('#app');
 
 app.innerHTML = `
   <div class="app">
+    <div id="connectivity-bar" class="connectivity-bar connectivity-bar--hidden" aria-live="polite"></div>
     <div id="view"></div>
   </div>
-  <div class="hint">Tip: agregá al inicio (compartir → añadir a inicio)</div>
+  <div class="hint" id="install-hint" hidden>Instalá la app: compartir → Añadir a inicio</div>
 `;
+
+// ── Conectividad ──────────────────────────────────────────────────────────────
+
+const connectivityBar = document.querySelector('#connectivity-bar');
+
+async function updateConnectivityBar() {
+  const online = navigator.onLine;
+  const pending = await getPendingCount();
+
+  connectivityBar.className = online
+    ? (pending > 0 ? 'connectivity-bar connectivity-bar--syncing' : 'connectivity-bar connectivity-bar--online')
+    : 'connectivity-bar connectivity-bar--offline';
+
+  if (!online) {
+    connectivityBar.textContent = 'Sin conexión — los cambios se guardarán localmente';
+    connectivityBar.classList.remove('connectivity-bar--hidden');
+  } else if (pending > 0) {
+    connectivityBar.textContent = `Sincronizando ${pending} cambio${pending === 1 ? '' : 's'}...`;
+    connectivityBar.classList.remove('connectivity-bar--hidden');
+  } else {
+    connectivityBar.classList.add('connectivity-bar--hidden');
+  }
+}
+
+window.addEventListener('online', async () => {
+  await processPendingQueue();
+  await syncFromRemote().catch(() => {});
+  await updateConnectivityBar();
+});
+
+window.addEventListener('offline', () => {
+  updateConnectivityBar();
+});
+
+// Actualiza el badge cada 30 segundos si hay pendientes
+setInterval(async () => {
+  const pending = await getPendingCount();
+  if (pending > 0) updateConnectivityBar();
+}, 30_000);
+
+// ── Prompt de instalación PWA ─────────────────────────────────────────────────
+
+let deferredInstallPrompt = null;
+const installHint = document.querySelector('#install-hint');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installHint.hidden = false;
+  installHint.style.cursor = 'pointer';
+  installHint.textContent = 'Instalá la app en tu celular — tocá aquí';
+  installHint.addEventListener('click', () => {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+      installHint.hidden = true;
+    });
+  }, { once: true });
+});
+
+window.addEventListener('appinstalled', () => {
+  installHint.hidden = true;
+});
 
 const view = document.querySelector('#view');
 
@@ -43,6 +113,8 @@ let currentSongId = null;
 let currentComments = [];
 let commentsState = 'idle';
 let adminMode = false;
+let realtimeMetaChannel = null;
+let realtimeCommentsChannel = null;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -324,9 +396,18 @@ function getSongById(id) {
   return songs.find((s) => s.id === id) || null;
 }
 
+function teardownRealtimeChannels() {
+  unsubscribe(realtimeMetaChannel);
+  unsubscribe(realtimeCommentsChannel);
+  realtimeMetaChannel = null;
+  realtimeCommentsChannel = null;
+}
+
 async function loadSongView(id) {
   const song = getSongById(id);
   if (!song) { navigate('/'); return; }
+
+  teardownRealtimeChannels();
 
   currentSongId = id;
   currentComments = [];
@@ -346,6 +427,23 @@ async function loadSongView(id) {
     commentsState = 'error';
     renderSongView(song);
   }
+
+  realtimeMetaChannel = subscribeToSongMeta(song.id, (updatedMeta) => {
+    const s = getSongById(currentSongId);
+    if (!s || currentSongId !== id) return;
+    s.meta = updatedMeta;
+    renderSongView(s);
+  });
+
+  realtimeCommentsChannel = subscribeToComments(song.id, (newComment) => {
+    if (currentSongId !== id) return;
+    const alreadyExists = currentComments.some((c) => c.id === newComment.id);
+    if (alreadyExists) return;
+    currentComments = [...currentComments, newComment];
+    commentsState = 'loaded';
+    const s = getSongById(currentSongId);
+    if (s) renderSongView(s);
+  });
 }
 
 function showCollabFeedback(message) {
@@ -728,6 +826,7 @@ function renderLoginView() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 route('/', () => {
+  teardownRealtimeChannels();
   currentSongId = null;
   renderListView();
 });
@@ -737,6 +836,7 @@ route('/song/:id', ({ id }) => {
 });
 
 route('/admin', () => {
+  teardownRealtimeChannels();
   renderAdminView();
 });
 
