@@ -1,5 +1,5 @@
 import './style.css';
-import { SONGS } from './data/songs.js';
+import { getSongs } from './lib/api.js';
 
 const app = document.querySelector('#app');
 
@@ -38,6 +38,7 @@ const songView = document.querySelector('#song-view');
 const songList = document.querySelector('#song-list');
 const searchInput = document.querySelector('#search');
 const countEl = document.querySelector('#count');
+let songs = [];
 
 function escapeHtml(value) {
   if (!value) return '';
@@ -60,7 +61,7 @@ function highlightChords(progression) {
 
 function renderList(filter = '') {
   const normalizedFilter = filter.toLowerCase().trim();
-  const filteredSongs = SONGS.filter((song) =>
+  const filteredSongs = songs.filter((song) =>
     song.title.toLowerCase().includes(normalizedFilter) ||
     song.artist.toLowerCase().includes(normalizedFilter)
   );
@@ -73,7 +74,7 @@ function renderList(filter = '') {
   }
 
   songList.innerHTML = filteredSongs.map((song, index) => {
-    const originalIndex = SONGS.indexOf(song);
+    const originalIndex = songs.indexOf(song);
 
     return `
       <li class="song-item" data-index="${originalIndex}" tabindex="0">
@@ -149,7 +150,7 @@ function renderSong(song) {
 }
 
 function openSong(index) {
-  const song = SONGS[index];
+  const song = songs[index];
   if (!song) return;
 
   renderSong(song);
@@ -192,4 +193,30 @@ window.addEventListener('popstate', () => {
   }
 });
 
-renderList();
+function renderLoading() {
+  countEl.textContent = 'Cargando repertorio';
+  songList.innerHTML = '<div class="empty">Cargando canciones...</div>';
+}
+
+function renderError(error) {
+  countEl.textContent = 'Error';
+  songList.innerHTML = `
+    <div class="empty">
+      No se pudo cargar el repertorio.<br>
+      ${escapeHtml(error.message)}
+    </div>
+  `;
+}
+
+async function init() {
+  renderLoading();
+
+  try {
+    songs = await getSongs();
+    renderList();
+  } catch (error) {
+    renderError(error);
+  }
+}
+
+init();
