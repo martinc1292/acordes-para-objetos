@@ -8,6 +8,7 @@ import {
   dbDeleteSong,
   dbDeleteSuggestion,
   dbEnqueue,
+  dbFilterTombstoned,
   dbGetChatMessages,
   dbGetComments,
   dbGetPending,
@@ -149,7 +150,7 @@ async function fetchAndCacheSongs() {
 
   if (error) throw new Error(error.message);
 
-  const songs = data.map(mapRemoteSong);
+  const songs = await dbFilterTombstoned('songs', data.map(mapRemoteSong));
   await dbPutSongs(songs);
   return songs;
 }
@@ -220,7 +221,7 @@ async function fetchAndCacheComments(songId, client) {
 
   if (error) throw new Error(error.message);
 
-  const comments = data.map(mapRemoteComment);
+  const comments = await dbFilterTombstoned('comments', data.map(mapRemoteComment));
   await dbPutComments(comments, songId);
   return comments;
 }
@@ -303,7 +304,7 @@ export async function getChatMessages(client = supabase) {
       .order('created_at', { ascending: true })
       .limit(200);
     if (error) throw new Error(error.message);
-    const msgs = data.map(mapRemoteChatMessage);
+    const msgs = await dbFilterTombstoned('chat_messages', data.map(mapRemoteChatMessage));
     await dbPutChatMessages(msgs);
     return msgs;
   };
@@ -404,7 +405,7 @@ export async function getSuggestions(client = supabase) {
 
     if (error) throw new Error(error.message);
 
-    const suggestions = data.map((row) => ({
+    const mapped = data.map((row) => ({
       id: row.id,
       title: optionalText(row.title),
       artist: optionalText(row.artist),
@@ -414,6 +415,7 @@ export async function getSuggestions(client = supabase) {
       createdAt: row.created_at
     }));
 
+    const suggestions = await dbFilterTombstoned('suggestions', mapped);
     await dbPutSuggestions(suggestions);
     return suggestions;
   } catch {

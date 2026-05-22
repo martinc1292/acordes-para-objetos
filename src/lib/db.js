@@ -44,9 +44,11 @@ export async function getDB() {
 }
 
 // ── Tombstones ────────────────────────────────────────────────────────────────
-// Registran IDs eliminados localmente. Un fetch remoto en vuelo puede haber leído
-// la fila ANTES de que el DELETE llegara a Supabase; sin esto, al reescribir la
-// caché esa fila revive. Los dbPut* filtran cualquier registro tombstoneado.
+// Registran IDs eliminados localmente. Un fetch remoto puede traer una fila que
+// ya fue borrada — porque leyó Supabase antes de que el DELETE llegara, o porque
+// una capa intermedia sirvió una respuesta vieja. Los dbPut* filtran tombstones
+// antes de escribir, y dbFilterTombstoned filtra cualquier lista recién traída
+// antes de devolverla a la UI.
 
 function tombstoneKey(store, id) {
   return `${store}:${id}`;
@@ -71,6 +73,14 @@ async function dbGetTombstoneIds(store) {
       .filter((t) => t.store === store && now - t.createdAt < TOMBSTONE_TTL_MS)
       .map((t) => t.id)
   );
+}
+
+// Filtra de una lista las filas cuyo id fue tombstoneado. Las funciones get*
+// devuelven la respuesta de red directamente a la UI, así que sin esto una fila
+// borrada reaparece aunque IndexedDB ya esté limpio.
+export async function dbFilterTombstoned(store, rows) {
+  const tombstoned = await dbGetTombstoneIds(store);
+  return rows.filter((row) => !tombstoned.has(row.id));
 }
 
 export async function dbPruneTombstones() {

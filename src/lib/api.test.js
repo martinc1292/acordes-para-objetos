@@ -3,7 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addSongComment,
+  deleteSuggestion,
+  getChatMessages,
   getSongComments,
+  getSuggestions,
   mapRemoteComment,
   mapRemoteSong,
   normalizeCommentInput,
@@ -297,4 +300,71 @@ test('a stale background fetch cannot resurrect a deleted chat message', async (
 
   await dbPutChatMessages([stale]);
   assert.deepEqual(await dbGetChatMessages(), [], 'chat message must stay deleted');
+});
+
+// Las funciones get* devuelven la respuesta de red directo a la UI. Si una capa
+// intermedia (p. ej. el cache del Service Worker) sirve un listado viejo con la
+// fila borrada, lo retornado debe filtrarla igual.
+
+test('getSuggestions does not return a tombstoned row served by a stale source', async () => {
+  const deletedRow = {
+    id: 'suggestion-stale',
+    title: 'Sugerencia borrada',
+    artist: 'Artista',
+    suggested_by: 'Banda',
+    notes: '',
+    status: 'pending',
+    created_at: '2026-05-22T15:00:00.000Z'
+  };
+  // El cliente devuelve la fila borrada en ambas llamadas, como haría una
+  // respuesta cacheada vieja.
+  const client = {
+    from() {
+      return {
+        select() {
+          return {
+            order: async () => ({ data: [deletedRow], error: null })
+          };
+        },
+        delete() {
+          return { eq: async () => ({ error: null }) };
+        }
+      };
+    }
+  };
+
+  await deleteSuggestion('suggestion-stale', client);
+  const result = await getSuggestions(client);
+  assert.deepEqual(result, [], 'returned list must not include the deleted suggestion');
+});
+
+test('getChatMessages does not return a tombstoned message served by a stale source', async () => {
+  const deletedRow = {
+    id: 'chat-stale',
+    author: 'Martin',
+    text: 'Mensaje borrado',
+    created_at: '2026-05-22T15:00:00.000Z'
+  };
+  const client = {
+    from() {
+      return {
+        select() {
+          return {
+            order() {
+              return { limit: async () => ({ data: [deletedRow], error: null }) };
+            }
+          };
+        },
+        delete() {
+          return { eq: async () => ({ error: null }) };
+        }
+      };
+    }
+  };
+
+  // Caché vacía → getChatMessages hace el fetch de red de forma síncrona.
+  await dbPutChatMessages([]);
+  await dbDeleteChatMessage('chat-stale');
+  const result = await getChatMessages(client);
+  assert.deepEqual(result, [], 'returned list must not include the deleted chat message');
 });
