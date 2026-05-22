@@ -7,9 +7,14 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check:songs": "node scripts/check-songs.js"
+    "test": "node --test",
+    "check:songs": "node scripts/check-songs.js",
+    "migrate:songs": "node scripts/migrate-songs.js"
   },
   "devDependencies": {
     "vite": "^8.0.14"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.1"
   }
 }
