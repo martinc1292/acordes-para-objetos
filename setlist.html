@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>Setlist · Sala de Ensayo</title>
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --bg-elev: #1a1a1a;
+    --bg-elev-2: #242424;
+    --ink: #f5f1e8;
+    --ink-dim: #8a8580;
+    --accent: #ff5722;
+    --accent-soft: #ff572233;
+    --border: #2a2a2a;
+    --mono: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    --serif: 'Georgia', 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 20% 0%, #ff572215 0%, transparent 40%),
+      radial-gradient(circle at 80% 100%, #ff572210 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  .app { max-width: 720px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(36px, 8vw, 56px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  h1 .ampersand { color: var(--accent); font-style: italic; }
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-top: 12px;
+  }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-bottom: 20px; }
+  .search {
+    width: 100%;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 14px 16px 14px 42px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search:focus { border-color: var(--accent); }
+  .search::placeholder { color: var(--ink-dim); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-dim);
+    pointer-events: none;
+  }
+
+  /* SETLIST */
+  .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+
+  ol.songs { list-style: none; }
+  .song-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.15s, padding-left 0.15s;
+  }
+  .song-item:hover { background: var(--bg-elev); padding-left: 12px; }
+  .song-item:active { background: var(--bg-elev-2); }
+
+  .song-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    min-width: 24px;
+  }
+  .song-info { flex: 1; min-width: 0; }
+  .song-title {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+  .song-artist {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .song-key {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .song-arrow { color: var(--ink-dim); font-size: 18px; }
+
+  /* SONG VIEW */
+  .hidden { display: none !important; }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    padding: 8px 0;
+    margin-bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s;
+  }
+  .back-btn:hover { color: var(--accent); }
+
+  .song-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .song-header h2 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(28px, 6vw, 40px);
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .song-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .song-meta .dot { width: 3px; height: 3px; background: var(--ink-dim); border-radius: 50%; }
+  .song-meta .key-tag {
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  .section {
+    margin-bottom: 32px;
+  }
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .structure {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--ink);
+    background: var(--bg-elev);
+    padding: 16px;
+    border-left: 2px solid var(--accent);
+    white-space: pre-wrap;
+  }
+
+  .chords-block {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    background: var(--bg-elev);
+    padding: 16px;
+    border-radius: 2px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .chord { color: var(--accent); font-weight: 600; }
+
+  .tabs-block {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    background: var(--bg-elev);
+    padding: 16px;
+    border-radius: 2px;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--ink);
+  }
+  .tab-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+    margin-top: 16px;
+  }
+  .tab-title:first-child { margin-top: 0; }
+
+  .lyrics-block {
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: var(--ink);
+  }
+  .lyrics-placeholder {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-style: italic;
+    padding: 16px;
+    background: var(--bg-elev);
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+  }
+
+  .notes-block {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-dim);
+    background: var(--bg-elev);
+    padding: 14px 16px;
+    border-radius: 2px;
+    border-left: 2px solid var(--ink-dim);
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  /* FLOATING ADD HINT */
+  .hint {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+    background: var(--bg-elev);
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  @media (max-width: 480px) {
+    .app { padding: 16px 14px 80px; }
+    .song-item { padding: 12px 4px; gap: 12px; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LIST VIEW -->
+  <div id="list-view">
+    <header>
+      <div class="eyebrow">Sala de Ensayo · Offline</div>
+      <h1>Setlist <span class="ampersand">&amp;</span> Acordes</h1>
+      <div class="subtitle">Letras, acordes y riffs — sin wifi necesario</div>
+    </header>
+
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" class="search" id="search" placeholder="Buscar canción o banda...">
+    </div>
+
+    <div class="count" id="count"></div>
+    <ol class="songs" id="song-list"></ol>
+  </div>
+
+  <!-- SONG VIEW -->
+  <div id="song-view" class="hidden"></div>
+
+</div>
+
+<div class="hint">Tip: agregá al inicio (compartir → añadir a inicio)</div>
+
+<script>
+/* ============================================================
+   DATOS — EDITAR AQUÍ PARA AGREGAR/MODIFICAR CANCIONES
+   ============================================================
+   Estructura de cada canción:
+   {
+     title: "Nombre",
+     artist: "Artista",
+     key: "Tonalidad",       // ej: "C", "Am", "F#m"
+     tempo: "BPM o feel",     // opcional, ej: "120 BPM" o "Slow"
+     structure: "...",         // estructura del tema
+     progression: "...",       // progresión de acordes principal
+     tabs: [                   // array de riffs/tabs
+       { title: "Intro riff", tab: "..." }
+     ],
+     lyrics: "...",            // letra (pegar manualmente)
+     notes: "..."              // notas extra (opcional)
+   }
+   ============================================================ */
+
+const SONGS = [
+  {
+    title: "Careless Whisper",
+    artist: "George Michael / Wham!",
+    key: "Dm",
+    tempo: "76 BPM",
+    structure: "Intro sax → Verse → Pre-chorus → Chorus → Verse → Pre-chorus → Chorus → Sax solo → Chorus → Outro",
+    progression: "Dm  -  Bbmaj7  -  Gm7  -  A7",
+    tabs: [
+      {
+        title: "Sax riff principal (en guitarra, key Dm)",
+        tab:
+`e|----------------------------------------|
+B|----------------------------------------|
+G|--10-7-5-3---5-3-2-0--------------------|
+D|-----------5---------5-3-2-0------------|
+A|----------------------------3-2-0-------|
+E|----------------------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Saxo en Dm. Si lo tocás en guitarra, podés usar slide o bending para imitar el fraseo del sax."
+  },
+  {
+    title: "Heart of Glass",
+    artist: "Blondie",
+    key: "E",
+    tempo: "116 BPM (4/4 disco)",
+    structure: "Intro → Verse 1 → Chorus → Verse 2 → Chorus → Bridge instrumental → Verse → Chorus → Outro",
+    progression: "E  -  A  -  B  (verse / chorus alternan con bridge en E - E7 - A - A#dim - B)",
+    tabs: [
+      {
+        title: "Bajo / ostinato (figura disco)",
+        tab:
+`G|--------------------|
+D|--------------------|
+A|--7--7-9-7--5-------|
+E|--------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Feel disco/four-on-the-floor. Mantener constante el groove de hi-hat."
+  },
+  {
+    title: "Hot Stuff",
+    artist: "Donna Summer",
+    key: "Am",
+    tempo: "120 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Guitar solo → Chorus → Outro",
+    progression: "Am  -  G  -  F  -  E7",
+    tabs: [
+      {
+        title: "Riff principal de guitarra",
+        tab:
+`e|----------------------------|
+B|----------------------------|
+G|--5-5-5-7-5-----------------|
+D|------------7-5-7-5---------|
+A|--------------------7-5-----|
+E|----------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Solo de guitarra es la parte icónica — vale la pena practicarlo bien."
+  },
+  {
+    title: "Smalltown Boy",
+    artist: "Bronski Beat",
+    key: "Cm",
+    tempo: "138 BPM",
+    structure: "Intro arpegio → Verse → Chorus → Verse → Chorus → Break → Chorus → Outro",
+    progression: "Cm  -  Ab  -  Eb  -  Bb",
+    tabs: [
+      {
+        title: "Arpegio sintetizador principal (adaptado guitarra)",
+        tab:
+`e|--3-6-8-6-3---3-6-8-6-3---|
+B|--------------------------|
+G|--------------------------|
+D|--------------------------|
+A|--------------------------|
+E|--------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "El groove está en el arpegio constante. Usar delay si tienen."
+  },
+  {
+    title: "Georgy Porgy",
+    artist: "Toto",
+    key: "F#m7",
+    tempo: "104 BPM (smooth funk)",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Solo → Chorus → Outro",
+    progression: "F#m7  -  B7  -  E maj7  -  A maj7  (típica progresión II-V smooth)",
+    tabs: [
+      {
+        title: "Riff intro (estilo Lukather)",
+        tab:
+`e|--------------------------------|
+B|--7-9--7--5-7-5-----------------|
+G|----------------6-4-6-----------|
+D|----------------------7---------|
+A|--------------------------------|
+E|--------------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Acordes con extensiones (maj7, 9). No tocar power chords — perdería el carácter."
+  },
+  {
+    title: "Love Her Madly",
+    artist: "The Doors",
+    key: "Am",
+    tempo: "112 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Organ solo → Verse → Chorus → Outro",
+    progression: "Verse: Am  -  G  -  F  -  E7   |   Chorus: Dm  -  Am  -  E7  -  Am",
+    tabs: [
+      {
+        title: "Riff intro de guitarra",
+        tab:
+`e|--0---0---0---0---|
+B|--1---1---1---1---|
+G|--2---0---2---2---|
+D|--2---2---2---0---|
+A|--0---3---0-------|
+E|--------------0---|`
+      }
+    ],
+    lyrics: "",
+    notes: "El órgano lleva el peso melódico. La guitarra puede hacer rítmica simple."
+  },
+  {
+    title: "Call Mr. Lee",
+    artist: "Television",
+    key: "G",
+    tempo: "120 BPM",
+    structure: "Intro riff → Verse → Chorus → Verse → Chorus → Guitar solo → Verse → Outro",
+    progression: "G  -  D  -  C  -  G",
+    tabs: [
+      {
+        title: "Riff principal (estilo Verlaine)",
+        tab:
+`e|-------------------------|
+B|--3-3-3-3----------------|
+G|--4-4-4-4---0-2-0--------|
+D|--5-5-5-5---2-3-2--------|
+A|-------------------------|
+E|-------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Dos guitarras entrelazadas — característica de Television. Tono limpio con leve chorus."
+  },
+  {
+    title: "My Favourite Game",
+    artist: "The Cardigans",
+    key: "F#m",
+    tempo: "118 BPM",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Bridge → Chorus → Outro",
+    progression: "F#m  -  D  -  A  -  E",
+    tabs: [
+      {
+        title: "Riff principal distorsionado",
+        tab:
+`e|--2-2-2-2-2-2-2-2-|
+B|--2-2-2-2-2-2-2-2-|
+G|--2-2-2-2-2-2-2-2-|
+D|--4-4-4-4-4-4-4-4-|
+A|--4-4-4-4-4-4-4-4-|
+E|--2-2-2-2-2-2-2-2-|`
+      }
+    ],
+    lyrics: "",
+    notes: "Distorsión potente en el riff, pero la voz canta sobre acordes limpios alternativamente."
+  },
+  {
+    title: "In Bloom",
+    artist: "Nirvana",
+    key: "Bb",
+    tempo: "78 BPM (half-time feel)",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Solo → Verse → Chorus → Outro",
+    progression: "Verse: Bb  -  Ab  -  Db  -  Gb   |   Chorus: Eb  -  Ab  -  Db  -  Bb",
+    tabs: [
+      {
+        title: "Riff intro principal",
+        tab:
+`e|-------------------------------|
+B|-------------------------------|
+G|-------------------------------|
+D|--8-8-8-8-6-6-4-4--------------|
+A|--8-8-8-8-6-6-4-4--------------|
+E|--6-6-6-6-4-4-2-2--------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Bajar medio tono (Eb tuning) si querés tono original. Si no, en standard suena igual de bien."
+  },
+  {
+    title: "Lithium",
+    artist: "Nirvana",
+    key: "D",
+    tempo: "60 BPM",
+    structure: "Intro/Verse → Chorus → Verse → Chorus → Verse → Chorus → Outro",
+    progression: "D  -  F#  -  B  -  G  -  Bb  -  C  -  A",
+    tabs: [
+      {
+        title: "Progresión principal (power chords)",
+        tab:
+`e|-----------------------------|
+B|-----------------------------|
+G|-----------------------------|
+D|--7-11-9-5-8-10-7------------|
+A|--5--9-7-3-6--8-5------------|
+E|-----------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Dinámica suave/fuerte clásica de Nirvana. Verse limpio, chorus distorsionado."
+  },
+  {
+    title: "Vicar in a Tutu",
+    artist: "The Smiths",
+    key: "G",
+    tempo: "150 BPM (rockabilly feel)",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo → Verse → Chorus → Outro",
+    progression: "G  -  C  -  D  -  G",
+    tabs: [
+      {
+        title: "Riff Marr — rockabilly arpegiado",
+        tab:
+`e|--3-----3-----3-----3-----|
+B|----3-----3-----3-----3---|
+G|------0-----0-----0-----0-|
+D|--------------------------|
+A|--------------------------|
+E|--3-----3-----3-----3-----|`
+      }
+    ],
+    lyrics: "",
+    notes: "Estilo arpegiado característico de Johnny Marr. Capo en 2 si querés el tono original (sube a A)."
+  },
+  {
+    title: "Fell in Love with a Girl",
+    artist: "The White Stripes",
+    key: "E",
+    tempo: "153 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "E  -  G  -  A  -  C",
+    tabs: [
+      {
+        title: "Riff principal",
+        tab:
+`e|---------------------|
+B|---------------------|
+G|---------------------|
+D|--2-2-5-5-7-7-10-10--|
+A|--2-2-5-5-7-7-10-10--|
+E|--0-0-3-3-5-5--8--8--|`
+      }
+    ],
+    lyrics: "",
+    notes: "Power chords agresivos, sin pausas. Distorsión bien sucia."
+  },
+  {
+    title: "White Wedding",
+    artist: "Billy Idol",
+    key: "Am",
+    tempo: "138 BPM",
+    structure: "Intro riff → Verse → Pre → Chorus → Verse → Pre → Chorus → Solo → Chorus → Outro",
+    progression: "Am  -  F  -  G  -  E",
+    tabs: [
+      {
+        title: "Riff intro principal",
+        tab:
+`e|-----------------------|
+B|-----------------------|
+G|-----------------------|
+D|--7-7-5-7-5-7--5-------|
+A|--7-7-5-7-5-7--5-------|
+E|--5-5-3-5-3-5--3-------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Tempo marcado, feel oscuro. La intro es ICÓNICA — ensayarla bien."
+  },
+  {
+    title: "Breed",
+    artist: "Nirvana",
+    key: "B",
+    tempo: "159 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo → Chorus → Outro",
+    progression: "B  -  A  -  E   (basado en pedal de B)",
+    tabs: [
+      {
+        title: "Riff principal",
+        tab:
+`e|--------------------------|
+B|--------------------------|
+G|--------------------------|
+D|--9-9-9-9-7-7-7-7-2-2-----|
+A|--9-9-9-9-7-7-7-7-2-2-----|
+E|--7-7-7-7-5-5-5-5-0-0-----|`
+      }
+    ],
+    lyrics: "",
+    notes: "Velocidad y energía. Palm muting en las partes bajas, todo abierto en chorus."
+  },
+  {
+    title: "Rebel Yell",
+    artist: "Billy Idol",
+    key: "F#m",
+    tempo: "126 BPM",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Solo → Chorus → Outro",
+    progression: "F#m  -  E  -  D  -  A",
+    tabs: [
+      {
+        title: "Riff intro (Steve Stevens)",
+        tab:
+`e|-----------------------------|
+B|-----------------------------|
+G|--11-11-9-11-9-7-------------|
+D|--11-11-9-11-9-7-------------|
+A|--9--9--7-9--7-5-------------|
+E|-----------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "El solo de Steve Stevens es muy técnico — si no llegan, pueden hacer una versión simplificada."
+  },
+  {
+    title: "Muskrat Love",
+    artist: "America",
+    key: "G",
+    tempo: "104 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge → Verse → Chorus → Outro",
+    progression: "G  -  Em  -  C  -  D",
+    tabs: [
+      {
+        title: "Patrón arpegiado intro",
+        tab:
+`e|--3-----0-----0-----2---|
+B|----0-----0-----1-----3-|
+G|------0-----0-----0-----|
+D|--------2-----2-----0---|
+A|--2---------3-----------|
+E|--------------------3---|`
+      }
+    ],
+    lyrics: "",
+    notes: "Folk suave. Fingerpicking si pueden, sino strumming gentil."
+  },
+  {
+    title: "Tin Man",
+    artist: "America",
+    key: "G",
+    tempo: "108 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "G  -  Bm  -  Am  -  D  -  Em  -  C",
+    tabs: [
+      {
+        title: "Intro acústica (capo 2 → suena en A)",
+        tab:
+`e|--3---2---0---2--|
+B|--3---3---1---3--|
+G|--0---4---0---2--|
+D|--0---4---2---0--|
+A|--2---2---3------|
+E|--3-----------2--|`
+      }
+    ],
+    lyrics: "",
+    notes: "Capo en traste 2 para tonalidad original. Doce cuerdas si tienen — agrega magia."
+  },
+  {
+    title: "You Can Do Magic",
+    artist: "America",
+    key: "D",
+    tempo: "112 BPM",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Bridge → Chorus → Outro",
+    progression: "D  -  A  -  Bm  -  G",
+    tabs: [
+      {
+        title: "Strumming pattern",
+        tab:
+`e|--2---0---2---3-----|
+B|--3---2---3---3-----|
+G|--2---2---4---0-----|
+D|--0---2---4---0-----|
+A|------0---2---2-----|
+E|--------------3-----|`
+      }
+    ],
+    lyrics: "",
+    notes: "Pop suave de los 80s. Mantener el groove constante."
+  },
+  {
+    title: "Ventura Highway",
+    artist: "America",
+    key: "B",
+    tempo: "92 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo → Chorus → Outro",
+    progression: "B  -  Bsus4  (intro)  →  F#m  -  Em",
+    tabs: [
+      {
+        title: "Intro riff icónica (capo opcional traste 2)",
+        tab:
+`e|--2-2-2-2-2-2-2-2-|
+B|--4-5-4-2-4-5-4-2-|
+G|--4-4-4-4-4-4-4-4-|
+D|--4-4-4-4-4-4-4-4-|
+A|------------------|
+E|------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "El riff intro hay que loopearlo durante todo el verso. Suena espacioso."
+  },
+  {
+    title: "No Podrás",
+    artist: "Cristian Castro",
+    key: "G",
+    tempo: "120 BPM (balada pop)",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Puente → Chorus → Outro",
+    progression: "G  -  D/F#  -  Em  -  C  -  G  -  D  -  C  -  D",
+    tabs: [
+      {
+        title: "Sugerencia: arpegio teclado / guitarra limpia",
+        tab:
+`e|--3---2---0---0---|
+B|--3---3---0---1---|
+G|--0---2---0---0---|
+D|--0---0---2---2---|
+A|--2-------2---3---|
+E|--3---------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Balada pop latino. Teclado suele llevar el arpegio. Voz muy expuesta — atención al volumen."
+  },
+  {
+    title: "Young Turks",
+    artist: "Rod Stewart",
+    key: "A",
+    tempo: "120 BPM",
+    structure: "Intro sintetizador → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "A  -  E  -  F#m  -  D",
+    tabs: [
+      {
+        title: "Riff sintetizador adaptado a guitarra",
+        tab:
+`e|--5-----5-----5-----5-----|
+B|----5-----5-----5-----5---|
+G|------6-----6-----6-----6-|
+D|--------------------------|
+A|--------------------------|
+E|--------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Sintetizador 80s muy característico. Si no hay teclado, guitarra con delay funciona bien."
+  },
+  {
+    title: "It Could Happen to You",
+    artist: "Chet Baker (jazz standard)",
+    key: "Eb (vocal) / varias",
+    tempo: "Medium swing ~140 BPM",
+    structure: "Head → Solos (chord changes) → Head out",
+    progression: "Eb maj7  -  E dim7  -  Fm7  -  Bb7  -  Gm7  -  Cm7  -  Fm7  -  Bb7",
+    tabs: [
+      {
+        title: "Comping suggestion (shells)",
+        tab:
+`Ebmaj7      Edim7       Fm7         Bb7
+e|--7--      e|--8--      e|--8--      e|--6--
+B|--8--      B|--7--      B|--6--      B|--6--
+G|--7--      G|--8--      G|--8--      G|--7--
+D|--8--      D|--7--      D|--6--      D|--5--`
+      }
+    ],
+    lyrics: "",
+    notes: "Standard de jazz. Ensayar cambios. Voicings con extensiones (7, 9, 13). Comping suave."
+  },
+  {
+    title: "Something",
+    artist: "The Beatles (George Harrison)",
+    key: "C",
+    tempo: "66 BPM",
+    structure: "Intro → Verse → Bridge → Verse → Solo → Bridge → Verse → Outro",
+    progression: "C  -  Cmaj7  -  C7  -  F  -  D7  -  G",
+    tabs: [
+      {
+        title: "Intro riff (Harrison)",
+        tab:
+`e|--0---------0------|
+B|--1-1-3-1---1-1-3--|
+G|--0---0-0---0---0--|
+D|--2---2-2---2---2--|
+A|--3---------3------|
+E|-------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Riff intro tan icónico como la canción. Limpio, con leve reverb."
+  },
+  {
+    title: "While My Guitar Gently Weeps",
+    artist: "The Beatles",
+    key: "Am",
+    tempo: "115 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo (Clapton) → Verse → Outro extendido",
+    progression: "Verse: Am  -  Am/G  -  D9/F#  -  F   |   Chorus: A  -  C#m  -  F#m  -  C#m  -  Bm  -  E",
+    tabs: [
+      {
+        title: "Intro (Beatles - acústica fingerpicked)",
+        tab:
+`e|--0-----0-----2-----1-----|
+B|--1-----1-----3-----1-----|
+G|--2-----0-----2-----2-----|
+D|--2-----2-----0-----3-----|
+A|--0-----2-----------------|
+E|--------3-----------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Si va el solo de Clapton, prepararlo aparte. Hay versión simple y versión con solo épico."
+  },
+  {
+    title: "Golden Slumbers",
+    artist: "The Beatles",
+    key: "A minor / C major",
+    tempo: "78 BPM",
+    structure: "Verse → Chorus → Verse → Chorus → (segue a Carry That Weight)",
+    progression: "Am7  -  Dm7  -  G7  -  C  -  F  -  Em  -  Am  -  Dm7  -  G7  -  C",
+    tabs: [
+      {
+        title: "Piano voicings adaptados (acordes con tensión)",
+        tab:
+`Am7    Dm7    G7     C
+e|--0    e|--1    e|--1    e|--0
+B|--1    B|--1    B|--0    B|--1
+G|--0    G|--2    G|--0    G|--0
+D|--2    D|--0    D|--0    D|--2
+A|--0          A|--3
+E|`
+      }
+    ],
+    lyrics: "",
+    notes: "Tema corto pero muy emotivo. Suele ir antes de 'Carry That Weight'. Si lo hacen como medley, prepararlo."
+  },
+  {
+    title: "L.A. Woman",
+    artist: "The Doors",
+    key: "A",
+    tempo: "118 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge (Mr. Mojo Risin') → Chorus → Outro",
+    progression: "A  -  D  -  E  (12-bar blues based con variaciones)",
+    tabs: [
+      {
+        title: "Riff principal",
+        tab:
+`e|-----------------|
+B|-----------------|
+G|--2--------------|
+D|--2-0-2-0-2------|
+A|--0--------------|
+E|-----------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Tema largo (7+ min). Tiene sección 'Mr. Mojo Risin' que sube tempo gradualmente. Prepararlo."
+  },
+  {
+    title: "Self Control",
+    artist: "Laura Branigan",
+    key: "Am",
+    tempo: "120 BPM",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Bridge → Chorus → Outro",
+    progression: "Am  -  G  -  F  -  E7",
+    tabs: [
+      {
+        title: "Riff sintetizador adaptado",
+        tab:
+`e|--5-5-5-5-5-5-5-5-|
+B|--5-5-5-5-5-5-5-5-|
+G|--5-5-5-5-5-5-5-5-|
+D|--7-7-5-5-3-3-2-2-|
+A|------------------|
+E|------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "80s synth-pop dramático. Voz con mucho protagonismo. Reverb en todo."
+  },
+  {
+    title: "Toxic Girl",
+    artist: "Kings of Convenience",
+    key: "G",
+    tempo: "120 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "G  -  D  -  Em  -  C",
+    tabs: [
+      {
+        title: "Fingerpicking acústico",
+        tab:
+`e|--3-----2-----0-----0---|
+B|----0-----3-----0-----1-|
+G|------0-----2-----0---0-|
+D|--0-----0-----2-----2---|
+A|--2---------2-----3-----|
+E|--3---------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Estilo Simon & Garfunkel. Dos guitarras acústicas entrelazadas, voces en armonía."
+  },
+  {
+    title: "Aún Estás en Mis Sueños",
+    artist: "Rata Blanca",
+    key: "Em",
+    tempo: "75 BPM (balada rock)",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo → Chorus → Outro",
+    progression: "Em  -  C  -  G  -  D  -  Am  -  B7",
+    tabs: [
+      {
+        title: "Arpegio intro (estilo Walter Giardino)",
+        tab:
+`e|--0-3-0-----0-1-0-----|
+B|------3-0-------1-0---|
+G|------0-----------0---|
+D|--2-----------2-------|
+A|--2-----------3-------|
+E|--0-------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Solo de Giardino es el alma del tema. Prepararlo bien o hacer versión simplificada."
+  },
+  {
+    title: "Eyes Without a Face",
+    artist: "Billy Idol",
+    key: "C#m",
+    tempo: "92 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge (cambio de feel rock) → Chorus → Outro",
+    progression: "C#m  -  A  -  E  -  B",
+    tabs: [
+      {
+        title: "Arpegio limpio intro",
+        tab:
+`e|--4-----0-----0-----2-----|
+B|----5-----2-----0-----4---|
+G|--6-----1-----1-----4-----|
+D|--6-----2-----2-----4-----|
+A|--4-----0-----------2-----|
+E|--------------0-----------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Tema con dos secciones muy distintas: la suave con coros 'les yeux sans visage' y la sección rock del medio."
+  },
+  {
+    title: "That Girl",
+    artist: "Stevie Wonder",
+    key: "Bbm",
+    tempo: "90 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "Bbm9  -  Eb9  -  Abmaj7  -  Dbmaj7",
+    tabs: [
+      {
+        title: "Voicings de guitarra con extensiones",
+        tab:
+`Bbm9    Eb9     Abmaj7   Dbmaj7
+e|--6    e|--6    e|--4     e|--4
+B|--6    B|--6    B|--4     B|--6
+G|--6    G|--5    G|--5     G|--5
+D|--8    D|--6    D|--5     D|--6
+A|--8    A|--6
+E|`
+      }
+    ],
+    lyrics: "",
+    notes: "R&B sofisticado. Acordes con muchas extensiones. Groove fundamental — batería con feel suave."
+  },
+  {
+    title: "Honesty",
+    artist: "Billy Joel",
+    key: "Bb",
+    tempo: "76 BPM",
+    structure: "Intro piano → Verse → Chorus → Verse → Chorus → Bridge → Chorus → Outro",
+    progression: "Bb  -  F/A  -  Gm  -  Eb  -  Bb/D  -  Cm  -  F",
+    tabs: [
+      {
+        title: "Acordes principales (guitarra acompañamiento)",
+        tab:
+`Bb       F/A      Gm       Eb
+e|--1     e|--1     e|--3     e|--6
+B|--3     B|--1     B|--3     B|--8
+G|--3     G|--2     G|--3     G|--8
+D|--3     D|--3     D|--5     D|--8
+A|--1     A|--0
+E|`
+      }
+    ],
+    lyrics: "",
+    notes: "Tema muy pianístico. La guitarra debe acompañar suave. Voz expuesta — ensayar dinámica."
+  },
+  {
+    title: "Just the Way You Are",
+    artist: "Billy Joel",
+    key: "D",
+    tempo: "120 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Sax solo → Bridge → Chorus → Outro",
+    progression: "Dmaj7  -  Bm7  -  Em7  -  A7",
+    tabs: [
+      {
+        title: "Comping con séptimas",
+        tab:
+`Dmaj7   Bm7     Em7     A7
+e|--2    e|--2    e|--3    e|--5
+B|--2    B|--3    B|--3    B|--5
+G|--2    G|--2    G|--4    G|--6
+D|--4    D|--4    D|--5    D|--5
+A|       A|--2    A|       A|
+E|`
+      }
+    ],
+    lyrics: "",
+    notes: "Solo de sax legendario. Si no tienen sax, hacerlo con guitarra limpia o teclado."
+  },
+  {
+    title: "What You Won't Do for Love",
+    artist: "Bobby Caldwell",
+    key: "F#m",
+    tempo: "108 BPM (smooth soul)",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Solo → Chorus → Outro",
+    progression: "F#m7  -  B7  -  Emaj7  -  C#m7",
+    tabs: [
+      {
+        title: "Comping smooth (voicings de 7ma)",
+        tab:
+`F#m7    B7      Emaj7   C#m7
+e|--2    e|--2    e|--7    e|--4
+B|--2    B|--4    B|--9    B|--5
+G|--2    G|--2    G|--8    G|--4
+D|--4    D|--4    D|--9    D|--6
+A|--4    A|--2
+E|--2    E|`
+      }
+    ],
+    lyrics: "",
+    notes: "Soul/jazz sofisticado. Rhodes piano clásico. Voz muy importante — feel relajado."
+  },
+  {
+    title: "Bad Girls",
+    artist: "Donna Summer",
+    key: "G",
+    tempo: "131 BPM (disco)",
+    structure: "Intro → Verse → Pre → Chorus → Verse → Pre → Chorus → Break → Chorus → Outro",
+    progression: "G  -  C  -  D  -  G   (con riff de bajo característico)",
+    tabs: [
+      {
+        title: "Riff de bajo principal",
+        tab:
+`G|------------------|
+D|------------------|
+A|--5-5---5---5-3-5-|
+E|------3-----------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Disco clásico. El bajo es protagónico. 'Toot toot, beep beep' es el hook icónico."
+  },
+  {
+    title: "Chega de Saudade",
+    artist: "Antônio Carlos Jobim",
+    key: "Dm / D (modulación bossa)",
+    tempo: "Bossa nova ~140 BPM",
+    structure: "Sección A (menor) → Sección B (mayor) → A → B → Outro",
+    progression: "A: Dm  -  A7  -  Dm  -  Gm  -  A7  -  Dm   |   B: D  -  A7  -  D  -  G  -  A7  -  D",
+    tabs: [
+      {
+        title: "Comping bossa nova (estilo João Gilberto)",
+        tab:
+`Dm      A7      Gm      D
+e|--1    e|--0    e|--3    e|--2
+B|--3    B|--2    B|--3    B|--3
+G|--2    G|--0    G|--3    G|--2
+D|--0    D|--2    D|--5    D|--0
+A|       A|--0    A|--5
+E|       E|       E|--3`
+      }
+    ],
+    lyrics: "",
+    notes: "Bossa fundacional. Patrón rítmico de Gilberto: pulgar marca el bajo, dedos los acordes en contratiempo."
+  },
+  {
+    title: "Bigmouth Strikes Again",
+    artist: "The Smiths",
+    key: "D",
+    tempo: "166 BPM",
+    structure: "Intro → Verse → Chorus → Verse → Chorus → Solo → Chorus → Outro",
+    progression: "D  -  A  -  G  -  D",
+    tabs: [
+      {
+        title: "Riff Marr (intro con doble cuerda)",
+        tab:
+`e|--2-2-2-2-5-5-5-5-3-3-3-3-2-2-2-2-|
+B|--3-3-3-3-7-7-7-7-3-3-3-3-3-3-3-3-|
+G|----------------------------------|
+D|----------------------------------|
+A|----------------------------------|
+E|----------------------------------|`
+      }
+    ],
+    lyrics: "",
+    notes: "Capo en traste 2 para tono original. Estilo Marr: guitarras entrelazadas, mucho jangle."
+  }
+];
+
+/* ============================================================
+   LÓGICA — no hace falta tocar de acá para abajo
+   ============================================================ */
+
+const listView = document.getElementById('list-view');
+const songView = document.getElementById('song-view');
+const songList = document.getElementById('song-list');
+const searchInput = document.getElementById('search');
+const countEl = document.getElementById('count');
+
+function renderList(filter = '') {
+  const f = filter.toLowerCase().trim();
+  const filtered = SONGS.filter(s =>
+    s.title.toLowerCase().includes(f) ||
+    s.artist.toLowerCase().includes(f)
+  );
+
+  countEl.textContent = `${filtered.length} canci${filtered.length === 1 ? 'ón' : 'ones'}`;
+
+  songList.innerHTML = filtered.map((s, i) => {
+    const originalIdx = SONGS.indexOf(s);
+    return `
+      <li class="song-item" data-idx="${originalIdx}">
+        <div class="song-num">${String(i + 1).padStart(2, '0')}</div>
+        <div class="song-info">
+          <div class="song-title">${escapeHtml(s.title)}</div>
+          <div class="song-artist">${escapeHtml(s.artist)}</div>
+        </div>
+        <div class="song-key">${escapeHtml(s.key)}</div>
+        <div class="song-arrow">→</div>
+      </li>
+    `;
+  }).join('');
+
+  if (filtered.length === 0) {
+    songList.innerHTML = '<div class="empty">Sin resultados</div>';
+  }
+
+  document.querySelectorAll('.song-item').forEach(el => {
+    el.addEventListener('click', () => openSong(parseInt(el.dataset.idx)));
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function highlightChords(progression) {
+  // Highlight chord names with accent color
+  return escapeHtml(progression).replace(
+    /\b([A-G][#b]?(?:maj|min|m|sus|dim|aug|add)?\d*(?:\/[A-G][#b]?)?)\b/g,
+    '<span class="chord">$1</span>'
+  );
+}
+
+function openSong(idx) {
+  const s = SONGS[idx];
+  const tabsHtml = s.tabs && s.tabs.length
+    ? s.tabs.map(t => `
+        <div class="tab-title">${escapeHtml(t.title)}</div>
+        <div class="tabs-block">${escapeHtml(t.tab)}</div>
+      `).join('')
+    : '<div class="lyrics-placeholder">Sin tabs cargadas</div>';
+
+  const lyricsHtml = s.lyrics && s.lyrics.trim()
+    ? `<div class="lyrics-block">${escapeHtml(s.lyrics)}</div>`
+    : `<div class="lyrics-placeholder">Pegá la letra acá: editá el archivo HTML y completá el campo "lyrics" de esta canción.</div>`;
+
+  songView.innerHTML = `
+    <button class="back-btn" id="back-btn">← Volver al setlist</button>
+    <div class="song-header">
+      <h2>${escapeHtml(s.title)}</h2>
+      <div class="song-meta">
+        <span>${escapeHtml(s.artist)}</span>
+        <span class="dot"></span>
+        <span class="key-tag">${escapeHtml(s.key)}</span>
+        ${s.tempo ? `<span class="dot"></span><span>${escapeHtml(s.tempo)}</span>` : ''}
+      </div>
+    </div>
+
+    ${s.structure ? `
+      <div class="section">
+        <div class="section-label">Estructura</div>
+        <div class="structure">${escapeHtml(s.structure)}</div>
+      </div>
+    ` : ''}
+
+    ${s.progression ? `
+      <div class="section">
+        <div class="section-label">Progresión</div>
+        <div class="chords-block">${highlightChords(s.progression)}</div>
+      </div>
+    ` : ''}
+
+    <div class="section">
+      <div class="section-label">Tabs / Riffs</div>
+      ${tabsHtml}
+    </div>
+
+    <div class="section">
+      <div class="section-label">Letra</div>
+      ${lyricsHtml}
+    </div>
+
+    ${s.notes ? `
+      <div class="section">
+        <div class="section-label">Notas</div>
+        <div class="notes-block">${escapeHtml(s.notes)}</div>
+      </div>
+    ` : ''}
+  `;
+
+  document.getElementById('back-btn').addEventListener('click', closeSong);
+
+  listView.classList.add('hidden');
+  songView.classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+function closeSong() {
+  songView.classList.add('hidden');
+  listView.classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+searchInput.addEventListener('input', e => renderList(e.target.value));
+
+// Browser back button
+window.addEventListener('popstate', () => {
+  if (!songView.classList.contains('hidden')) closeSong();
+});
+
+// Initial render
+renderList();
+</script>
+</body>
+</html>
