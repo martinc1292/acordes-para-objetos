@@ -8,9 +8,10 @@ App web para tener el repertorio de la banda con letras, acordes, tabs y notas. 
 - Capa de datos: `src/lib/api.js` usa Supabase cuando hay env vars y fallback local cuando no
 - Datos del repertorio: `src/data/songs.js`
 - Estilos base: `src/style.css`
+- Colaboración básica: favoritos, estado por canción y comentarios compartidos
 - Respaldo legacy intacto: `setlist.html`
 
-La app puede correr sin Supabase usando los datos locales de `src/data/songs.js`. Supabase ya tiene schema, script de migración y cliente opcional preparados.
+La app puede correr sin Supabase usando los datos locales de `src/data/songs.js`. Con Supabase configurado, lee canciones desde la base y guarda estado/favoritos/comentarios compartidos.
 
 ## Desarrollo local
 
@@ -103,3 +104,13 @@ npm run migrate:songs -- --apply
 ```
 
 El script de migración lee desde `src/data/songs.js`, no desde `setlist.html`.
+
+## Features colaborativas
+
+En el detalle de cada canción se puede:
+
+- Marcar o quitar favorita.
+- Cambiar estado entre `Pendiente`, `Ensayando` y `Lista`.
+- Agregar comentarios con nombre libre y color.
+
+Estas acciones escriben en Supabase cuando las variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` están configuradas. Sin Supabase, la app conserva el fallback local para seguir funcionando durante desarrollo.

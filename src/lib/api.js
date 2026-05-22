@@ -5,6 +5,10 @@ const DEFAULT_META = {
   isFavorite: false,
   status: 'pending'
 };
+const VALID_STATUSES = new Set(['pending', 'rehearsing', 'ready']);
+const VALID_COMMENT_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
+const COMMENT_COLUMNS = 'id,song_id,author,text,color,created_at';
+const localComments = new Map();
 
 function optionalText(value) {
   return typeof value === 'string' ? value : '';
@@ -12,6 +16,13 @@ function optionalText(value) {
 
 function normalizeTabs(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function mapMeta(row) {
+  return {
+    isFavorite: Boolean(row?.is_favorite),
+    status: VALID_STATUSES.has(row?.status) ? row.status : DEFAULT_META.status
+  };
 }
 
 export function normalizeSongs(songs) {
@@ -49,10 +60,44 @@ export function mapRemoteSong(row) {
     lyrics: optionalText(row.lyrics),
     notes: optionalText(row.notes),
     sortOrder: Number.isInteger(row.sort_order) ? row.sort_order : 0,
-    meta: {
-      isFavorite: Boolean(meta?.is_favorite),
-      status: meta?.status || DEFAULT_META.status
-    }
+    meta: mapMeta(meta)
+  };
+}
+
+export function normalizeMetaPatch(patch) {
+  const normalized = {};
+
+  if (typeof patch?.isFavorite === 'boolean') {
+    normalized.is_favorite = patch.isFavorite;
+  }
+
+  if (VALID_STATUSES.has(patch?.status)) {
+    normalized.status = patch.status;
+  }
+
+  return normalized;
+}
+
+export function normalizeCommentInput(comment) {
+  const author = optionalText(comment?.author).trim();
+  const text = optionalText(comment?.text).trim();
+  const color = optionalText(comment?.color).trim();
+
+  return {
+    author: author || 'Ensayo',
+    text,
+    color: VALID_COMMENT_COLORS.has(color) ? color : 'yellow'
+  };
+}
+
+export function mapRemoteComment(row) {
+  return {
+    id: row.id,
+    songId: row.song_id,
+    author: optionalText(row.author),
+    text: optionalText(row.text),
+    color: VALID_COMMENT_COLORS.has(row.color) ? row.color : 'yellow',
+    createdAt: optionalText(row.created_at)
   };
 }
 
@@ -87,4 +132,78 @@ export async function getSongs() {
   }
 
   return data.map(mapRemoteSong);
+}
+
+export async function updateSongMeta(songId, patch, client = supabase) {
+  const metaPatch = normalizeMetaPatch(patch);
+
+  if (!client) {
+    return mapMeta({
+      is_favorite: metaPatch.is_favorite ?? DEFAULT_META.isFavorite,
+      status: metaPatch.status ?? DEFAULT_META.status
+    });
+  }
+
+  const { data, error } = await client
+    .from('song_meta')
+    .upsert({ song_id: songId, ...metaPatch }, { onConflict: 'song_id' })
+    .select('is_favorite,status')
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapMeta(data);
+}
+
+export async function getSongComments(songId, client = supabase) {
+  if (!client) {
+    return localComments.get(songId) ?? [];
+  }
+
+  const { data, error } = await client
+    .from('comments')
+    .select(COMMENT_COLUMNS)
+    .eq('song_id', songId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data.map(mapRemoteComment);
+}
+
+export async function addSongComment(songId, comment, client = supabase) {
+  const input = normalizeCommentInput(comment);
+
+  if (!input.text) {
+    throw new Error('El comentario no puede estar vacío.');
+  }
+
+  if (!client) {
+    const localComment = {
+      id: `local-comment-${Date.now()}`,
+      songId,
+      author: input.author,
+      text: input.text,
+      color: input.color,
+      createdAt: new Date().toISOString()
+    };
+    localComments.set(songId, [...(localComments.get(songId) ?? []), localComment]);
+    return localComment;
+  }
+
+  const { data, error } = await client
+    .from('comments')
+    .insert({ song_id: songId, ...input })
+    .select(COMMENT_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return mapRemoteComment(data);
 }

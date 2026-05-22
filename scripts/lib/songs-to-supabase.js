@@ -30,3 +30,17 @@ export function buildMetaRows(insertedSongs) {
     return { song_id: song.id };
   });
 }
+
+export function planSongMigration({ existingSongCount, localSongCount }) {
+  if (existingSongCount > 0) {
+    return {
+      shouldInsert: false,
+      message: `Supabase already has ${existingSongCount} songs; skipping migration.`
+    };
+  }
+
+  return {
+    shouldInsert: true,
+    message: `Ready to migrate ${localSongCount} songs.`
+  };
+}

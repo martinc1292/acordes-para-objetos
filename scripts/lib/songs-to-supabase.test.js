@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildMetaRows,
   buildSongRows,
+  planSongMigration,
   normalizeSongForSupabase
 } from './songs-to-supabase.js';
 
@@ -70,4 +71,16 @@ test('builds one song_meta row per inserted song id', () => {
     buildMetaRows([{ id: 'song-1' }, { id: 'song-2' }]),
     [{ song_id: 'song-1' }, { song_id: 'song-2' }]
   );
+});
+
+test('plans an insert only when the remote songs table is empty', () => {
+  assert.deepEqual(planSongMigration({ existingSongCount: 0, localSongCount: 37 }), {
+    shouldInsert: true,
+    message: 'Ready to migrate 37 songs.'
+  });
+
+  assert.deepEqual(planSongMigration({ existingSongCount: 37, localSongCount: 37 }), {
+    shouldInsert: false,
+    message: 'Supabase already has 37 songs; skipping migration.'
+  });
 });

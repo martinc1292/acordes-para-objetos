@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SONGS } from '../src/data/songs.js';
 import { loadLocalEnv } from './lib/local-env.js';
-import { buildMetaRows, buildSongRows } from './lib/songs-to-supabase.js';
+import { buildMetaRows, buildSongRows, planSongMigration } from './lib/songs-to-supabase.js';
 
 loadLocalEnv();
 
@@ -27,6 +27,26 @@ if (!supabaseUrl || !serviceRoleKey) {
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false }
 });
+
+const { count: existingSongCount, error: countError } = await supabase
+  .from('songs')
+  .select('id', { count: 'exact' })
+  .limit(1);
+
+if (countError) {
+  console.error('Failed to inspect existing songs:', countError.message);
+  process.exit(1);
+}
+
+const migrationPlan = planSongMigration({
+  existingSongCount: existingSongCount ?? 0,
+  localSongCount: songRows.length
+});
+
+if (!migrationPlan.shouldInsert) {
+  console.log(migrationPlan.message);
+  process.exit(0);
+}
 
 const { data: insertedSongs, error: songsError } = await supabase
   .from('songs')
