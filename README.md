@@ -5,11 +5,12 @@ App web para tener el repertorio de la banda con letras, acordes, tabs y notas. 
 ## Estado actual
 
 - Entrada principal nueva: `index.html` + `src/main.js`
+- Capa de datos: `src/lib/api.js` usa Supabase cuando hay env vars y fallback local cuando no
 - Datos del repertorio: `src/data/songs.js`
 - Estilos base: `src/style.css`
 - Respaldo legacy intacto: `setlist.html`
 
-La app todavía renderiza desde datos locales exportados en `src/data/songs.js`. Supabase ya tiene schema y script de migración preparados, pero la UI aún no consume la API.
+La app puede correr sin Supabase usando los datos locales de `src/data/songs.js`. Supabase ya tiene schema, script de migración y cliente opcional preparados.
 
 ## Desarrollo local
 
