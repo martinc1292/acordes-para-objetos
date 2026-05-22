@@ -98,8 +98,8 @@ create policy comments_public_insert on public.comments
 for insert with check (true);
 
 drop policy if exists comments_admin_delete on public.comments;
-create policy comments_admin_delete on public.comments
-for delete using (auth.role() = 'authenticated');
+create policy comments_public_delete on public.comments
+for delete using (true);
 
 drop policy if exists sugg_public_read on public.suggestions;
 create policy sugg_public_read on public.suggestions
@@ -115,4 +115,25 @@ for update using (auth.role() = 'authenticated');
 
 drop policy if exists sugg_admin_delete on public.suggestions;
 create policy sugg_admin_delete on public.suggestions
+for delete using (auth.role() = 'authenticated');
+
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  author text not null,
+  text text not null,
+  created_at timestamptz default now()
+);
+
+alter table public.chat_messages enable row level security;
+
+drop policy if exists chat_public_read on public.chat_messages;
+create policy chat_public_read on public.chat_messages
+for select using (true);
+
+drop policy if exists chat_public_insert on public.chat_messages;
+create policy chat_public_insert on public.chat_messages
+for insert with check (true);
+
+drop policy if exists chat_admin_delete on public.chat_messages;
+create policy chat_admin_delete on public.chat_messages
 for delete using (auth.role() = 'authenticated');

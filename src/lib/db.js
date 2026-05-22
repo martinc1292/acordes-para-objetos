@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'setlist';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let _db = null;
 
@@ -25,6 +25,9 @@ export async function getDB() {
       }
       if (!db.objectStoreNames.contains('pending_changes')) {
         db.createObjectStore('pending_changes', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('chat_messages')) {
+        db.createObjectStore('chat_messages', { keyPath: 'id' });
       }
     }
   });
@@ -80,6 +83,31 @@ export async function dbPutComments(comments) {
   const db = await getDB();
   const tx = db.transaction('comments', 'readwrite');
   await Promise.all(comments.map((c) => tx.store.put(c)));
+  await tx.done;
+}
+
+export async function dbDeleteComment(id) {
+  const db = await getDB();
+  await db.delete('comments', id);
+}
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+
+export async function dbGetChatMessages() {
+  const db = await getDB();
+  const all = await db.getAll('chat_messages');
+  return all.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+}
+
+export async function dbPutChatMessage(msg) {
+  const db = await getDB();
+  await db.put('chat_messages', msg);
+}
+
+export async function dbPutChatMessages(msgs) {
+  const db = await getDB();
+  const tx = db.transaction('chat_messages', 'readwrite');
+  await Promise.all(msgs.map((m) => tx.store.put(m)));
   await tx.done;
 }
 

@@ -2,12 +2,16 @@ import { SONGS } from '../data/songs.js';
 import { supabase } from './supabase.js';
 import {
   dbCountPending,
+  dbDeleteComment,
   dbDeletePending,
   dbEnqueue,
+  dbGetChatMessages,
   dbGetComments,
   dbGetPending,
   dbGetSongs,
   dbGetSuggestions,
+  dbPutChatMessage,
+  dbPutChatMessages,
   dbPutComment,
   dbPutComments,
   dbPutMeta,
@@ -245,6 +249,89 @@ export async function addSongComment(songId, comment, client = supabase) {
   } catch {
     // Offline → encolar
     await dbEnqueue('insert_comment', { songId, comment: input });
+    return optimistic;
+  }
+}
+
+// ── deleteSongComment ─────────────────────────────────────────────────────────
+
+export async function deleteSongComment(commentId, client = supabase) {
+  await dbDeleteComment(commentId);
+
+  if (!client || commentId.startsWith('local-')) return;
+
+  try {
+    await client.from('comments').delete().eq('id', commentId);
+  } catch {
+    // best-effort
+  }
+}
+
+// ── Chat global ───────────────────────────────────────────────────────────────
+
+const CHAT_COLUMNS = 'id,author,text,created_at';
+
+export function mapRemoteChatMessage(row) {
+  return {
+    id: row.id,
+    author: optionalText(row.author),
+    text: optionalText(row.text),
+    createdAt: optionalText(row.created_at)
+  };
+}
+
+export async function getChatMessages(client = supabase) {
+  if (!client) return dbGetChatMessages();
+
+  const cached = await dbGetChatMessages();
+
+  const doFetch = async () => {
+    const { data, error } = await client
+      .from('chat_messages')
+      .select(CHAT_COLUMNS)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const msgs = data.map(mapRemoteChatMessage);
+    await dbPutChatMessages(msgs);
+    return msgs;
+  };
+
+  if (cached.length > 0) {
+    doFetch().catch(() => {});
+    return cached;
+  }
+
+  return doFetch();
+}
+
+export async function addChatMessage(data, client = supabase) {
+  const author = optionalText(data.author).trim() || 'Anónimo';
+  const text = optionalText(data.text).trim();
+  if (!text) throw new Error('El mensaje no puede estar vacío.');
+
+  const optimistic = {
+    id: `local-chat-${Date.now()}`,
+    author,
+    text,
+    createdAt: new Date().toISOString()
+  };
+
+  await dbPutChatMessage(optimistic);
+
+  if (!client) return optimistic;
+
+  try {
+    const { data: inserted, error } = await client
+      .from('chat_messages')
+      .insert({ author, text })
+      .select(CHAT_COLUMNS)
+      .single();
+    if (error) throw new Error(error.message);
+    const persisted = mapRemoteChatMessage(inserted);
+    await dbPutChatMessage(persisted);
+    return persisted;
+  } catch {
     return optimistic;
   }
 }

@@ -1,9 +1,12 @@
 import './style.css';
 import {
+  addChatMessage,
   addSongComment,
   addSuggestion,
   createSong,
   deleteSong,
+  deleteSongComment,
+  getChatMessages,
   getPendingCount,
   getSongComments,
   getSongs,
@@ -43,6 +46,19 @@ app.innerHTML = `
   </button>
   <div class="metro-float-panel" id="metro-float-panel" hidden></div>
   <div class="present-overlay" id="present-overlay" hidden></div>
+  <div class="drawer-overlay" id="drawer-overlay" hidden></div>
+  <nav class="drawer" id="drawer" aria-label="Menú" hidden>
+    <div class="drawer-header">
+      <div class="drawer-title">Sala &amp; Ensayo</div>
+      <button class="drawer-close" id="drawer-close" type="button" aria-label="Cerrar menú">✕</button>
+    </div>
+    <ul class="drawer-nav">
+      <li><a class="drawer-link" href="#/" id="dnav-setlist">🎵 Setlist</a></li>
+      <li><a class="drawer-link" href="#/favoritos" id="dnav-favs">★ Favoritos</a></li>
+      <li><a class="drawer-link" href="#/sugerencias" id="dnav-suggestions">+ Sugerencias</a></li>
+      <li><a class="drawer-link" href="#/chat" id="dnav-chat">💬 Chat</a></li>
+    </ul>
+  </nav>
 `;
 
 // ── Conectividad ──────────────────────────────────────────────────────────────
@@ -131,7 +147,10 @@ let commentsState = 'idle';
 let adminMode = false;
 let realtimeMetaChannel = null;
 let realtimeCommentsChannel = null;
+let realtimeChatChannel = null;
 let presentMode = false;
+let chatMessages = [];
+let chatState = 'idle';
 
 // ─── Metrónomo ───────────────────────────────────────────────────────────────
 
@@ -239,6 +258,30 @@ function formatDate(value) {
   }).format(date);
 }
 
+// ─── Drawer ──────────────────────────────────────────────────────────────────
+
+function openDrawer() {
+  document.querySelector('#drawer').hidden = false;
+  document.querySelector('#drawer-overlay').hidden = false;
+  document.querySelector('#drawer').querySelector('a').focus();
+}
+
+function closeDrawer() {
+  document.querySelector('#drawer').hidden = true;
+  document.querySelector('#drawer-overlay').hidden = true;
+}
+
+function initDrawer() {
+  document.querySelector('#drawer-close').addEventListener('click', closeDrawer);
+  document.querySelector('#drawer-overlay').addEventListener('click', closeDrawer);
+  document.querySelector('#drawer').addEventListener('click', (e) => {
+    if (e.target.closest('.drawer-link')) closeDrawer();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.querySelector('#drawer').hidden) closeDrawer();
+  });
+}
+
 // ─── Vista Lista ─────────────────────────────────────────────────────────────
 
 function renderListView(filter = '') {
@@ -278,7 +321,10 @@ function renderListView(filter = '') {
     <header>
       <div class="header-row">
         <div class="eyebrow">Setlist</div>
-        ${adminLink}
+        <div class="header-actions">
+          ${adminLink}
+          <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        </div>
       </div>
       <h1>Sala <span class="ampersand">&amp;</span> Ensayo</h1>
       <div class="subtitle">Letras · acordes · tabs · notas</div>
@@ -319,6 +365,7 @@ function renderListView(filter = '') {
   view.querySelector('#suggest-btn').addEventListener('click', () => {
     openSuggestModal();
   });
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
 }
 
 function renderListLoading() {
@@ -347,15 +394,21 @@ function renderCommentsHtml(comments, state) {
   if (state === 'error') return '<div class="comments-empty comments-empty--error">No se pudieron cargar los comentarios.</div>';
   if (comments.length === 0) return '<div class="comments-empty">Sin comentarios todavía</div>';
 
-  return comments.map((c) => `
-    <article class="comment comment-${escapeHtml(c.color)}">
+  const myAuthor = getStoredAuthor();
+
+  return comments.map((c) => {
+    const canDelete = myAuthor && myAuthor === c.author;
+    return `
+    <article class="comment comment-${escapeHtml(c.color)}" data-comment-id="${escapeHtml(c.id)}">
       <div class="comment-meta">
         <span>${escapeHtml(c.author)}</span>
         <time>${escapeHtml(formatDate(c.createdAt))}</time>
+        ${canDelete ? `<button class="comment-delete-btn" data-id="${escapeHtml(c.id)}" type="button" aria-label="Borrar comentario">✕</button>` : ''}
       </div>
       <div class="comment-text">${escapeHtml(c.text)}</div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderCollabHtml(song, comments, state, feedback = '') {
@@ -478,6 +531,7 @@ function renderSongView(song, options = {}) {
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
   view.querySelector('#comment-form').addEventListener('submit', handleCommentSubmit);
+  view.querySelector('#comments-list').addEventListener('click', handleCommentDelete);
 
   attachMetronomeHandlers(view);
   // Ajusta el BPM al tempo de la canción cada vez que se carga la vista
@@ -499,8 +553,10 @@ function getSongById(id) {
 function teardownRealtimeChannels() {
   unsubscribe(realtimeMetaChannel);
   unsubscribe(realtimeCommentsChannel);
+  if (realtimeChatChannel) clearInterval(realtimeChatChannel);
   realtimeMetaChannel = null;
   realtimeCommentsChannel = null;
+  realtimeChatChannel = null;
 }
 
 async function loadSongView(id) {
@@ -537,9 +593,21 @@ async function loadSongView(id) {
 
   realtimeCommentsChannel = subscribeToComments(song.id, (newComment) => {
     if (currentSongId !== id) return;
-    const alreadyExists = currentComments.some((c) => c.id === newComment.id);
-    if (alreadyExists) return;
-    currentComments = [...currentComments, newComment];
+    // Reemplaza un comentario local optimista con el mismo texto+autor, o ignora si ya existe
+    const localIdx = currentComments.findIndex(
+      (c) => c.id.startsWith('local-') && c.text === newComment.text && c.author === newComment.author
+    );
+    if (localIdx !== -1) {
+      currentComments = [
+        ...currentComments.slice(0, localIdx),
+        newComment,
+        ...currentComments.slice(localIdx + 1)
+      ];
+    } else if (!currentComments.some((c) => c.id === newComment.id)) {
+      currentComments = [...currentComments, newComment];
+    } else {
+      return;
+    }
     commentsState = 'loaded';
     const s = getSongById(currentSongId);
     if (s) renderSongView(s);
@@ -610,6 +678,23 @@ async function handleCommentSubmit(event) {
   } catch {
     showCollabFeedback('No se pudo guardar el comentario.');
     form.querySelector('button[type="submit"]').disabled = false;
+  }
+}
+
+async function handleCommentDelete(event) {
+  const btn = event.target.closest('.comment-delete-btn');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const song = getSongById(currentSongId);
+  if (!song) return;
+  btn.disabled = true;
+  currentComments = currentComments.filter((c) => c.id !== id);
+  const s = getSongById(currentSongId);
+  if (s) renderSongView(s);
+  try {
+    await deleteSongComment(id);
+  } catch {
+    showCollabFeedback('No se pudo borrar el comentario.');
   }
 }
 
@@ -1031,6 +1116,214 @@ document.addEventListener('keydown', (e) => {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
+// ─── Vista Favoritos ──────────────────────────────────────────────────────────
+
+function renderFavoritesView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  hideFab();
+
+  const favs = songs.filter((s) => s.meta?.isFavorite);
+
+  const items = favs.map((song) => {
+    const status = song.meta?.status || 'pending';
+    return `
+      <li class="song-item" data-id="${escapeHtml(song.id)}" tabindex="0">
+        <div class="song-num">★</div>
+        <div class="song-info">
+          <div class="song-title">${escapeHtml(song.title)}</div>
+          <div class="song-artist">${escapeHtml(song.artist)}</div>
+        </div>
+        <div class="song-tags">
+          <div class="song-status status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>
+          <div class="song-key">${escapeHtml(song.key)}</div>
+        </div>
+        <div class="song-arrow">→</div>
+      </li>
+    `;
+  }).join('');
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <div class="eyebrow">Favoritos</div>
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+      </div>
+      <h1>Favoritas</h1>
+    </header>
+    <div class="count">${favs.length} canci${favs.length === 1 ? 'ón' : 'ones'}</div>
+    <ol class="songs" id="song-list">${items || '<div class="empty">Sin favoritas todavía — marcalas desde la vista de cada canción.</div>'}</ol>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+  view.querySelector('#song-list').addEventListener('click', (e) => {
+    const item = e.target.closest('.song-item');
+    if (item) navigate(`/song/${item.dataset.id}`);
+  });
+}
+
+// ─── Vista Sugerencias ────────────────────────────────────────────────────────
+
+async function renderSuggestionsView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  hideFab();
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <div class="eyebrow">Sugerencias</div>
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+      </div>
+      <h1>Sugerencias</h1>
+    </header>
+    <div class="count suggestions-loading">Cargando...</div>
+    <div id="suggestions-list"></div>
+    <div class="suggestions-cta">
+      <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
+    </div>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+  view.querySelector('#suggest-btn').addEventListener('click', openSuggestModal);
+
+  try {
+    const suggestions = await getSuggestions();
+    const listEl = view.querySelector('#suggestions-list');
+    const countEl = view.querySelector('.suggestions-loading');
+    if (countEl) countEl.textContent = `${suggestions.length} sugerencia${suggestions.length === 1 ? '' : 's'}`;
+
+    if (suggestions.length === 0) {
+      listEl.innerHTML = '<div class="empty">Sin sugerencias todavía.</div>';
+      return;
+    }
+
+    listEl.innerHTML = suggestions.map((s) => `
+      <div class="suggestion-card">
+        <div class="suggestion-info">
+          <div class="suggestion-title">${escapeHtml(s.title)}</div>
+          <div class="suggestion-artist">${escapeHtml(s.artist)}</div>
+          ${s.notes ? `<div class="suggestion-notes">${escapeHtml(s.notes)}</div>` : ''}
+        </div>
+        <div class="suggestion-meta">
+          <span class="suggestion-by">${escapeHtml(s.suggestedBy || 'Banda')}</span>
+          <span class="suggestion-status suggestion-status--${escapeHtml(s.status)}">${escapeHtml(s.status)}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch {
+    const listEl = view.querySelector('#suggestions-list');
+    if (listEl) listEl.innerHTML = '<div class="empty">No se pudieron cargar las sugerencias.</div>';
+  }
+}
+
+// ─── Vista Chat ───────────────────────────────────────────────────────────────
+
+function renderChatMessages(msgs) {
+  if (msgs.length === 0) return '<div class="chat-empty">Sin mensajes todavía. ¡Rompé el hielo!</div>';
+  const myAuthor = getStoredAuthor();
+  return msgs.map((m) => {
+    const isMe = myAuthor && myAuthor === m.author;
+    return `
+      <div class="chat-msg ${isMe ? 'chat-msg--me' : ''}">
+        <div class="chat-msg-author">${escapeHtml(m.author)}</div>
+        <div class="chat-msg-text">${escapeHtml(m.text)}</div>
+        <div class="chat-msg-time">${escapeHtml(formatDate(m.createdAt))}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function renderChatView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  hideFab();
+  chatState = 'loading';
+  chatMessages = [];
+
+  const author = getStoredAuthor();
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <div class="eyebrow">Chat</div>
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+      </div>
+      <h1>Chat de la Banda</h1>
+    </header>
+    <div class="chat-messages" id="chat-messages"><div class="chat-empty">Cargando mensajes...</div></div>
+    <form class="chat-form" id="chat-form">
+      <input class="chat-author" name="author" type="text" placeholder="Tu nombre"
+        autocomplete="name" value="${escapeHtml(author)}" />
+      <div class="chat-input-row">
+        <textarea class="chat-input" name="text" rows="2" placeholder="Escribí algo..." required></textarea>
+        <button class="chat-submit" type="submit">Enviar</button>
+      </div>
+    </form>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+
+  const messagesEl = view.querySelector('#chat-messages');
+
+  const scrollToBottom = () => {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  try {
+    chatMessages = await getChatMessages();
+    chatState = 'loaded';
+    messagesEl.innerHTML = renderChatMessages(chatMessages);
+    scrollToBottom();
+  } catch {
+    chatState = 'error';
+    messagesEl.innerHTML = '<div class="chat-empty">No se pudieron cargar los mensajes.</div>';
+  }
+
+  // Polling cada 8 segundos — no necesita Realtime de Supabase
+  realtimeChatChannel = setInterval(async () => {
+    if (!view.querySelector('#chat-messages')) return;
+    try {
+      const fresh = await getChatMessages();
+      const prevIds = new Set(chatMessages.map((m) => m.id));
+      const hasNew = fresh.some((m) => !prevIds.has(m.id));
+      if (!hasNew) return;
+      chatMessages = fresh;
+      const el = view.querySelector('#chat-messages');
+      if (el) {
+        const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+        el.innerHTML = renderChatMessages(chatMessages);
+        if (wasAtBottom) el.scrollTop = el.scrollHeight;
+      }
+    } catch { /* silencioso */ }
+  }, 8000);
+
+  view.querySelector('#chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const authorVal = String(fd.get('author') || '').trim();
+    const text = String(fd.get('text') || '').trim();
+    if (!text) return;
+    setStoredAuthor(authorVal);
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    form.querySelector('.chat-input').value = '';
+    try {
+      const msg = await addChatMessage({ author: authorVal, text });
+      chatMessages = [...chatMessages, msg];
+      const el = view.querySelector('#chat-messages');
+      if (el) { el.innerHTML = renderChatMessages(chatMessages); el.scrollTop = el.scrollHeight; }
+    } catch {
+      form.querySelector('.chat-input').value = text;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
 route('/', () => {
   teardownRealtimeChannels();
   currentSongId = null;
@@ -1040,6 +1333,18 @@ route('/', () => {
 
 route('/song/:id', ({ id }) => {
   loadSongView(id);
+});
+
+route('/favoritos', () => {
+  renderFavoritesView();
+});
+
+route('/sugerencias', () => {
+  renderSuggestionsView();
+});
+
+route('/chat', () => {
+  renderChatView();
 });
 
 route('/admin', () => {
@@ -1063,6 +1368,7 @@ async function init() {
   onMetronomeChange((bpm) => syncMetronomeUI(bpm, isRunning()));
 
   initMetronomeFloat();
+  initDrawer();
   startRouter();
 }
 
