@@ -31,6 +31,14 @@ const VALID_STATUSES = new Set(['pending', 'rehearsing', 'ready']);
 const VALID_COMMENT_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
 const COMMENT_COLUMNS = 'id,song_id,author,text,color,created_at';
 
+// Contador monótono para IDs optimistas — evita colisiones de Date.now()
+// cuando dos inserciones ocurren dentro del mismo milisegundo.
+let optimisticSeq = 0;
+function nextOptimisticId(prefix) {
+  optimisticSeq += 1;
+  return `${prefix}-${Date.now()}-${optimisticSeq}`;
+}
+
 // ── Normalizers ───────────────────────────────────────────────────────────────
 
 function optionalText(value) {
@@ -224,7 +232,7 @@ export async function addSongComment(songId, comment, client = supabase) {
   if (!input.text) throw new Error('El comentario no puede estar vacío.');
 
   const optimistic = {
-    id: `local-${Date.now()}`,
+    id: nextOptimisticId('local'),
     songId,
     author: input.author,
     text: input.text,
@@ -314,7 +322,7 @@ export async function addChatMessage(data, client = supabase) {
   if (!text) throw new Error('El mensaje no puede estar vacío.');
 
   const optimistic = {
-    id: `local-chat-${Date.now()}`,
+    id: nextOptimisticId('local-chat'),
     author,
     text,
     createdAt: new Date().toISOString()
@@ -354,7 +362,7 @@ export async function addSuggestion(data, client = supabase) {
   }
 
   const optimistic = {
-    id: `local-suggestion-${Date.now()}`,
+    id: nextOptimisticId('local-suggestion'),
     title: suggestion.title,
     artist: suggestion.artist,
     suggestedBy: suggestion.suggested_by,

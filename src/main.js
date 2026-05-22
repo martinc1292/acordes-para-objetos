@@ -567,8 +567,6 @@ function renderSongView(song, options = {}) {
   view.querySelector('#comments-list').addEventListener('click', handleCommentDelete);
 
   attachMetronomeHandlers(view);
-  // Ajusta el BPM al tempo de la canción cada vez que se carga la vista
-  setBpm(parseTempo(song.tempo));
 
   // Muestra el FAB flotante
   const fab = document.querySelector('#metro-fab');
@@ -602,6 +600,8 @@ async function loadSongView(id) {
   currentComments = [];
   commentsState = 'loading';
   window.scrollTo(0, 0);
+  // Ajusta el BPM al tempo de la canción solo al cargarla, no en cada re-render
+  setBpm(parseTempo(song.tempo));
   renderSongView(song);
 
   try {
