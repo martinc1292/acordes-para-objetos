@@ -1530,6 +1530,18 @@ route('/', () => {
   currentSongId = null;
   hideFab();
   renderListView();
+  syncFromRemote().then((fresh) => {
+    if (!fresh) return;
+    const currentIds = new Set(songs.map((s) => s.id));
+    const freshIds = new Set(fresh.map((s) => s.id));
+    const changed = fresh.length !== songs.length ||
+      fresh.some((s) => !currentIds.has(s.id)) ||
+      songs.some((s) => !freshIds.has(s.id));
+    if (changed && !currentSongId) {
+      songs = fresh;
+      renderListView(view.querySelector('#search')?.value || '');
+    }
+  }).catch(() => {});
 });
 
 route('/song/:id', ({ id }) => {

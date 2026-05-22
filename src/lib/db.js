@@ -46,6 +46,7 @@ export async function dbGetSongs() {
 export async function dbPutSongs(songs) {
   const db = await getDB();
   const tx = db.transaction('songs', 'readwrite');
+  await tx.store.clear();
   await Promise.all(songs.map((s) => tx.store.put(s)));
   await tx.done;
 }
@@ -121,6 +122,7 @@ export async function dbPutChatMessages(msgs) {
 export async function dbPutSuggestions(suggestions) {
   const db = await getDB();
   const tx = db.transaction('suggestions', 'readwrite');
+  await tx.store.clear();
   await Promise.all(suggestions.map((s) => tx.store.put(s)));
   await tx.done;
 }
