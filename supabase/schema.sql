@@ -75,6 +75,10 @@ drop policy if exists songs_public_read on public.songs;
 create policy songs_public_read on public.songs
 for select using (true);
 
+drop policy if exists songs_public_insert on public.songs;
+create policy songs_public_insert on public.songs
+for insert with check (true);
+
 drop policy if exists songs_admin_write on public.songs;
 create policy songs_admin_write on public.songs
 for all

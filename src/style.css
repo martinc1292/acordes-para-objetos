@@ -234,6 +234,26 @@
     margin-bottom: 12px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .edit-lyrics-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+    transition: background 0.15s;
+  }
+  .edit-lyrics-btn:hover {
+    background: var(--bg-elev);
   }
 
   .structure {
@@ -551,8 +571,9 @@
   /* HEADER ROW */
   .header-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    justify-content: flex-start;
   }
   .admin-link {
     font-family: var(--mono);
@@ -567,11 +588,31 @@
   }
   .admin-link:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* LIST CTA ROW */
+  .list-cta-row {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .list-cta-row .suggest-btn,
+  .list-cta-row .create-song-btn {
+    margin: 0;
+    flex: 1;
+  }
+
   /* SUGGEST BUTTON */
-  .suggest-btn {
+  .list-cta-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .suggest-btn,
+  .create-song-btn {
     display: block;
     width: 100%;
-    margin-top: 16px;
+    margin: 0 0 16px;
     background: transparent;
     border: 1px dashed var(--border);
     color: var(--ink-dim);
@@ -583,7 +624,38 @@
     border-radius: 2px;
     cursor: pointer;
   }
-  .suggest-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .list-cta-row .suggest-btn,
+  .list-cta-row .create-song-btn {
+    margin: 0;
+  }
+  .create-song-btn {
+    border-style: solid;
+    background: var(--bg-elev);
+  }
+  .suggest-btn:hover,
+  .create-song-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* CREATE SONG BUTTON */
+  .create-song-btn {
+    display: block;
+    width: 100%;
+    margin: 0 0 16px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .create-song-btn:hover { background: var(--accent); color: #fff; }
 
   /* MODAL */
   .modal-overlay {
@@ -783,6 +855,7 @@
       justify-content: space-between;
     }
     .hint { display: none; }
+    .list-cta-row { grid-template-columns: 1fr; }
     .admin-form-grid { grid-template-columns: 1fr; }
     .admin-form-actions { flex-direction: column; align-items: stretch; }
   }
@@ -1153,6 +1226,7 @@ body.presenting { overflow: hidden; }
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: auto;
 }
 
 .hamburger-btn {

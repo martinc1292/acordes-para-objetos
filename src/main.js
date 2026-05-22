@@ -297,7 +297,12 @@ function renderListView(filter = '') {
     ? `<a class="admin-link" href="#/admin">Admin</a>`
     : '';
 
-  const suggestBtn = `<button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>`;
+  const suggestBtn = `
+    <div class="list-cta-row">
+      <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
+      <button class="create-song-btn" id="create-song-btn" type="button">+ Agregar canción</button>
+    </div>
+  `;
 
   const items = filtered.map((song) => {
     const status = song.meta?.status || 'pending';
@@ -322,15 +327,17 @@ function renderListView(filter = '') {
   view.innerHTML = `
     <header>
       <div class="header-row">
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
         <div class="eyebrow">Setlist</div>
         <div class="header-actions">
           ${adminLink}
-          <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
         </div>
       </div>
       <h1>Sala <span class="ampersand">&amp;</span> Ensayo</h1>
       <div class="subtitle">Letras · acordes · tabs · notas</div>
     </header>
+
+    ${suggestBtn}
 
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
@@ -346,7 +353,6 @@ function renderListView(filter = '') {
 
     <div class="count" id="count">${filtered.length} canci${filtered.length === 1 ? 'ón' : 'ones'}</div>
     <ol class="songs" id="song-list">${items || '<div class="empty">Sin resultados</div>'}</ol>
-    ${suggestBtn}
   `;
 
   const searchInput = view.querySelector('#search');
@@ -384,6 +390,9 @@ function renderListView(filter = '') {
 
   view.querySelector('#suggest-btn').addEventListener('click', () => {
     openSuggestModal();
+  });
+  view.querySelector('#create-song-btn').addEventListener('click', () => {
+    openCreateSongModal();
   });
   view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
 }
@@ -533,7 +542,10 @@ function renderSongView(song, options = {}) {
     </div>
 
     <div class="section">
-      <div class="section-label">Letra</div>
+      <div class="section-label">
+        Letra
+        ${adminMode ? `<button class="edit-lyrics-btn" id="edit-lyrics-btn" type="button">Editar letra</button>` : ''}
+      </div>
       ${lyricsHtml}
     </div>
 
@@ -548,6 +560,7 @@ function renderSongView(song, options = {}) {
 
   view.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
   view.querySelector('#present-btn').addEventListener('click', () => openPresentMode(song));
+  view.querySelector('#edit-lyrics-btn')?.addEventListener('click', () => openEditLyricsModal(song));
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
   view.querySelector('#comment-form').addEventListener('submit', handleCommentSubmit);
@@ -763,6 +776,134 @@ function openSuggestModal() {
       feedback.textContent = '¡Sugerencia enviada!';
       feedback.className = 'modal-feedback modal-feedback--ok';
       setTimeout(() => overlay.remove(), 1200);
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'modal-feedback modal-feedback--error';
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Modal Crear Canción (público) ────────────────────────────────────────────
+
+function openCreateSongModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="Agregar canción">
+      <div class="modal-header">
+        <div class="modal-title">Agregar canción al setlist</div>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <form class="modal-form" id="create-song-form">
+        <div class="admin-form-grid">
+          <label class="field-label">Título * <input class="field-input" name="title" type="text" required placeholder="Hey Jude" /></label>
+          <label class="field-label">Artista * <input class="field-input" name="artist" type="text" required placeholder="The Beatles" /></label>
+          <label class="field-label">Tonalidad <input class="field-input" name="key" type="text" placeholder="Am" /></label>
+          <label class="field-label">Tempo <input class="field-input" name="tempo" type="text" placeholder="120 bpm" /></label>
+        </div>
+        <label class="field-label">Estructura <input class="field-input" name="structure" type="text" placeholder="Intro - Verso - Coro..." /></label>
+        <label class="field-label">Progresión <input class="field-input" name="progression" type="text" placeholder="Am - G - F - E" /></label>
+        <label class="field-label">Letra <textarea class="field-input" name="lyrics" rows="5" placeholder="Pegá la letra acá..."></textarea></label>
+        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Referencias, links, observaciones..."></textarea></label>
+        <div class="modal-feedback" id="modal-feedback"></div>
+        <div class="admin-form-actions">
+          <button class="comment-submit" type="submit">Agregar canción</button>
+          <button class="admin-cancel" id="cancel-create" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-close').addEventListener('click', close);
+  overlay.querySelector('#cancel-create').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#create-song-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const feedback = overlay.querySelector('#modal-feedback');
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+
+    try {
+      await createSong({
+        title: String(fd.get('title') || ''),
+        artist: String(fd.get('artist') || ''),
+        key: String(fd.get('key') || ''),
+        tempo: String(fd.get('tempo') || ''),
+        structure: String(fd.get('structure') || ''),
+        progression: String(fd.get('progression') || ''),
+        lyrics: String(fd.get('lyrics') || ''),
+        notes: String(fd.get('notes') || ''),
+        tabs: [],
+        sortOrder: songs.length
+      });
+      songs = await getSongs();
+      feedback.textContent = '¡Canción agregada al setlist!';
+      feedback.className = 'modal-feedback modal-feedback--ok';
+      setTimeout(() => {
+        close();
+        renderListView();
+      }, 1200);
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'modal-feedback modal-feedback--error';
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Modal Editar Letra ───────────────────────────────────────────────────────
+
+function openEditLyricsModal(song) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="Editar letra">
+      <div class="modal-header">
+        <div class="modal-title">Editar letra: ${escapeHtml(song.title)}</div>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <form class="modal-form" id="edit-lyrics-form">
+        <label class="field-label">
+          Letra
+          <textarea class="field-input" name="lyrics" rows="16" placeholder="Pegá la letra acá...">${escapeHtml(song.lyrics)}</textarea>
+        </label>
+        <div class="modal-feedback" id="modal-feedback"></div>
+        <div class="admin-form-actions">
+          <button class="comment-submit" type="submit">Guardar letra</button>
+          <button class="admin-cancel" id="cancel-lyrics" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-close').addEventListener('click', close);
+  overlay.querySelector('#cancel-lyrics').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#edit-lyrics-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const lyrics = String(new FormData(form).get('lyrics') || '');
+    const btn = form.querySelector('button[type="submit"]');
+    const feedback = overlay.querySelector('#modal-feedback');
+    btn.disabled = true;
+
+    try {
+      await updateSong(song.id, { lyrics });
+      song.lyrics = lyrics;
+      songs = songs.map((s) => s.id === song.id ? { ...s, lyrics } : s);
+      close();
+      renderSongView(song);
     } catch (err) {
       feedback.textContent = err.message;
       feedback.className = 'modal-feedback modal-feedback--error';
@@ -1166,8 +1307,8 @@ function renderFavoritesView() {
   view.innerHTML = `
     <header>
       <div class="header-row">
-        <div class="eyebrow">Favoritos</div>
         <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Favoritos</div>
       </div>
       <h1>Favoritas</h1>
     </header>
@@ -1192,16 +1333,14 @@ async function renderSuggestionsView() {
   view.innerHTML = `
     <header>
       <div class="header-row">
-        <div class="eyebrow">Sugerencias</div>
         <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Sugerencias</div>
       </div>
       <h1>Sugerencias</h1>
     </header>
+    <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
     <div class="count suggestions-loading">Cargando...</div>
     <div id="suggestions-list"></div>
-    <div class="suggestions-cta">
-      <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
-    </div>
   `;
 
   view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
@@ -1292,8 +1431,8 @@ async function renderChatView() {
   view.innerHTML = `
     <header>
       <div class="header-row">
-        <div class="eyebrow">Chat</div>
         <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Chat</div>
       </div>
       <h1>Chat de la Banda</h1>
     </header>
