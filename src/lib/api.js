@@ -175,6 +175,75 @@ export async function getSongComments(songId, client = supabase) {
   return data.map(mapRemoteComment);
 }
 
+export async function createSong(data, client = supabase) {
+  if (!client) {
+    throw new Error('Supabase no configurado.');
+  }
+
+  const row = {
+    title: optionalText(data.title).trim(),
+    artist: optionalText(data.artist).trim(),
+    song_key: optionalText(data.key).trim(),
+    tempo: optionalText(data.tempo).trim(),
+    structure: optionalText(data.structure).trim(),
+    progression: optionalText(data.progression).trim(),
+    tabs: normalizeTabs(data.tabs),
+    lyrics: optionalText(data.lyrics).trim(),
+    notes: optionalText(data.notes).trim(),
+    sort_order: Number.isInteger(data.sortOrder) ? data.sortOrder : 0
+  };
+
+  const { data: inserted, error } = await client
+    .from('songs')
+    .insert(row)
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await client.from('song_meta').insert({ song_id: inserted.id });
+
+  return inserted.id;
+}
+
+export async function updateSong(id, data, client = supabase) {
+  if (!client) {
+    throw new Error('Supabase no configurado.');
+  }
+
+  const row = {};
+  if (typeof data.title === 'string') row.title = data.title.trim();
+  if (typeof data.artist === 'string') row.artist = data.artist.trim();
+  if (typeof data.key === 'string') row.song_key = data.key.trim();
+  if (typeof data.tempo === 'string') row.tempo = data.tempo.trim();
+  if (typeof data.structure === 'string') row.structure = data.structure.trim();
+  if (typeof data.progression === 'string') row.progression = data.progression.trim();
+  if (Array.isArray(data.tabs)) row.tabs = data.tabs;
+  if (typeof data.lyrics === 'string') row.lyrics = data.lyrics.trim();
+  if (typeof data.notes === 'string') row.notes = data.notes.trim();
+  if (Number.isInteger(data.sortOrder)) row.sort_order = data.sortOrder;
+
+  const { error } = await client.from('songs').update(row).eq('id', id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function deleteSong(id, client = supabase) {
+  if (!client) {
+    throw new Error('Supabase no configurado.');
+  }
+
+  const { error } = await client.from('songs').delete().eq('id', id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function addSongComment(songId, comment, client = supabase) {
   const input = normalizeCommentInput(comment);
 
@@ -206,4 +275,56 @@ export async function addSongComment(songId, comment, client = supabase) {
   }
 
   return mapRemoteComment(data);
+}
+
+export async function addSuggestion(data, client = supabase) {
+  const suggestion = {
+    title: optionalText(data.title).trim(),
+    artist: optionalText(data.artist).trim(),
+    suggested_by: optionalText(data.suggestedBy).trim() || 'Banda',
+    notes: optionalText(data.notes).trim()
+  };
+
+  if (!suggestion.title || !suggestion.artist) {
+    throw new Error('Título y artista son obligatorios.');
+  }
+
+  if (!client) {
+    return { id: `local-suggestion-${Date.now()}`, ...suggestion, status: 'pending' };
+  }
+
+  const { data: inserted, error } = await client
+    .from('suggestions')
+    .insert(suggestion)
+    .select('id')
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return inserted;
+}
+
+export async function getSuggestions(client = supabase) {
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from('suggestions')
+    .select('id,title,artist,suggested_by,notes,status,created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    title: optionalText(row.title),
+    artist: optionalText(row.artist),
+    suggestedBy: optionalText(row.suggested_by),
+    notes: optionalText(row.notes),
+    status: row.status,
+    createdAt: row.created_at
+  }));
 }
