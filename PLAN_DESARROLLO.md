@@ -707,23 +707,6 @@ App instalable. Funciona en sala de ensayo sin WiFi. Cuando volvés a casa, sinc
 - **Setlist por show:** crear varios setlists distintos (gig del viernes vs ensayo)
 - **Adaptar al iPad viejo:** probar qué funciona, agregar polyfills si hace falta
 
----
-
-## Cronograma estimado
-
-Asumiendo ~2 horas por día de trabajo:
-
-| Fase | Trabajo | Días calendario |
-|------|---------|-----------------|
-| 0 — Setup | 2-3 h | 1-2 días |
-| 1 — Schema y migración | 6-8 h | 3-4 días |
-| 2 — App vanilla | 16-20 h | 8-10 días |
-| 3 — Realtime | 4-6 h | 2-3 días |
-| 4 — Offline + PWA | 16-20 h | 8-10 días |
-| **Total MVP** | **~50 h** | **~3-4 semanas** |
-| 5 — Pulido | continuo | — |
-
----
 
 ## Riesgos y mitigaciones
 
@@ -749,28 +732,5 @@ Asumiendo ~2 horas por día de trabajo:
 | GitHub | Repos privados ilimitados | 1 repo |
 | Dominio | `*.vercel.app` gratis | Sin dominio custom inicialmente |
 
-### Costos opcionales futuros
 
-- Dominio propio: ~10 USD/año (Namecheap, Cloudflare)
-- Supabase Pro: 25 USD/mes (innecesario para este caso)
 
----
-
-## Checklist pre-arranque
-
-- [ ] Cuenta GitHub creada
-- [ ] Cuenta Supabase creada
-- [ ] Cuenta Vercel creada (con GitHub)
-- [ ] Node.js 18+ instalado localmente
-- [ ] Editor configurado (VSCode, Cursor, etc)
-- [ ] Plan revisado y aprobado
-- [ ] Archivo `setlist.html` actual respaldado
-
----
-
-## Próximos pasos
-
-1. Revisar este plan con calma
-2. Ajustar lo que no convence
-3. Arrancar con Fase 0 cuando esté todo claro
-4. Avanzar fase por fase sin saltarse pasos
