@@ -12,6 +12,7 @@ import {
   normalizeCommentInput,
   normalizeMetaPatch,
   normalizeSongs,
+  updateSong,
   updateSongMeta
 } from './api.js';
 import {
@@ -20,9 +21,11 @@ import {
   dbDeleteSuggestion,
   dbGetComments,
   dbGetChatMessages,
+  dbGetSongs,
   dbGetSuggestions,
   dbPutChatMessages,
   dbPutComments,
+  dbPutSongs,
   dbPutSuggestions
 } from './db.js';
 
@@ -167,6 +170,58 @@ test('updates song meta through Supabase and returns local shape', async () => {
     ['from', 'song_meta'],
     ['upsert', { song_id: 'song-1', is_favorite: true, status: 'rehearsing' }, { onConflict: 'song_id' }],
     ['select', 'is_favorite,status']
+  ]);
+});
+
+test('updates a song through Supabase and refreshes the local cache', async () => {
+  await dbPutSongs([{
+    id: 'song-update',
+    title: 'Viejo titulo',
+    artist: 'Banda',
+    key: 'C',
+    tempo: '80 bpm',
+    structure: '',
+    progression: '',
+    tabs: [{ title: 'Intro', tab: 'e|--0--|' }],
+    lyrics: '',
+    notes: '',
+    sortOrder: 2,
+    meta: { isFavorite: false, status: 'pending' }
+  }]);
+
+  const calls = [];
+  const client = {
+    from(table) {
+      calls.push(['from', table]);
+      return {
+        update(payload) {
+          calls.push(['update', payload]);
+          return {
+            eq: async (column, value) => {
+              calls.push(['eq', column, value]);
+              return { error: null };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  await updateSong('song-update', {
+    title: '  Nuevo titulo  ',
+    key: 'Am',
+    lyrics: 'Letra nueva'
+  }, client);
+
+  const updated = (await dbGetSongs()).find((song) => song.id === 'song-update');
+  assert.equal(updated.title, 'Nuevo titulo');
+  assert.equal(updated.key, 'Am');
+  assert.equal(updated.lyrics, 'Letra nueva');
+  assert.deepEqual(updated.tabs, [{ title: 'Intro', tab: 'e|--0--|' }]);
+  assert.deepEqual(calls, [
+    ['from', 'songs'],
+    ['update', { title: 'Nuevo titulo', song_key: 'Am', lyrics: 'Letra nueva' }],
+    ['eq', 'id', 'song-update']
   ]);
 });
 

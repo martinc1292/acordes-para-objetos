@@ -60,6 +60,7 @@ app.innerHTML = `
       <li><a class="drawer-link" href="#/favoritos" id="dnav-favs">★ Favoritos</a></li>
       <li><a class="drawer-link" href="#/sugerencias" id="dnav-suggestions">+ Sugerencias</a></li>
       <li><a class="drawer-link" href="#/chat" id="dnav-chat">💬 Chat</a></li>
+      <li><a class="drawer-link" href="#/admin" id="dnav-admin">Admin</a></li>
     </ul>
   </nav>
 `;
@@ -294,9 +295,7 @@ function renderListView(filter = '') {
     s.artist.toLowerCase().includes(normalizedFilter)
   );
 
-  const adminLink = adminMode
-    ? `<a class="admin-link" href="#/admin">Admin</a>`
-    : '';
+  const adminLink = `<a class="admin-link" href="#/admin">${adminMode ? 'Admin' : 'Entrar'}</a>`;
 
   const suggestBtn = `
     <div class="list-cta-row">
@@ -320,7 +319,12 @@ function renderListView(filter = '') {
           <div class="song-status status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>
           <div class="song-key">${escapeHtml(song.key)}</div>
         </div>
-        <button class="item-delete-btn" data-id="${escapeHtml(song.id)}" aria-label="Eliminar canción" title="Eliminar">✕</button>
+        ${adminMode ? `
+          <div class="song-row-actions">
+            <button class="item-edit-btn" data-id="${escapeHtml(song.id)}" type="button">Editar</button>
+            <button class="item-delete-btn" data-id="${escapeHtml(song.id)}" aria-label="Eliminar canción" title="Eliminar">✕</button>
+          </div>
+        ` : ''}
       </li>
     `;
   }).join('');
@@ -361,6 +365,15 @@ function renderListView(filter = '') {
   searchInput.focus({ preventScroll: true });
 
   view.querySelector('#song-list').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.item-edit-btn');
+    if (editBtn) {
+      e.stopPropagation();
+      openEditSongModal(editBtn.dataset.id, {
+        onSaved: () => renderListView(view.querySelector('#search')?.value || '')
+      });
+      return;
+    }
+
     const deleteBtn = e.target.closest('.item-delete-btn');
     if (deleteBtn) {
       e.stopPropagation();
@@ -511,7 +524,10 @@ function renderSongView(song, options = {}) {
   view.innerHTML = `
     <div class="song-action-bar">
       <button class="back-btn" id="back-btn">← Volver al setlist</button>
-      <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
+      <div class="song-action-actions">
+        ${adminMode ? `<button class="edit-song-btn" id="edit-song-btn" type="button">Editar canción</button>` : ''}
+        <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
+      </div>
     </div>
     <div class="song-header">
       <h2>${escapeHtml(song.title)}</h2>
@@ -561,6 +577,16 @@ function renderSongView(song, options = {}) {
 
   view.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
   view.querySelector('#present-btn').addEventListener('click', () => openPresentMode(song));
+  view.querySelector('#edit-song-btn')?.addEventListener('click', () => {
+    openEditSongModal(song.id, {
+      onSaved: (updatedSong) => {
+        if (currentSongId === song.id && updatedSong) {
+          setBpm(parseTempo(updatedSong.tempo));
+          renderSongView(updatedSong);
+        }
+      }
+    });
+  });
   view.querySelector('#edit-lyrics-btn')?.addEventListener('click', () => openEditLyricsModal(song));
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
@@ -1063,7 +1089,7 @@ function attachAdminHandlers() {
     const deleteBtn = e.target.closest('.admin-delete-btn');
 
     if (editBtn) {
-      openEditModal(editBtn.dataset.id);
+      openEditSongModal(editBtn.dataset.id, { onSaved: renderAdminView });
     }
 
     if (deleteBtn) {
@@ -1083,7 +1109,7 @@ function attachAdminHandlers() {
   });
 }
 
-function openEditModal(id) {
+function openEditSongModal(id, options = {}) {
   const song = getSongById(id);
   if (!song) return;
 
@@ -1113,7 +1139,7 @@ function openEditModal(id) {
     btn.disabled = true;
 
     try {
-      await updateSong(id, {
+      const data = {
         title: String(fd.get('title') || ''),
         artist: String(fd.get('artist') || ''),
         key: String(fd.get('key') || ''),
@@ -1122,10 +1148,16 @@ function openEditModal(id) {
         progression: String(fd.get('progression') || ''),
         lyrics: String(fd.get('lyrics') || ''),
         notes: String(fd.get('notes') || '')
-      });
+      };
+      await updateSong(id, data);
       songs = await getSongs();
+      const updatedSong = getSongById(id) || { ...song, ...data };
       overlay.remove();
-      renderAdminView();
+      if (typeof options.onSaved === 'function') {
+        options.onSaved(updatedSong);
+      } else {
+        renderAdminView();
+      }
     } catch (err) {
       feedback.textContent = err.message;
       btn.disabled = false;

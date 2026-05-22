@@ -139,6 +139,12 @@
     gap: 8px;
     flex-shrink: 0;
   }
+  .song-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
   .song-favorite {
     color: #ffc857;
     font-size: 14px;
@@ -838,7 +844,16 @@
 
   @media (max-width: 480px) {
     .app { padding: 16px 14px 80px; }
-    .song-item { padding: 12px 4px; gap: 12px; }
+    .song-item { align-items: flex-start; flex-wrap: wrap; padding: 12px 4px; gap: 10px; }
+    .song-tags {
+      order: 4;
+      width: calc(100% - 34px);
+      margin-left: 34px;
+      justify-content: flex-start;
+    }
+    .song-row-actions { margin-left: auto; }
+    .song-item .item-edit-btn,
+    .song-item .item-delete-btn { opacity: 1; }
     .song-status { display: none; }
     .collab-toolbar,
     .comment-row {
@@ -903,10 +918,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 0;
 }
 
-.present-btn {
+.song-action-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.present-btn,
+.edit-song-btn {
   background: none;
   border: 1px solid var(--border);
   color: var(--ink-dim);
@@ -919,7 +944,8 @@
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.present-btn:hover { border-color: var(--accent); color: var(--accent); }
+.present-btn:hover,
+.edit-song-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── Metrónomo ───────────────────────────────────────────────────────────────── */
 
@@ -1211,7 +1237,8 @@ body.presenting { overflow: hidden; }
 }
 
 @media (max-width: 480px) {
-  .song-action-bar { margin-bottom: 0; }
+  .song-action-bar { align-items: flex-start; flex-wrap: wrap; margin-bottom: 0; }
+  .song-action-actions { margin-left: auto; }
   .metro-controls { flex-wrap: wrap; gap: 8px; }
   .metro-bpm-display { order: -1; width: 100%; justify-content: center; }
   .metro-fab { bottom: 16px; right: 14px; }
@@ -1340,23 +1367,39 @@ body.presenting { overflow: hidden; }
 
 /* ── Botón eliminar genérico (setlist, sugerencias, chat) ────────────────────── */
 
-.item-delete-btn {
+.item-delete-btn,
+.item-edit-btn {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: var(--ink-dim);
+  font-family: var(--mono);
   font-size: 11px;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 2px;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
   line-height: 1;
   flex-shrink: 0;
 }
 .item-delete-btn:hover { color: #ff5252; opacity: 1; }
+.item-edit-btn {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 7px;
+}
+.item-edit-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  opacity: 1;
+}
 .item-delete-btn:disabled { opacity: 0.3; pointer-events: none; }
 
+.song-item:hover .item-edit-btn,
 .song-item:hover .item-delete-btn,
+.song-item:focus-within .item-edit-btn,
+.song-item:focus-within .item-delete-btn,
 .suggestion-card:hover .item-delete-btn,
 .chat-msg:hover .item-delete-btn { opacity: 1; }
 
