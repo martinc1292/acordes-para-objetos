@@ -1,81 +1,116 @@
-# 🎸 Setlist · Sala de Ensayo
+# Setlist · Sala de Ensayo
 
-App offline para tener letras, acordes y tabs siempre disponibles — sin wifi, sin apps, directo desde el celu.
+App web para tener el repertorio de la banda con letras, acordes, tabs y notas. Este repo ahora arranca la migración desde el HTML autocontenido original hacia una app Vite modular.
 
----
+## Estado actual
 
-## ¿Qué es esto?
+- Entrada principal nueva: `index.html` + `src/main.js`
+- Capa de datos: `src/lib/api.js` usa Supabase cuando hay env vars y fallback local cuando no
+- Datos del repertorio: `src/data/songs.js`
+- Estilos base: `src/style.css`
+- Colaboración básica: favoritos, estado por canción y comentarios compartidos
+- Respaldo legacy intacto: `setlist.html`
 
-Un archivo HTML autocontenido con todas las canciones del repertorio. Incluye por canción:
+La app puede correr sin Supabase usando los datos locales de `src/data/songs.js`. Con Supabase configurado, lee canciones desde la base y guarda estado/favoritos/comentarios compartidos.
 
-- Tonalidad y tempo
-- Estructura del tema (intro → verse → chorus, etc.)
-- Progresión de acordes
-- Tab del riff / intro principal
-- Espacio para la letra
-- Notas de ejecución
+## Desarrollo local
 
----
+Instalar dependencias:
 
-## Cómo usarlo
+```bash
+npm install
+```
 
-### En el celu (modo app offline)
+Levantar la app:
 
-1. Abrí [la URL de GitHub Pages](#) en el navegador del celu
-2. Entrá al sitio con wifi al menos una vez para que cargue
-3. En iOS: **Compartir → Agregar a pantalla de inicio**
-4. En Android: **Menú → Agregar a pantalla de inicio**
-5. Listo — la próxima vez abrís la app sin necesidad de wifi
+```bash
+npm run dev
+```
 
-### En la compu
+Crear build de producción:
 
-Simplemente abrí `setlist.html` con cualquier navegador. No necesita servidor ni instalación.
+```bash
+npm run build
+```
 
----
+Previsualizar el build:
 
-## Cómo agregar o editar canciones
+```bash
+npm run preview
+```
 
-Editá el archivo `setlist.html` directamente desde GitHub (botón ✏️ Edit) o en cualquier editor de texto.
+Validar que el repertorio mantiene el shape esperado:
 
-Buscá el array `const SONGS = [...]` cerca del comienzo del script. Cada canción tiene esta estructura:
+```bash
+npm run check:songs
+```
+
+La validación espera 37 canciones y falla si falta `title`, `artist`, `key` o si `tabs` no es un array.
+
+Ejecutar tests de scripts:
+
+```bash
+npm test
+```
+
+## Cómo editar canciones
+
+Editá `src/data/songs.js`. Cada canción conserva esta estructura:
 
 ```js
 {
   title: "Nombre de la canción",
   artist: "Artista o banda",
-  key: "Dm",                        // tonalidad
-  tempo: "120 BPM",                 // tempo o feel
-  structure: "Intro → Verse → Chorus → Outro",
-  progression: "Dm  -  Bb  -  Gm  -  A7",
+  key: "Dm",
+  tempo: "120 BPM",
+  structure: "Intro → Verse → Chorus",
+  progression: "Dm - Bb - Gm - A7",
   tabs: [
     {
-      title: "Nombre del riff",
-      tab:
-`e|--0-2-3--|
-B|---------|
-G|---------|`
+      title: "Riff principal",
+      tab: `e|--0-2-3--|`
     }
   ],
-  lyrics: `Primera línea
-Segunda línea
-Estribillo...`,
-  notes: "Alguna nota de ejecución o contexto."
+  lyrics: "",
+  notes: "Notas de ejecución."
 }
 ```
 
-Para **agregar una canción nueva**, copiá cualquier bloque `{ ... }` existente, pegalo al final del array (antes del `]`), y modificá los campos. Recordá separar con coma.
+## Setup Supabase
 
-Para **agregar la letra**, pegala en el campo `lyrics` usando backticks (\`) para respetar los saltos de línea.
+1. Crear un proyecto en Supabase.
+2. Abrir SQL Editor y ejecutar `supabase/schema.sql`.
+3. Copiar `.env.example` a `.env.local`.
+4. Completar:
 
----
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-## Cómo contribuir (workflow de la banda)
+La `SUPABASE_SERVICE_ROLE_KEY` es solo para scripts locales. No debe usarse en código del navegador ni subirse al repo.
 
-1. Entrás a este repositorio en GitHub desde el celu o la compu
-2. Abrís `setlist.html` y clickeás el ícono de lápiz (✏️ Edit this file)
-3. Hacés los cambios (nueva canción, letra, corrección de acordes, etc.)
-4. Abajo, en **Commit changes**, escribís una descripción breve (ej: `Agrego letra de Lithium`)
-5. Click en **Commit changes** — en ~30 segundos la página se actualiza para todos
+Antes de insertar datos reales, hacer un dry-run:
 
-No hace falta saber de programación. Es editar texto y guardar.
+```bash
+npm run migrate:songs
+```
 
+Cuando el schema esté creado y `.env.local` tenga las claves reales:
+
+```bash
+npm run migrate:songs -- --apply
+```
+
+El script de migración lee desde `src/data/songs.js`, no desde `setlist.html`.
+
+## Features colaborativas
+
+En el detalle de cada canción se puede:
+
+- Marcar o quitar favorita.
+- Cambiar estado entre `Pendiente`, `Ensayando` y `Lista`.
+- Agregar comentarios con nombre libre y color.
+
+Estas acciones escriben en Supabase cuando las variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` están configuradas. Sin Supabase, la app conserva el fallback local para seguir funcionando durante desarrollo.
