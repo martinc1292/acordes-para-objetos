@@ -17,6 +17,16 @@ import {
   updateSongMeta
 } from './lib/api.js';
 import { isAdmin, login, logout, onAuthChange } from './lib/auth.js';
+import {
+  getBpm,
+  isRunning,
+  onMetronomeChange,
+  parseTempo,
+  resetTaps,
+  setBpm,
+  tap as metronomeTap,
+  toggle as metronomeToggle
+} from './lib/metronome.js';
 import { navigate, route, startRouter } from './lib/router.js';
 
 const app = document.querySelector('#app');
@@ -27,6 +37,12 @@ app.innerHTML = `
     <div id="view"></div>
   </div>
   <div class="hint" id="install-hint" hidden>Instalá la app: compartir → Añadir a inicio</div>
+  <button class="metro-fab" id="metro-fab" type="button" aria-label="Metrónomo" hidden>
+    <span class="metro-fab-icon">♩</span>
+    <span class="metro-fab-bpm" id="metro-fab-bpm"></span>
+  </button>
+  <div class="metro-float-panel" id="metro-float-panel" hidden></div>
+  <div class="present-overlay" id="present-overlay" hidden></div>
 `;
 
 // ── Conectividad ──────────────────────────────────────────────────────────────
@@ -115,6 +131,72 @@ let commentsState = 'idle';
 let adminMode = false;
 let realtimeMetaChannel = null;
 let realtimeCommentsChannel = null;
+let presentMode = false;
+
+// ─── Metrónomo ───────────────────────────────────────────────────────────────
+
+function renderMetronomeHtml(bpm, running) {
+  return `
+    <div class="metro-section" id="metro-section">
+      <div class="section-label">Metrónomo</div>
+      <div class="metro-panel">
+        <div class="metro-controls">
+          <button class="metro-toggle" id="metro-toggle" type="button">
+            ${running ? '⏹ Stop' : '▶ Play'}
+          </button>
+          <div class="metro-bpm-display">
+            <button class="metro-adj" id="metro-minus" type="button" aria-label="Bajar BPM">−</button>
+            <div class="metro-bpm-value" id="metro-bpm-value">${bpm}</div>
+            <button class="metro-adj" id="metro-plus" type="button" aria-label="Subir BPM">+</button>
+          </div>
+          <button class="metro-tap" id="metro-tap" type="button">Tap</button>
+        </div>
+        <input
+          class="metro-slider"
+          id="metro-slider"
+          type="range"
+          min="20" max="300"
+          value="${bpm}"
+          aria-label="BPM"
+        />
+        <div class="metro-labels">
+          <span>20</span><span>BPM</span><span>300</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function attachMetronomeHandlers(container) {
+  const toggle = container.querySelector('#metro-toggle');
+  const minus = container.querySelector('#metro-minus');
+  const plus = container.querySelector('#metro-plus');
+  const tapBtn = container.querySelector('#metro-tap');
+  const slider = container.querySelector('#metro-slider');
+
+  toggle?.addEventListener('click', () => { metronomeToggle(); });
+  minus?.addEventListener('click', () => { setBpm(getBpm() - 1); });
+  plus?.addEventListener('click', () => { setBpm(getBpm() + 1); });
+  tapBtn?.addEventListener('click', () => { metronomeTap(); });
+  slider?.addEventListener('input', (e) => { resetTaps(); setBpm(Number(e.target.value)); });
+}
+
+function syncMetronomeUI(bpm, running) {
+  // Actualiza todos los paneles de metrónomo en la página sin re-renderizar
+  document.querySelectorAll('#metro-toggle').forEach((el) => {
+    el.textContent = running ? '⏹ Stop' : '▶ Play';
+    el.closest('.metro-panel')?.classList.toggle('metro-panel--running', running);
+  });
+  document.querySelectorAll('#metro-bpm-value').forEach((el) => { el.textContent = bpm; });
+  document.querySelectorAll('#metro-slider').forEach((el) => { el.value = bpm; });
+  document.querySelectorAll('#metro-fab-bpm').forEach((el) => { el.textContent = running ? `${bpm}` : ''; });
+  document.querySelectorAll('.metro-fab').forEach((el) => {
+    el.classList.toggle('metro-fab--running', running);
+  });
+  // Panel flotante si está abierto
+  const floatPanel = document.querySelector('#metro-float-panel');
+  if (floatPanel && !floatPanel.hidden) renderFloatPanel();
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -344,7 +426,10 @@ function renderSongView(song, options = {}) {
     : '<div class="lyrics-placeholder">Pegá la letra en src/data/songs.js cuando esté lista.</div>';
 
   view.innerHTML = `
-    <button class="back-btn" id="back-btn">← Volver al setlist</button>
+    <div class="song-action-bar">
+      <button class="back-btn" id="back-btn">← Volver al setlist</button>
+      <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
+    </div>
     <div class="song-header">
       <h2>${escapeHtml(song.title)}</h2>
       <div class="song-meta">
@@ -354,6 +439,8 @@ function renderSongView(song, options = {}) {
         ${song.tempo ? `<span class="dot"></span><span>${escapeHtml(song.tempo)}</span>` : ''}
       </div>
     </div>
+
+    ${renderMetronomeHtml(getBpm(), isRunning())}
 
     ${song.structure ? `
       <div class="section">
@@ -387,9 +474,22 @@ function renderSongView(song, options = {}) {
   `;
 
   view.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
+  view.querySelector('#present-btn').addEventListener('click', () => openPresentMode(song));
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
   view.querySelector('#comment-form').addEventListener('submit', handleCommentSubmit);
+
+  attachMetronomeHandlers(view);
+  // Ajusta el BPM al tempo de la canción cada vez que se carga la vista
+  setBpm(parseTempo(song.tempo));
+
+  // Muestra el FAB flotante
+  const fab = document.querySelector('#metro-fab');
+  if (fab) {
+    fab.hidden = false;
+    document.querySelector('#metro-fab-bpm').textContent = isRunning() ? `${getBpm()}` : '';
+    fab.classList.toggle('metro-fab--running', isRunning());
+  }
 }
 
 function getSongById(id) {
@@ -823,11 +923,118 @@ function renderLoginView() {
   });
 }
 
+// ─── Metrónomo flotante ───────────────────────────────────────────────────────
+
+function renderFloatPanel() {
+  const panel = document.querySelector('#metro-float-panel');
+  if (!panel) return;
+  const bpm = getBpm();
+  const running = isRunning();
+  panel.innerHTML = `
+    <div class="metro-float-inner">
+      <div class="metro-float-header">
+        <span class="metro-float-title">Metrónomo</span>
+        <button class="metro-float-close" id="metro-float-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="metro-panel metro-panel--float">
+        <div class="metro-controls">
+          <button class="metro-toggle" id="metro-toggle" type="button">
+            ${running ? '⏹ Stop' : '▶ Play'}
+          </button>
+          <div class="metro-bpm-display">
+            <button class="metro-adj" id="metro-minus" type="button" aria-label="Bajar BPM">−</button>
+            <div class="metro-bpm-value" id="metro-bpm-value">${bpm}</div>
+            <button class="metro-adj" id="metro-plus" type="button" aria-label="Subir BPM">+</button>
+          </div>
+          <button class="metro-tap" id="metro-tap" type="button">Tap</button>
+        </div>
+        <input class="metro-slider" id="metro-slider" type="range" min="20" max="300" value="${bpm}" aria-label="BPM" />
+        <div class="metro-labels"><span>20</span><span>BPM</span><span>300</span></div>
+      </div>
+    </div>
+  `;
+  panel.hidden = false;
+  attachMetronomeHandlers(panel);
+  panel.querySelector('#metro-float-close').addEventListener('click', () => { panel.hidden = true; });
+}
+
+function initMetronomeFloat() {
+  const fab = document.querySelector('#metro-fab');
+  const panel = document.querySelector('#metro-float-panel');
+  if (!fab || !panel) return;
+
+  fab.addEventListener('click', () => {
+    if (panel.hidden) {
+      renderFloatPanel();
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  // Cierra el panel al hacer click fuera
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== fab && !fab.contains(e.target)) {
+      panel.hidden = true;
+    }
+  });
+}
+
+// Oculta el FAB cuando el usuario vuelve al listado
+function hideFab() {
+  const fab = document.querySelector('#metro-fab');
+  if (fab) fab.hidden = true;
+  const panel = document.querySelector('#metro-float-panel');
+  if (panel) panel.hidden = true;
+}
+
+// ─── Modo presentación ────────────────────────────────────────────────────────
+
+function openPresentMode(song) {
+  const overlay = document.querySelector('#present-overlay');
+  if (!overlay) return;
+
+  const lyricsHtml = song.lyrics.trim()
+    ? `<div class="present-lyrics">${escapeHtml(song.lyrics)}</div>`
+    : `<div class="present-lyrics present-lyrics--empty">Sin letra cargada todavía.</div>`;
+
+  overlay.innerHTML = `
+    <div class="present-header">
+      <div class="present-song-info">
+        <span class="present-title">${escapeHtml(song.title)}</span>
+        <span class="present-artist">${escapeHtml(song.artist)}</span>
+        ${song.key ? `<span class="present-key">${escapeHtml(song.key)}</span>` : ''}
+      </div>
+      <button class="present-close" id="present-close" type="button" aria-label="Cerrar presentación">✕ Cerrar</button>
+    </div>
+    <div class="present-body">
+      ${lyricsHtml}
+    </div>
+  `;
+
+  overlay.hidden = false;
+  presentMode = true;
+  document.body.classList.add('presenting');
+
+  overlay.querySelector('#present-close').addEventListener('click', closePresentMode);
+}
+
+function closePresentMode() {
+  const overlay = document.querySelector('#present-overlay');
+  if (overlay) overlay.hidden = true;
+  presentMode = false;
+  document.body.classList.remove('presenting');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && presentMode) closePresentMode();
+});
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 route('/', () => {
   teardownRealtimeChannels();
   currentSongId = null;
+  hideFab();
   renderListView();
 });
 
@@ -852,6 +1059,10 @@ async function init() {
 
   onAuthChange((loggedIn) => { adminMode = loggedIn; });
 
+  // Suscribe la UI al estado del metrónomo
+  onMetronomeChange((bpm) => syncMetronomeUI(bpm, isRunning()));
+
+  initMetronomeFloat();
   startRouter();
 }
 
