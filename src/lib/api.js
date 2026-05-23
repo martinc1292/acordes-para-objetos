@@ -31,6 +31,7 @@ const DEFAULT_META = {
 const VALID_STATUSES = new Set(['pending', 'rehearsing', 'ready']);
 const VALID_COMMENT_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
 const COMMENT_COLUMNS = 'id,song_id,user_id,author,text,color,created_at';
+const REMOTE_WRITE_TIMEOUT_MS = 6000;
 
 // Contador monótono para IDs optimistas — evita colisiones de Date.now()
 // cuando dos inserciones ocurren dentro del mismo milisegundo.
@@ -48,6 +49,49 @@ function optionalText(value) {
 
 function normalizeTabs(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function withTimeout(promise, timeoutMs = REMOTE_WRITE_TIMEOUT_MS) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error('La red tardó demasiado. Guardé el cambio localmente para sincronizarlo luego.');
+      error.isTimeout = true;
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function isTransientWriteError(error) {
+  if (error?.isTimeout) return true;
+  if (error?.status === 0) return true;
+  return /failed to fetch|networkerror|load failed/i.test(error?.message || '');
+}
+
+function buildSongUpdateRow(data) {
+  const row = {};
+  if (typeof data.title === 'string') row.title = data.title.trim();
+  if (typeof data.artist === 'string') row.artist = data.artist.trim();
+  if (typeof data.key === 'string') row.song_key = data.key.trim();
+  if (typeof data.tempo === 'string') row.tempo = data.tempo.trim();
+  if (typeof data.structure === 'string') row.structure = data.structure.trim();
+  if (typeof data.progression === 'string') row.progression = data.progression.trim();
+  if (Array.isArray(data.tabs)) row.tabs = data.tabs;
+  if (typeof data.lyrics === 'string') row.lyrics = data.lyrics.trim();
+  if (typeof data.notes === 'string') row.notes = data.notes.trim();
+  if (Number.isInteger(data.sortOrder)) row.sort_order = data.sortOrder;
+  return row;
+}
+
+function mapSongUpdateRowToLocal(row) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => {
+      const map = { song_key: 'key', sort_order: 'sortOrder' };
+      return [map[key] ?? key, value];
+    })
+  );
 }
 
 function mapMeta(row) {
@@ -464,6 +508,12 @@ async function dispatchPending(item, client) {
       .insert({ song_id: songId, ...comment });
   }
 
+  if (type === 'update_song') {
+    const { id, row } = payload;
+    const { error } = await client.from('songs').update(row).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
   if (type === 'insert_suggestion') {
     await client.from('suggestions').insert(payload);
   }
@@ -498,36 +548,39 @@ export async function createSong(data, client = supabase) {
   return inserted.id;
 }
 
-export async function updateSong(id, data, client = supabase) {
+export async function updateSong(id, data, client = supabase, options = {}) {
   if (!client) throw new Error('Supabase no configurado.');
 
-  const row = {};
-  if (typeof data.title === 'string') row.title = data.title.trim();
-  if (typeof data.artist === 'string') row.artist = data.artist.trim();
-  if (typeof data.key === 'string') row.song_key = data.key.trim();
-  if (typeof data.tempo === 'string') row.tempo = data.tempo.trim();
-  if (typeof data.structure === 'string') row.structure = data.structure.trim();
-  if (typeof data.progression === 'string') row.progression = data.progression.trim();
-  if (Array.isArray(data.tabs)) row.tabs = data.tabs;
-  if (typeof data.lyrics === 'string') row.lyrics = data.lyrics.trim();
-  if (typeof data.notes === 'string') row.notes = data.notes.trim();
-  if (Number.isInteger(data.sortOrder)) row.sort_order = data.sortOrder;
-
-  const { error } = await client.from('songs').update(row).eq('id', id);
-  if (error) throw new Error(error.message);
-
-  // Actualizar IDB
+  const row = buildSongUpdateRow(data);
+  const localPatch = mapSongUpdateRowToLocal(row);
   const cached = await dbGetSongs();
   const song = cached.find((s) => s.id === id);
+  const updated = song ? { ...song, ...localPatch } : { id, ...localPatch };
+
   if (song) {
-    const updated = { ...song, ...Object.fromEntries(
-      Object.entries(row).map(([k, v]) => {
-        const map = { song_key: 'key', sort_order: 'sortOrder' };
-        return [map[k] ?? k, v];
-      })
-    )};
     await dbPutSong(updated);
   }
+
+  try {
+    const response = await withTimeout(
+      client.from('songs').update(row).eq('id', id),
+      options.timeoutMs
+    );
+    if (response.error) {
+      const error = new Error(response.error.message);
+      error.status = response.status;
+      error.code = response.error.code;
+      throw error;
+    }
+  } catch (error) {
+    if (!isTransientWriteError(error)) {
+      if (song) await dbPutSong(song);
+      throw error;
+    }
+    await dbEnqueue('update_song', { id, row });
+  }
+
+  return updated;
 }
 
 export async function deleteSong(id, client = supabase) {

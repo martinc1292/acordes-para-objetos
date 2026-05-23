@@ -808,12 +808,12 @@ function attachSongEditHandlers(song) {
     if (feedbackEl) feedbackEl.textContent = 'Guardando cambios…';
 
     try {
-      await updateSong(song.id, data);
-      songs = await getSongs();
-      const updatedSong = getSongById(song.id) || { ...song, ...data };
+      const saved = await updateSong(song.id, data);
+      const updatedSong = mergeSavedSong(song.id, song, saved);
       songDetailEdit = null;
       setBpm(parseTempo(updatedSong.tempo));
       renderSongView(updatedSong);
+      refreshSongsAfterSave();
       await updateConnectivityBar();
     } catch (err) {
       songDetailEdit = {
@@ -828,6 +828,18 @@ function attachSongEditHandlers(song) {
 
 function getSongById(id) {
   return songs.find((s) => s.id === id) || null;
+}
+
+function mergeSavedSong(id, baseSong, saved) {
+  const updatedSong = { ...baseSong, ...saved };
+  songs = songs.map((s) => (s.id === id ? { ...s, ...updatedSong } : s));
+  return updatedSong;
+}
+
+function refreshSongsAfterSave() {
+  syncFromRemote().then((fresh) => {
+    if (fresh) songs = fresh;
+  }).catch(() => {});
 }
 
 function teardownRealtimeChannels() {
@@ -1149,11 +1161,12 @@ function openEditLyricsModal(song) {
     btn.disabled = true;
 
     try {
-      await updateSong(song.id, { lyrics });
-      song.lyrics = lyrics;
-      songs = songs.map((s) => s.id === song.id ? { ...s, lyrics } : s);
+      const saved = await updateSong(song.id, { lyrics });
+      const updatedSong = mergeSavedSong(song.id, song, saved);
       close();
-      renderSongView(song);
+      renderSongView(updatedSong);
+      refreshSongsAfterSave();
+      await updateConnectivityBar();
     } catch (err) {
       feedback.textContent = err.message;
       feedback.className = 'modal-feedback modal-feedback--error';
@@ -1373,10 +1386,11 @@ function openEditSongModal(id, options = {}) {
         lyrics: String(fd.get('lyrics') || ''),
         notes: String(fd.get('notes') || '')
       };
-      await updateSong(id, data);
-      songs = await getSongs();
-      const updatedSong = getSongById(id) || { ...song, ...data };
+      const saved = await updateSong(id, data);
+      const updatedSong = mergeSavedSong(id, song, saved);
       overlay.remove();
+      refreshSongsAfterSave();
+      await updateConnectivityBar();
       if (typeof options.onSaved === 'function') {
         options.onSaved(updatedSong);
       } else {

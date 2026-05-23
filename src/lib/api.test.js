@@ -21,6 +21,7 @@ import {
   dbDeleteSuggestion,
   dbGetComments,
   dbGetChatMessages,
+  dbGetPending,
   dbGetSongs,
   dbGetSuggestions,
   dbPutChatMessages,
@@ -131,6 +132,7 @@ test('normalizes and maps song comments', () => {
   }), {
     id: 'comment-1',
     songId: 'song-1',
+    userId: null,
     author: 'Martin',
     text: 'Revisar intro',
     color: 'blue',
@@ -225,6 +227,47 @@ test('updates a song through Supabase and refreshes the local cache', async () =
   ]);
 });
 
+test('keeps song edits local and queues sync when Supabase update hangs', async () => {
+  await dbPutSongs([{
+    id: 'song-timeout',
+    title: 'Titulo viejo',
+    artist: 'Banda',
+    key: 'C',
+    tempo: '',
+    structure: '',
+    progression: '',
+    tabs: [],
+    lyrics: '',
+    notes: '',
+    sortOrder: 4,
+    meta: { isFavorite: false, status: 'pending' }
+  }]);
+
+  const client = {
+    from() {
+      return {
+        update() {
+          return {
+            eq: () => new Promise(() => {})
+          };
+        }
+      };
+    }
+  };
+
+  const saved = await updateSong('song-timeout', { title: 'Titulo nuevo' }, client, { timeoutMs: 1 });
+  const updated = (await dbGetSongs()).find((song) => song.id === 'song-timeout');
+  const pending = await dbGetPending();
+
+  assert.equal(saved.title, 'Titulo nuevo');
+  assert.equal(updated.title, 'Titulo nuevo');
+  assert.ok(pending.some((item) =>
+    item.type === 'update_song' &&
+    item.payload.id === 'song-timeout' &&
+    item.payload.row.title === 'Titulo nuevo'
+  ));
+});
+
 test('lists and creates comments through Supabase', async () => {
   const calls = [];
   const rows = [{
@@ -236,6 +279,9 @@ test('lists and creates comments through Supabase', async () => {
     created_at: '2026-05-22T15:00:00.000Z'
   }];
   const client = {
+    auth: {
+      getSession: async () => ({ data: { session: null } })
+    },
     from(table) {
       calls.push(['from', table]);
       return {
@@ -271,6 +317,7 @@ test('lists and creates comments through Supabase', async () => {
   assert.deepEqual(await getSongComments('song-1', client), [{
     id: 'comment-1',
     songId: 'song-1',
+    userId: null,
     author: 'Martin',
     text: 'Cierre en seco',
     color: 'green',
@@ -283,6 +330,7 @@ test('lists and creates comments through Supabase', async () => {
   }, client), {
     id: 'comment-1',
     songId: 'song-1',
+    userId: null,
     author: 'Martin',
     text: 'Cierre en seco',
     color: 'green',
@@ -290,12 +338,12 @@ test('lists and creates comments through Supabase', async () => {
   });
   assert.deepEqual(calls, [
     ['from', 'comments'],
-    ['select', 'id,song_id,author,text,color,created_at'],
+    ['select', 'id,song_id,user_id,author,text,color,created_at'],
     ['eq', 'song_id', 'song-1'],
     ['order', 'created_at', { ascending: true }],
     ['from', 'comments'],
-    ['insert', { song_id: 'song-1', author: 'Martin', text: 'Cierre en seco', color: 'green' }],
-    ['insertSelect', 'id,song_id,author,text,color,created_at']
+    ['insert', { song_id: 'song-1', user_id: null, author: 'Martin', text: 'Cierre en seco', color: 'green' }],
+    ['insertSelect', 'id,song_id,user_id,author,text,color,created_at']
   ]);
 });
 
