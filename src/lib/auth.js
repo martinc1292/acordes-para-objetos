@@ -25,16 +25,21 @@ export async function logout() {
 export async function isAdmin() {
   if (!supabase) return false;
 
-  const { data } = await supabase.auth.getSession();
-  if (!data?.session) return false;
+  const check = supabase.auth.getSession()
+    .then(async ({ data }) => {
+      if (!data?.session) return false;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', data.session.user.id)
+        .single();
+      return profile?.is_admin === true;
+    })
+    .catch(() => false);
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', data.session.user.id)
-    .single();
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(false), 4000));
 
-  return profile?.is_admin === true;
+  return Promise.race([check, timeout]);
 }
 
 export function onAuthChange(callback) {
