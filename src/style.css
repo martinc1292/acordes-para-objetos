@@ -26,11 +26,11 @@
     line-height: 1.5;
     min-height: 100vh;
     overscroll-behavior: none;
-    overflow-x: hidden;
     text-rendering: optimizeLegibility;
   }
 
   body {
+    overflow-x: hidden;
     background-image:
       linear-gradient(90deg, #ffffff05 1px, transparent 1px),
       linear-gradient(#ffffff04 1px, transparent 1px),
