@@ -38,13 +38,14 @@ import { navigate, route, startRouter } from './lib/router.js';
 const app = document.querySelector('#app');
 
 app.innerHTML = `
+  <a class="skip-link" href="#view">Saltar al contenido</a>
   <div class="app">
     <div id="connectivity-bar" class="connectivity-bar connectivity-bar--hidden" aria-live="polite"></div>
-    <div id="view"></div>
+    <main id="view" tabindex="-1"></main>
   </div>
   <div class="hint" id="install-hint" hidden>Instalá la app: compartir → Añadir a inicio</div>
   <button class="metro-fab" id="metro-fab" type="button" aria-label="Metrónomo" hidden>
-    <span class="metro-fab-icon">♩</span>
+    <span class="metro-fab-icon" aria-hidden="true">♩</span>
     <span class="metro-fab-bpm" id="metro-fab-bpm"></span>
   </button>
   <div class="metro-float-panel" id="metro-float-panel" hidden></div>
@@ -56,10 +57,10 @@ app.innerHTML = `
       <button class="drawer-close" id="drawer-close" type="button" aria-label="Cerrar menú">✕</button>
     </div>
     <ul class="drawer-nav">
-      <li><a class="drawer-link" href="#/" id="dnav-setlist">🎵 Setlist</a></li>
-      <li><a class="drawer-link" href="#/favoritos" id="dnav-favs">★ Favoritos</a></li>
+      <li><a class="drawer-link" href="#/" id="dnav-setlist">Setlist</a></li>
+      <li><a class="drawer-link" href="#/favoritos" id="dnav-favs">Favoritos</a></li>
       <li><a class="drawer-link" href="#/sugerencias" id="dnav-suggestions">+ Sugerencias</a></li>
-      <li><a class="drawer-link" href="#/chat" id="dnav-chat">💬 Chat</a></li>
+      <li><a class="drawer-link" href="#/chat" id="dnav-chat">Chat</a></li>
       <li><a class="drawer-link" href="#/admin" id="dnav-admin">Admin</a></li>
     </ul>
   </nav>
@@ -81,7 +82,7 @@ async function updateConnectivityBar() {
     connectivityBar.textContent = 'Sin conexión — los cambios se guardarán localmente';
     connectivityBar.classList.remove('connectivity-bar--hidden');
   } else if (pending > 0) {
-    connectivityBar.textContent = `Sincronizando ${pending} cambio${pending === 1 ? '' : 's'}...`;
+    connectivityBar.textContent = `Sincronizando ${pending} cambio${pending === 1 ? '' : 's'}…`;
     connectivityBar.classList.remove('connectivity-bar--hidden');
   } else {
     connectivityBar.classList.add('connectivity-bar--hidden');
@@ -155,6 +156,13 @@ let realtimeChatChannel = null;
 let presentMode = false;
 let chatMessages = [];
 let chatState = 'idle';
+let songDetailEdit = null;
+
+window.addEventListener('beforeunload', (event) => {
+  if (!songDetailEdit) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 // ─── Metrónomo ───────────────────────────────────────────────────────────────
 
@@ -289,6 +297,7 @@ function initDrawer() {
 // ─── Vista Lista ─────────────────────────────────────────────────────────────
 
 function renderListView(filter = '') {
+  songDetailEdit = null;
   const normalizedFilter = filter.toLowerCase().trim();
   const filtered = songs.filter((s) =>
     s.title.toLowerCase().includes(normalizedFilter) ||
@@ -350,7 +359,7 @@ function renderListView(filter = '') {
         id="search"
         class="search"
         type="search"
-        placeholder="buscar canción o artista..."
+        placeholder="buscar canción o artista…"
         autocomplete="off"
         value="${escapeHtml(filter)}"
       />
@@ -418,7 +427,7 @@ function renderListLoading() {
       <h1>Sala <span class="ampersand">&amp;</span> Ensayo</h1>
     </header>
     <div class="count">Cargando repertorio</div>
-    <div class="empty">Cargando canciones...</div>
+    <div class="empty">Cargando canciones…</div>
   `;
 }
 
@@ -433,7 +442,7 @@ function renderListError(error) {
 // ─── Vista Detalle ───────────────────────────────────────────────────────────
 
 function renderCommentsHtml(comments, state) {
-  if (state === 'loading') return '<div class="comments-empty">Cargando comentarios...</div>';
+  if (state === 'loading') return '<div class="comments-empty">Cargando comentarios…</div>';
   if (state === 'error') return '<div class="comments-empty comments-empty--error">No se pudieron cargar los comentarios.</div>';
   if (comments.length === 0) return '<div class="comments-empty">Sin comentarios todavía</div>';
 
@@ -497,7 +506,7 @@ function renderCollabHtml(song, comments, state, feedback = '') {
             <div class="comment-colors" aria-label="Color del comentario">${colorOptions}</div>
           </div>
           <textarea class="comment-input" name="text" rows="3"
-            placeholder="Comentario de ensayo..." required></textarea>
+            placeholder="Comentario de ensayo…" required></textarea>
           <button class="comment-submit" type="submit">Agregar comentario</button>
         </form>
       </div>
@@ -505,13 +514,142 @@ function renderCollabHtml(song, comments, state, feedback = '') {
   `;
 }
 
-function renderSongView(song, options = {}) {
-  const comments = options.comments ?? currentComments;
-  const state = options.commentsState ?? commentsState;
-  const feedback = options.feedback ?? '';
+function createSongEditDraft(song) {
+  return {
+    title: song.title || '',
+    artist: song.artist || '',
+    key: song.key || '',
+    tempo: song.tempo || '',
+    structure: song.structure || '',
+    progression: song.progression || '',
+    tabs: Array.isArray(song.tabs)
+      ? song.tabs.map((tab) => ({
+        title: tab.title || '',
+        tab: tab.tab || ''
+      }))
+      : [],
+    lyrics: song.lyrics || '',
+    notes: song.notes || ''
+  };
+}
 
-  const tabsHtml = song.tabs.length > 0
-    ? song.tabs.map((t) => `
+function getSongForEdit(song) {
+  if (songDetailEdit?.id !== song.id) return song;
+  return {
+    ...song,
+    ...songDetailEdit.draft,
+    tabs: songDetailEdit.draft.tabs
+  };
+}
+
+function readSongEditForm(form, { keepEmptyTabs = false } = {}) {
+  const fd = new FormData(form);
+  const tabTitles = fd.getAll('tabTitle').map((value) => String(value || ''));
+  const tabBodies = fd.getAll('tabBody').map((value) => String(value || ''));
+  const tabs = tabTitles
+    .map((title, index) => ({
+      title,
+      tab: tabBodies[index] || ''
+    }))
+    .filter((tab) => keepEmptyTabs || tab.title.trim() || tab.tab.trim());
+
+  return {
+    title: String(fd.get('title') || ''),
+    artist: String(fd.get('artist') || ''),
+    key: String(fd.get('key') || ''),
+    tempo: String(fd.get('tempo') || ''),
+    structure: String(fd.get('structure') || ''),
+    progression: String(fd.get('progression') || ''),
+    tabs,
+    lyrics: String(fd.get('lyrics') || ''),
+    notes: String(fd.get('notes') || '')
+  };
+}
+
+function renderTabEditorRow(tab = {}) {
+  return `
+    <div class="tab-editor" data-tab-editor>
+      <div class="tab-editor-head">
+        <label class="field-label tab-title-field">
+          Título del tab o riff
+          <input class="field-input" name="tabTitle" type="text" autocomplete="off" value="${escapeHtml(tab.title || '')}" placeholder="Riff intro, bajo, solo…" />
+        </label>
+        <button class="tab-remove-btn" type="button">Quitar</button>
+      </div>
+      <label class="field-label">
+        Tab / riff
+        <textarea class="field-input song-edit-mono" name="tabBody" rows="6" autocomplete="off" placeholder="e|----------------|">${escapeHtml(tab.tab || '')}</textarea>
+      </label>
+    </div>
+  `;
+}
+
+function renderSongEditHtml(song, feedback = '') {
+  const tabs = Array.isArray(song.tabs) && song.tabs.length > 0
+    ? song.tabs
+    : [{ title: '', tab: '' }];
+
+  return `
+    <form class="song-edit-form" id="song-edit-form">
+      <div class="song-edit-section">
+        <div class="section-label">Datos principales</div>
+        <div class="song-edit-grid">
+          <label class="field-label">Título *
+            <input class="field-input" name="title" type="text" autocomplete="off" required value="${escapeHtml(song.title)}" />
+          </label>
+          <label class="field-label">Artista *
+            <input class="field-input" name="artist" type="text" autocomplete="off" required value="${escapeHtml(song.artist)}" />
+          </label>
+          <label class="field-label">Tonalidad
+            <input class="field-input" name="key" type="text" autocomplete="off" value="${escapeHtml(song.key)}" />
+          </label>
+          <label class="field-label">Tempo / BPM
+            <input class="field-input" name="tempo" type="text" autocomplete="off" value="${escapeHtml(song.tempo)}" placeholder="120 BPM" />
+          </label>
+        </div>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Estructura</div>
+        <textarea class="field-input song-edit-textarea" name="structure" rows="4" autocomplete="off" placeholder="Intro - Verso - Coro…">${escapeHtml(song.structure)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Progresión de acordes</div>
+        <textarea class="field-input song-edit-mono" name="progression" rows="4" autocomplete="off" placeholder="Am - G - F - E">${escapeHtml(song.progression)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Tabs / Riffs</div>
+        <div class="tabs-editor-list" id="tabs-editor-list">
+          ${tabs.map((tab) => renderTabEditorRow(tab)).join('')}
+        </div>
+        <button class="tab-add-btn" id="add-tab-btn" type="button">+ Agregar tab / riff</button>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Letra</div>
+        <textarea class="field-input song-edit-lyrics" name="lyrics" rows="14" autocomplete="off" placeholder="Pegá la letra acá…">${escapeHtml(song.lyrics)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Notas adicionales</div>
+        <textarea class="field-input song-edit-textarea" name="notes" rows="4" autocomplete="off" placeholder="Referencias, arreglos, links, observaciones…">${escapeHtml(song.notes)}</textarea>
+      </div>
+
+      <div class="song-edit-feedback" id="song-edit-feedback" role="status">${escapeHtml(feedback)}</div>
+      <div class="song-edit-actions song-edit-actions--bottom">
+        <button class="comment-submit" type="submit">Guardar cambios</button>
+        <button class="admin-cancel cancel-song-edit-btn" type="button">Cancelar</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderSongReadOnlySections(song) {
+  const tabs = Array.isArray(song.tabs) ? song.tabs : [];
+  const tabsHtml = tabs.length > 0
+    ? tabs.map((t) => `
         <div class="tab-title">${escapeHtml(t.title)}</div>
         <div class="tabs-block">${escapeHtml(t.tab)}</div>
       `).join('')
@@ -521,26 +659,7 @@ function renderSongView(song, options = {}) {
     ? `<div class="lyrics-block">${escapeHtml(song.lyrics)}</div>`
     : '<div class="lyrics-placeholder">Pegá la letra en src/data/songs.js cuando esté lista.</div>';
 
-  view.innerHTML = `
-    <div class="song-action-bar">
-      <button class="back-btn" id="back-btn">← Volver al setlist</button>
-      <div class="song-action-actions">
-        ${adminMode ? `<button class="edit-song-btn" id="edit-song-btn" type="button">Editar canción</button>` : ''}
-        <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
-      </div>
-    </div>
-    <div class="song-header">
-      <h2>${escapeHtml(song.title)}</h2>
-      <div class="song-meta">
-        <span>${escapeHtml(song.artist)}</span>
-        <span class="dot"></span>
-        <span class="key-tag">${escapeHtml(song.key)}</span>
-        ${song.tempo ? `<span class="dot"></span><span>${escapeHtml(song.tempo)}</span>` : ''}
-      </div>
-    </div>
-
-    ${renderMetronomeHtml(getBpm(), isRunning())}
-
+  return `
     ${song.structure ? `
       <div class="section">
         <div class="section-label">Estructura</div>
@@ -559,10 +678,7 @@ function renderSongView(song, options = {}) {
     </div>
 
     <div class="section">
-      <div class="section-label">
-        Letra
-        ${adminMode ? `<button class="edit-lyrics-btn" id="edit-lyrics-btn" type="button">Editar letra</button>` : ''}
-      </div>
+      <div class="section-label">Letra</div>
       ${lyricsHtml}
     </div>
 
@@ -571,23 +687,63 @@ function renderSongView(song, options = {}) {
         <div class="section-label">Notas</div>
         <div class="notes-block">${escapeHtml(song.notes)}</div>
       </div>` : ''}
+  `;
+}
+
+function renderSongView(song, options = {}) {
+  const comments = options.comments ?? currentComments;
+  const state = options.commentsState ?? commentsState;
+  const feedback = options.feedback ?? '';
+  const editMode = options.editMode ?? songDetailEdit?.id === song.id;
+  const editFeedback = options.editFeedback ?? songDetailEdit?.feedback ?? '';
+
+  if (editMode && songDetailEdit?.id !== song.id) {
+    songDetailEdit = { id: song.id, draft: createSongEditDraft(song), feedback: '' };
+  }
+
+  const displaySong = editMode ? getSongForEdit(song) : song;
+
+  view.innerHTML = `
+    <div class="song-action-bar">
+      <button class="back-btn" id="back-btn">← Volver al setlist</button>
+      <div class="song-action-actions">
+        ${editMode ? `
+          <button class="edit-song-btn edit-song-btn--primary" form="song-edit-form" type="submit">Guardar cambios</button>
+          <button class="present-btn cancel-song-edit-btn" type="button">Cancelar</button>
+        ` : `
+          ${adminMode ? `<button class="edit-song-btn" id="edit-song-btn" type="button">Editar canción</button>` : ''}
+          <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
+        `}
+      </div>
+    </div>
+    <div class="song-header ${editMode ? 'song-header--editing' : ''}">
+      <div class="song-mode-label">${editMode ? 'Modo edición' : 'Canción'}</div>
+      <h1 class="song-heading">${escapeHtml(displaySong.title)}</h1>
+      <div class="song-meta">
+        <span>${escapeHtml(displaySong.artist)}</span>
+        <span class="dot"></span>
+        <span class="key-tag">${escapeHtml(displaySong.key)}</span>
+        ${displaySong.tempo ? `<span class="dot"></span><span>${escapeHtml(displaySong.tempo)}</span>` : ''}
+      </div>
+    </div>
+
+    ${renderMetronomeHtml(getBpm(), isRunning())}
+
+    ${editMode ? renderSongEditHtml(displaySong, editFeedback) : renderSongReadOnlySections(displaySong)}
 
     ${renderCollabHtml(song, comments, state, feedback)}
   `;
 
-  view.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
-  view.querySelector('#present-btn').addEventListener('click', () => openPresentMode(song));
-  view.querySelector('#edit-song-btn')?.addEventListener('click', () => {
-    openEditSongModal(song.id, {
-      onSaved: (updatedSong) => {
-        if (currentSongId === song.id && updatedSong) {
-          setBpm(parseTempo(updatedSong.tempo));
-          renderSongView(updatedSong);
-        }
-      }
-    });
+  view.querySelector('#back-btn').addEventListener('click', () => {
+    songDetailEdit = null;
+    navigate('/');
   });
-  view.querySelector('#edit-lyrics-btn')?.addEventListener('click', () => openEditLyricsModal(song));
+  view.querySelector('#present-btn')?.addEventListener('click', () => openPresentMode(song));
+  view.querySelector('#edit-song-btn')?.addEventListener('click', () => {
+    songDetailEdit = { id: song.id, draft: createSongEditDraft(song), feedback: '' };
+    renderSongView(song, { editMode: true });
+  });
+  attachSongEditHandlers(song);
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
   view.querySelector('#comment-form').addEventListener('submit', handleCommentSubmit);
@@ -602,6 +758,72 @@ function renderSongView(song, options = {}) {
     document.querySelector('#metro-fab-bpm').textContent = isRunning() ? `${getBpm()}` : '';
     fab.classList.toggle('metro-fab--running', isRunning());
   }
+}
+
+function attachSongEditHandlers(song) {
+  const form = view.querySelector('#song-edit-form');
+  if (!form || songDetailEdit?.id !== song.id) return;
+
+  const updateDraft = () => {
+    songDetailEdit = {
+      ...songDetailEdit,
+      draft: readSongEditForm(form, { keepEmptyTabs: true }),
+      feedback: ''
+    };
+  };
+
+  form.addEventListener('input', updateDraft);
+
+  view.querySelectorAll('.cancel-song-edit-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      songDetailEdit = null;
+      const current = getSongById(song.id) || song;
+      renderSongView(current);
+    });
+  });
+
+  const tabsList = form.querySelector('#tabs-editor-list');
+  form.querySelector('#add-tab-btn')?.addEventListener('click', () => {
+    tabsList.insertAdjacentHTML('beforeend', renderTabEditorRow());
+    updateDraft();
+    const added = tabsList.querySelector('[data-tab-editor]:last-child input');
+    added?.focus();
+  });
+
+  tabsList?.addEventListener('click', (event) => {
+    const removeBtn = event.target.closest('.tab-remove-btn');
+    if (!removeBtn) return;
+    const row = removeBtn.closest('[data-tab-editor]');
+    row?.remove();
+    updateDraft();
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const data = readSongEditForm(form);
+    const saveButtons = view.querySelectorAll('[form="song-edit-form"], #song-edit-form button[type="submit"]');
+    const feedbackEl = view.querySelector('#song-edit-feedback');
+    saveButtons.forEach((button) => { button.disabled = true; });
+    if (feedbackEl) feedbackEl.textContent = 'Guardando cambios…';
+
+    try {
+      await updateSong(song.id, data);
+      songs = await getSongs();
+      const updatedSong = getSongById(song.id) || { ...song, ...data };
+      songDetailEdit = null;
+      setBpm(parseTempo(updatedSong.tempo));
+      renderSongView(updatedSong);
+      await updateConnectivityBar();
+    } catch (err) {
+      songDetailEdit = {
+        id: song.id,
+        draft: readSongEditForm(form, { keepEmptyTabs: true }),
+        feedback: err.message || 'No se pudieron guardar los cambios.'
+      };
+      renderSongView(song, { editMode: true });
+    }
+  });
 }
 
 function getSongById(id) {
@@ -620,6 +842,7 @@ function teardownRealtimeChannels() {
 async function loadSongView(id) {
   const song = getSongById(id);
   if (!song) { navigate('/'); return; }
+  if (songDetailEdit?.id !== id) songDetailEdit = null;
 
   teardownRealtimeChannels();
 
@@ -773,7 +996,7 @@ function openSuggestModal() {
         <label class="field-label">Título <input class="field-input" name="title" type="text" required placeholder="Hey Jude" /></label>
         <label class="field-label">Artista <input class="field-input" name="artist" type="text" required placeholder="The Beatles" /></label>
         <label class="field-label">Tu nombre <input class="field-input" name="suggestedBy" type="text" placeholder="Martín" /></label>
-        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Por qué la incluirías..."></textarea></label>
+        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Por qué la incluirías…"></textarea></label>
         <div class="modal-feedback" id="modal-feedback"></div>
         <button class="comment-submit" type="submit">Enviar sugerencia</button>
       </form>
@@ -829,10 +1052,10 @@ function openCreateSongModal() {
           <label class="field-label">Tonalidad <input class="field-input" name="key" type="text" placeholder="Am" /></label>
           <label class="field-label">Tempo <input class="field-input" name="tempo" type="text" placeholder="120 bpm" /></label>
         </div>
-        <label class="field-label">Estructura <input class="field-input" name="structure" type="text" placeholder="Intro - Verso - Coro..." /></label>
+        <label class="field-label">Estructura <input class="field-input" name="structure" type="text" placeholder="Intro - Verso - Coro…" /></label>
         <label class="field-label">Progresión <input class="field-input" name="progression" type="text" placeholder="Am - G - F - E" /></label>
-        <label class="field-label">Letra <textarea class="field-input" name="lyrics" rows="5" placeholder="Pegá la letra acá..."></textarea></label>
-        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Referencias, links, observaciones..."></textarea></label>
+        <label class="field-label">Letra <textarea class="field-input" name="lyrics" rows="5" placeholder="Pegá la letra acá…"></textarea></label>
+        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Referencias, links, observaciones…"></textarea></label>
         <div class="modal-feedback" id="modal-feedback"></div>
         <div class="admin-form-actions">
           <button class="comment-submit" type="submit">Agregar canción</button>
@@ -899,7 +1122,7 @@ function openEditLyricsModal(song) {
       <form class="modal-form" id="edit-lyrics-form">
         <label class="field-label">
           Letra
-          <textarea class="field-input" name="lyrics" rows="16" placeholder="Pegá la letra acá...">${escapeHtml(song.lyrics)}</textarea>
+          <textarea class="field-input" name="lyrics" rows="16" placeholder="Pegá la letra acá…">${escapeHtml(song.lyrics)}</textarea>
         </label>
         <div class="modal-feedback" id="modal-feedback"></div>
         <div class="admin-form-actions">
@@ -965,6 +1188,7 @@ function songFormHtml(song = null) {
 }
 
 async function renderAdminView() {
+  songDetailEdit = null;
   const admin = await isAdmin();
 
   if (!admin) {
@@ -1315,6 +1539,7 @@ document.addEventListener('keydown', (e) => {
 function renderFavoritesView() {
   teardownRealtimeChannels();
   currentSongId = null;
+  songDetailEdit = null;
   hideFab();
 
   const favs = songs.filter((s) => s.meta?.isFavorite);
@@ -1354,6 +1579,14 @@ function renderFavoritesView() {
     const item = e.target.closest('.song-item');
     if (item) navigate(`/song/${item.dataset.id}`);
   });
+  view.querySelector('#song-list').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const item = e.target.closest('.song-item');
+    if (item) {
+      e.preventDefault();
+      navigate(`/song/${item.dataset.id}`);
+    }
+  });
 }
 
 // ─── Vista Sugerencias ────────────────────────────────────────────────────────
@@ -1361,6 +1594,7 @@ function renderFavoritesView() {
 async function renderSuggestionsView() {
   teardownRealtimeChannels();
   currentSongId = null;
+  songDetailEdit = null;
   hideFab();
 
   view.innerHTML = `
@@ -1372,7 +1606,7 @@ async function renderSuggestionsView() {
       <h1>Sugerencias</h1>
     </header>
     <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
-    <div class="count suggestions-loading">Cargando...</div>
+    <div class="count suggestions-loading">Cargando…</div>
     <div id="suggestions-list"></div>
   `;
 
@@ -1455,6 +1689,7 @@ function renderChatMessages(msgs) {
 async function renderChatView() {
   teardownRealtimeChannels();
   currentSongId = null;
+  songDetailEdit = null;
   hideFab();
   chatState = 'loading';
   chatMessages = [];
@@ -1469,12 +1704,12 @@ async function renderChatView() {
       </div>
       <h1>Chat de la Banda</h1>
     </header>
-    <div class="chat-messages" id="chat-messages"><div class="chat-empty">Cargando mensajes...</div></div>
+    <div class="chat-messages" id="chat-messages"><div class="chat-empty">Cargando mensajes…</div></div>
     <form class="chat-form" id="chat-form">
       <input class="chat-author" name="author" type="text" placeholder="Tu nombre"
         autocomplete="name" value="${escapeHtml(author)}" />
       <div class="chat-input-row">
-        <textarea class="chat-input" name="text" rows="2" placeholder="Escribí algo..." required></textarea>
+        <textarea class="chat-input" name="text" rows="2" placeholder="Escribí algo…" required></textarea>
         <button class="chat-submit" type="submit">Enviar</button>
       </div>
     </form>

@@ -30,7 +30,7 @@ const DEFAULT_META = {
 };
 const VALID_STATUSES = new Set(['pending', 'rehearsing', 'ready']);
 const VALID_COMMENT_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
-const COMMENT_COLUMNS = 'id,song_id,author,text,color,created_at';
+const COMMENT_COLUMNS = 'id,song_id,user_id,author,text,color,created_at';
 
 // Contador monótono para IDs optimistas — evita colisiones de Date.now()
 // cuando dos inserciones ocurren dentro del mismo milisegundo.
@@ -114,6 +114,7 @@ export function mapRemoteComment(row) {
   return {
     id: row.id,
     songId: row.song_id,
+    userId: row.user_id ?? null,
     author: optionalText(row.author),
     text: optionalText(row.text),
     color: VALID_COMMENT_COLORS.has(row.color) ? row.color : 'yellow',
@@ -246,10 +247,13 @@ export async function addSongComment(songId, comment, client = supabase) {
 
   if (!client) return optimistic;
 
+  const { data: { session } } = await client.auth.getSession();
+  const userId = session?.user?.id ?? null;
+
   try {
     const { data, error } = await client
       .from('comments')
-      .insert({ song_id: songId, ...input })
+      .insert({ song_id: songId, user_id: userId, ...input })
       .select(COMMENT_COLUMNS)
       .single();
 
@@ -281,11 +285,12 @@ export async function deleteSongComment(commentId, client = supabase) {
 
 // ── Chat global ───────────────────────────────────────────────────────────────
 
-const CHAT_COLUMNS = 'id,author,text,created_at';
+const CHAT_COLUMNS = 'id,user_id,author,text,created_at';
 
 export function mapRemoteChatMessage(row) {
   return {
     id: row.id,
+    userId: row.user_id ?? null,
     author: optionalText(row.author),
     text: optionalText(row.text),
     createdAt: optionalText(row.created_at)
@@ -333,10 +338,13 @@ export async function addChatMessage(data, client = supabase) {
 
   if (!client) return optimistic;
 
+  const { data: { session: chatSession } } = await client.auth.getSession();
+  const chatUserId = chatSession?.user?.id ?? null;
+
   try {
     const { data: inserted, error } = await client
       .from('chat_messages')
-      .insert({ author, text })
+      .insert({ user_id: chatUserId, author, text })
       .select(CHAT_COLUMNS)
       .single();
     if (error) throw new Error(error.message);
