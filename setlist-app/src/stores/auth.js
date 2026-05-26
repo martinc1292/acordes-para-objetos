@@ -106,6 +106,17 @@ export function setActiveBand(bandId) {
   $activeBandId.set(bandId ?? null);
 }
 
+export function addLocalBand(band) {
+  if (!band?.id) return;
+  const bands = $bands.get();
+  if (bands.some((item) => item.id === band.id)) {
+    $activeBandId.set(band.id);
+    return;
+  }
+  $bands.set([...bands, band]);
+  $activeBandId.set(band.id);
+}
+
 export async function refreshBands(client) {
   const user = $currentUser.get();
   if (!user || !client) return;
