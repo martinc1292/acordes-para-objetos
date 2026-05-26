@@ -1,82 +1,88 @@
 import { html } from 'htm/preact';
-import { $currentUser } from '@/stores/auth.js';
-import {
-  $locale,
-  $presentationModeOpen,
-  $theme,
-  setLocale,
-  setTheme,
-  togglePresentationMode
-} from '@/stores/ui.js';
+import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
+import { $currentUser, $bands, $authReady } from '@/stores/auth.js';
+import { Login } from '@/views/Login.js';
+import { AuthCallback } from '@/views/AuthCallback.js';
+import { Onboarding } from '@/views/Onboarding.js';
+import { InviteAccept } from '@/views/InviteAccept.js';
+import { BandSettings } from '@/views/BandSettings.js';
+import { Home } from '@/views/Home.js';
 
-const THEME_OPTIONS = ['system', 'dark', 'light'];
-const LOCALE_OPTIONS = ['es', 'en'];
+function getSearch() {
+  return typeof window === 'undefined' ? '' : window.location.search;
+}
 
-export function App() {
-  const theme = useStoreValue($theme);
-  const locale = useStoreValue($locale);
-  const currentUser = useStoreValue($currentUser);
-  const presentationModeOpen = useStoreValue($presentationModeOpen);
+function getNext(search) {
+  const next = new URLSearchParams(search).get('next');
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return null;
+  return next;
+}
 
-  return html`
-    <main class="app-shell" data-theme=${theme}>
-      <section class="intro-panel" aria-labelledby="app-title">
-        <p class="eyebrow">Fase 0</p>
-        <h1 id="app-title">Hello Preact</h1>
-        <p class="lede">Base MVP lista para rescatar la logica del setlist actual.</p>
+function decidePostLogin({ route, bands, search }) {
+  const REENTRY = new Set(['login', 'auth-callback', 'home', 'onboarding']);
+  const next = getNext(search);
+  if (REENTRY.has(route.name) && next && next !== route.path) return { path: next, replace: true };
+  if (bands.length === 0) {
+    return route.name === 'onboarding' || route.name === 'invite-accept'
+      ? null
+      : { path: '/onboarding', replace: true };
+  }
+  if (REENTRY.has(route.name)) return { path: `/band/${bands[0].id}`, replace: true };
+  return null;
+}
 
-        <div class="status-grid" aria-label="Estado base">
-          <div class="status-item">
-            <span class="status-label">Runtime</span>
-            <strong>Preact + htm</strong>
-          </div>
-          <div class="status-item">
-            <span class="status-label">Auth</span>
-            <strong>${currentUser ? currentUser.email : 'Guest'}</strong>
-          </div>
-          <div class="status-item">
-            <span class="status-label">Mode</span>
-            <strong>${presentationModeOpen ? 'Presentation' : 'Workspace'}</strong>
-          </div>
-        </div>
-      </section>
+function decideUnauthRedirect({ route }) {
+  const PUBLIC = new Set(['login', 'auth-callback']);
+  if (PUBLIC.has(route.name)) return null;
+  const target = route.name === 'invite-accept'
+    ? `/login?next=${encodeURIComponent(route.path)}`
+    : '/login';
+  return { path: target, replace: true };
+}
 
-      <aside class="control-panel" aria-label="Base controls">
-        <div class="control-group">
-          <span class="control-label">Theme</span>
-          <div class="segmented-control">
-            ${THEME_OPTIONS.map((option) => html`
-              <button
-                type="button"
-                class=${option === theme ? 'segment segment-active' : 'segment'}
-                onClick=${() => setTheme(option)}
-              >
-                ${option}
-              </button>
-            `)}
-          </div>
-        </div>
+export function App({ router }) {
+  const route = useStoreValue(router.$route);
+  const user = useStoreValue($currentUser);
+  const bands = useStoreValue($bands);
+  const ready = useStoreValue($authReady);
+  const navigate = useCallback((path, opts) => router.navigate(path, opts), [router]);
+  const redirect = useMemo(() => {
+    if (!ready || !route?.name) return null;
+    return user
+      ? decidePostLogin({ route, bands, search: getSearch() })
+      : decideUnauthRedirect({ route });
+  }, [bands, ready, route, user]);
 
-        <div class="control-group">
-          <span class="control-label">Locale</span>
-          <div class="segmented-control">
-            ${LOCALE_OPTIONS.map((option) => html`
-              <button
-                type="button"
-                class=${option === locale ? 'segment segment-active' : 'segment'}
-                onClick=${() => setLocale(option)}
-              >
-                ${option}
-              </button>
-            `)}
-          </div>
-        </div>
+  useEffect(() => {
+    if (redirect) navigate(redirect.path, { replace: redirect.replace });
+  }, [navigate, redirect]);
 
-        <button class="primary-action" type="button" onClick=${togglePresentationMode}>
-          ${presentationModeOpen ? 'Close presentation' : 'Open presentation'}
-        </button>
-      </aside>
-    </main>
-  `;
+  if (!ready) {
+    return html`<main class="app-shell"><p>Cargando...</p></main>`;
+  }
+
+  if (!route?.name) {
+    return html`<main class="app-shell"><h1>404</h1></main>`;
+  }
+
+  if (redirect) return null;
+
+  switch (route.name) {
+    case 'login':
+      return html`<${Login} next=${getNext(getSearch())} />`;
+    case 'auth-callback':
+      return html`<${AuthCallback} navigate=${navigate} />`;
+    case 'onboarding':
+      return html`<${Onboarding} navigate=${navigate} />`;
+    case 'invite-accept':
+      return html`<${InviteAccept} token=${route.params.token} navigate=${navigate} />`;
+    case 'band-settings':
+      return html`<${BandSettings} bandId=${route.params.bandId} navigate=${navigate} />`;
+    case 'band-home':
+      return html`<${Home} navigate=${navigate} />`;
+    case 'home':
+    default:
+      return html`<${Home} navigate=${navigate} />`;
+  }
 }

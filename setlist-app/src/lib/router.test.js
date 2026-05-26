@@ -118,6 +118,33 @@ describe('createRouter (with happy-dom)', () => {
     assert.equal(window.location.pathname, '/settings');
   });
 
+  it('navigate preserves query strings while matching by pathname', () => {
+    router = createRouter(
+      [
+        { pattern: '/', name: 'home' },
+        { pattern: '/login', name: 'login' }
+      ],
+      { window }
+    );
+
+    router.navigate('/login?next=%2Finvite%2Fabc');
+
+    assert.equal(router.$route.get().name, 'login');
+    assert.equal(router.$route.get().path, '/login');
+    assert.equal(window.location.pathname, '/login');
+    assert.equal(window.location.search, '?next=%2Finvite%2Fabc');
+  });
+
+  it('rejects external-looking navigation targets', () => {
+    router = createRouter(
+      [{ pattern: '/', name: 'home' }],
+      { window }
+    );
+
+    assert.throws(() => router.navigate('//evil.example/path'), /Invalid app path/);
+    assert.throws(() => router.navigate('https://evil.example/path'), /Invalid app path/);
+  });
+
   it('popstate triggers a route re-resolution from the current URL', () => {
     router = createRouter(
       [

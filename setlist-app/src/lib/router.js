@@ -11,6 +11,17 @@ function normalizePath(path) {
   return p;
 }
 
+function normalizeLocation(path) {
+  const raw = String(path ?? '');
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith('//')) {
+    throw new Error(`Invalid app path: ${raw}`);
+  }
+  const cut = raw.search(/[?#]/);
+  const pathname = normalizePath(cut === -1 ? raw : raw.slice(0, cut));
+  const suffix = cut === -1 ? '' : raw.slice(cut);
+  return `${pathname}${suffix}`;
+}
+
 function splitSegments(path) {
   return normalizePath(path).split('/').filter(Boolean);
 }
@@ -60,15 +71,16 @@ export function createRouter(routes, options = {}) {
     throw new Error('createRouter requires a window (DOM or happy-dom).');
   }
 
-  const $route = atom(buildRouteState(routes, win.location.pathname));
+  const currentPath = () => `${win.location.pathname}${win.location.search}${win.location.hash}`;
+  const $route = atom(buildRouteState(routes, currentPath()));
 
   function refresh() {
-    $route.set(buildRouteState(routes, win.location.pathname));
+    $route.set(buildRouteState(routes, currentPath()));
   }
 
   function navigate(path, { replace = false } = {}) {
-    const target = normalizePath(path);
-    const current = normalizePath(win.location.pathname);
+    const target = normalizeLocation(path);
+    const current = normalizeLocation(currentPath());
     if (target === current && !replace) return;
     if (replace) {
       win.history.replaceState({}, '', target);
