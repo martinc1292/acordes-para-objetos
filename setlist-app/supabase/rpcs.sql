@@ -207,3 +207,75 @@ $$;
 
 revoke all on function public.accept_invitation(uuid) from public;
 grant execute on function public.accept_invitation(uuid) to authenticated;
+
+-- ---------- seed_example_songs ----------
+create or replace function public.seed_example_songs(p_band_id uuid)
+returns integer
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_existing int;
+  v_inserted int;
+begin
+  if v_user_id is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  -- Row-level lock on the band to prevent concurrent seed runs.
+  perform 1 from public.bands where id = p_band_id for update;
+
+  if not found then
+    raise exception 'band not found' using errcode = '22023';
+  end if;
+
+  perform 1
+    from public.band_members
+    where band_id = p_band_id and user_id = v_user_id and role = 'admin'
+    for update;
+
+  if not found then
+    raise exception 'admin required' using errcode = '42501';
+  end if;
+
+  select count(*) into v_existing from public.songs where band_id = p_band_id;
+  if v_existing > 0 then
+    raise exception 'band already has songs' using errcode = '22023';
+  end if;
+
+  with src as (
+    select
+      gen_random_uuid() as new_song_id,
+      id as seed_song_id,
+      title,
+      artist,
+      key,
+      tempo,
+      structure,
+      progression,
+      lyrics,
+      notes,
+      sort_order
+      from public.example_seed_songs
+      order by sort_order
+  ),
+  inserted_songs as (
+    insert into public.songs (id, band_id, title, artist, key, tempo, structure, progression, lyrics, notes, status, sort_order)
+    select new_song_id, p_band_id, title, artist, key, tempo, structure, progression, lyrics, notes, 'pending', sort_order
+      from src
+      returning id
+  )
+  insert into public.tabs (song_id, band_id, title, content, position)
+  select src.new_song_id, p_band_id, t.title, t.content, t.position
+    from public.example_seed_tabs t
+    join src on src.seed_song_id = t.song_id
+    join inserted_songs s on s.id = src.new_song_id;
+
+  select count(*) into v_inserted from public.songs where band_id = p_band_id;
+  return v_inserted;
+end;
+$$;
+
+revoke all on function public.seed_example_songs(uuid) from public;
+grant execute on function public.seed_example_songs(uuid) to authenticated;
