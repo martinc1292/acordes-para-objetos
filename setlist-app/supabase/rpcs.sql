@@ -208,6 +208,90 @@ $$;
 revoke all on function public.accept_invitation(uuid) from public;
 grant execute on function public.accept_invitation(uuid) to authenticated;
 
+-- ---------- update_band_member_role ----------
+create or replace function public.update_band_member_role(p_band_id uuid, p_user_id uuid, p_role text)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if p_user_id = v_user_id then
+    raise exception 'use leave_band to change your own membership' using errcode = '42501';
+  end if;
+  if coalesce(p_role, '') not in ('admin', 'member') then
+    raise exception 'invalid role' using errcode = '22023';
+  end if;
+
+  perform 1 from public.bands where id = p_band_id for update;
+  if not found then
+    raise exception 'band not found' using errcode = '22023';
+  end if;
+
+  perform 1
+    from public.band_members
+    where band_id = p_band_id and user_id = v_user_id and role = 'admin'
+    for update;
+  if not found then
+    raise exception 'admin required' using errcode = '42501';
+  end if;
+
+  update public.band_members
+    set role = p_role
+    where band_id = p_band_id and user_id = p_user_id;
+  if not found then
+    raise exception 'member not found' using errcode = '22023';
+  end if;
+end;
+$$;
+
+revoke all on function public.update_band_member_role(uuid, uuid, text) from public;
+grant execute on function public.update_band_member_role(uuid, uuid, text) to authenticated;
+
+-- ---------- remove_band_member ----------
+create or replace function public.remove_band_member(p_band_id uuid, p_user_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if p_user_id = v_user_id then
+    raise exception 'use leave_band to leave the band' using errcode = '42501';
+  end if;
+
+  perform 1 from public.bands where id = p_band_id for update;
+  if not found then
+    raise exception 'band not found' using errcode = '22023';
+  end if;
+
+  perform 1
+    from public.band_members
+    where band_id = p_band_id and user_id = v_user_id and role = 'admin'
+    for update;
+  if not found then
+    raise exception 'admin required' using errcode = '42501';
+  end if;
+
+  delete from public.band_members
+    where band_id = p_band_id and user_id = p_user_id;
+  if not found then
+    raise exception 'member not found' using errcode = '22023';
+  end if;
+end;
+$$;
+
+revoke all on function public.remove_band_member(uuid, uuid) from public;
+grant execute on function public.remove_band_member(uuid, uuid) to authenticated;
+
 -- ---------- seed_example_songs ----------
 create or replace function public.seed_example_songs(p_band_id uuid)
 returns integer

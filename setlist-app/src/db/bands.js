@@ -27,6 +27,14 @@ export async function deleteBand(client, { bandId, confirmationName }) {
   unwrap(await client.rpc('delete_band', { p_band_id: bandId, p_confirmation_name: confirmationName }));
 }
 
+export async function updateBandMemberRole(client, { bandId, userId, role }) {
+  unwrap(await client.rpc('update_band_member_role', { p_band_id: bandId, p_user_id: userId, p_role: role }));
+}
+
+export async function removeBandMember(client, { bandId, userId }) {
+  unwrap(await client.rpc('remove_band_member', { p_band_id: bandId, p_user_id: userId }));
+}
+
 export async function seedExampleSongs(client, { bandId }) {
   return unwrap(await client.rpc('seed_example_songs', { p_band_id: bandId }));
 }

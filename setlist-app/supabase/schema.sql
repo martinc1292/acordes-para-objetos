@@ -230,9 +230,9 @@ create policy profiles_update on profiles for update using (id = auth.uid()) wit
 create policy bands_select on bands for select using (is_band_member(id));
 create policy bands_update on bands for update using (is_band_admin(id)) with check (is_band_admin(id));
 
--- band_members: members can read; INSERT/DELETE/UPDATE only via RPC + admin
+-- band_members: members can read; writes go through RPCs so role/self-leave
+-- invariants stay server-side.
 create policy band_members_select on band_members for select using (is_band_member(band_id));
-create policy band_members_update on band_members for update using (is_band_admin(band_id)) with check (is_band_admin(band_id));
 
 -- invitations: admins only
 create policy invitations_select on invitations for select using (is_band_admin(band_id));

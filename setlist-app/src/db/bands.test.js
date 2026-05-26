@@ -6,6 +6,8 @@ import {
   acceptInvitation,
   leaveBand,
   deleteBand,
+  updateBandMemberRole,
+  removeBandMember,
   seedExampleSongs,
   listMyBands,
   listBandMembers,
@@ -91,6 +93,22 @@ describe('db/bands wrappers', () => {
     });
     assert.equal(await leaveBand(client, { bandId: 'b1' }), undefined);
     assert.equal(await deleteBand(client, { bandId: 'b1', confirmationName: 'My Band' }), undefined);
+  });
+
+  it('member management wrappers call guarded RPCs', async () => {
+    const seen = [];
+    const client = fakeClient({
+      rpcImpl(name, args) {
+        seen.push({ name, args });
+        return { data: null, error: null };
+      }
+    });
+    assert.equal(await updateBandMemberRole(client, { bandId: 'b1', userId: 'u2', role: 'admin' }), undefined);
+    assert.equal(await removeBandMember(client, { bandId: 'b1', userId: 'u2' }), undefined);
+    assert.deepEqual(seen, [
+      { name: 'update_band_member_role', args: { p_band_id: 'b1', p_user_id: 'u2', p_role: 'admin' } },
+      { name: 'remove_band_member', args: { p_band_id: 'b1', p_user_id: 'u2' } }
+    ]);
   });
 
   it('seedExampleSongs returns inserted count', async () => {
