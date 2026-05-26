@@ -5,7 +5,7 @@ function readEnv(name) {
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[name] !== undefined) {
     return import.meta.env[name];
   }
-  return process.env[name];
+  return typeof process !== 'undefined' ? process.env[name] : undefined;
 }
 
 let cached = null;
@@ -30,5 +30,5 @@ export function getSupabase() {
 }
 
 export function isSupabaseConfigured() {
-  return getSupabase() !== null;
+  return Boolean(readEnv('VITE_SUPABASE_URL') && readEnv('VITE_SUPABASE_ANON_KEY'));
 }
