@@ -5,6 +5,7 @@ import { useStoreValue } from '@/stores/useStoreValue.js';
 import { $currentUser, $bands, $authReady, $activeBandId } from '@/stores/auth.js';
 import { clearSongs } from '@/stores/songs.js';
 import { clearFavorites } from '@/stores/favorites.js';
+import { $theme } from '@/stores/ui.js';
 import { Login } from '@/views/Login.js';
 import { AuthCallback } from '@/views/AuthCallback.js';
 import { Onboarding } from '@/views/Onboarding.js';
@@ -23,7 +24,7 @@ function getNext(search) {
 }
 
 function decidePostLogin({ route, bands, search }) {
-  const REENTRY = new Set(['login', 'auth-callback', 'home', 'onboarding']);
+  const REENTRY = new Set(['login', 'sign-in', 'sign-up', 'register', 'auth-callback', 'home', 'onboarding']);
   const next = getNext(search);
   if (REENTRY.has(route.name) && next && next !== route.path) return { path: next, replace: true };
   if (bands.length === 0) {
@@ -40,12 +41,14 @@ const loadBandSettings = () => import('@/views/BandSettings.js');
 const loadSongDetail = () => import('@/views/SongDetail.js');
 
 function decideUnauthRedirect({ route }) {
-  const PUBLIC = new Set(['login', 'auth-callback']);
+  const PUBLIC = new Set(['login', 'sign-in', 'sign-up', 'register', 'auth-callback']);
   if (PUBLIC.has(route.name)) return null;
-  const target = route.name === 'invite-accept'
-    ? `/login?next=${encodeURIComponent(route.path)}`
-    : '/login';
+  const target = `/login?next=${encodeURIComponent(route.path)}`;
   return { path: target, replace: true };
+}
+
+function getAuthMode(route) {
+  return route.name === 'sign-up' || route.name === 'register' ? 'sign-up' : 'sign-in';
 }
 
 export function App({ router }) {
@@ -54,6 +57,7 @@ export function App({ router }) {
   const bands = useStoreValue($bands);
   const activeBandId = useStoreValue($activeBandId);
   const ready = useStoreValue($authReady);
+  const theme = useStoreValue($theme);
   const navigate = useCallback((path, opts) => router.navigate(path, opts), [router]);
   const redirect = useMemo(() => {
     if (!ready || !route?.name) return null;
@@ -65,6 +69,12 @@ export function App({ router }) {
   useEffect(() => {
     if (redirect) navigate(redirect.path, { replace: redirect.replace });
   }, [navigate, redirect]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    root.removeAttribute('data-initial-theme');
+  }, [theme]);
 
   // Clear songs cache when active band changes
   useEffect(() => {
@@ -87,7 +97,10 @@ export function App({ router }) {
       ${(() => {
         switch (route.name) {
           case 'login':
-            return html`<${Login} next=${getNext(getSearch())} />`;
+          case 'sign-in':
+          case 'sign-up':
+          case 'register':
+            return html`<${Login} next=${getNext(getSearch())} initialMode=${getAuthMode(route)} />`;
           case 'auth-callback':
             return html`<${AuthCallback} navigate=${navigate} />`;
           case 'onboarding':

@@ -17,6 +17,11 @@ if (!root) {
 const routes = [
   { pattern: '/', name: 'home' },
   { pattern: '/login', name: 'login' },
+  { pattern: '/sign-in', name: 'sign-in' },
+  { pattern: '/signin', name: 'sign-in' },
+  { pattern: '/sign-up', name: 'sign-up' },
+  { pattern: '/signup', name: 'sign-up' },
+  { pattern: '/register', name: 'register' },
   { pattern: '/auth/callback', name: 'auth-callback' },
   { pattern: '/onboarding', name: 'onboarding' },
   { pattern: '/invite/:token', name: 'invite-accept' },
