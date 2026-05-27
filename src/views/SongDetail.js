@@ -513,7 +513,7 @@ export function SongDetail({ bandId, songId, navigate }) {
               tabIndex=${isAdmin ? '0' : undefined}
               aria-label=${isAdmin ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
               style="margin-left:auto;font-size:0.72rem;color:${STATUS_COLOR[song.status] ?? 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};white-space:nowrap"
-            >● ${t(`status.${song.status}`)}${isAdmin ? ' ▸' : ''}</span>
+            >● ${t(`status.${song.status ?? 'pending'}`)}${isAdmin ? ' ▸' : ''}</span>
           `}
         </div>
       </div>
