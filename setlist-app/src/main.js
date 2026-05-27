@@ -1,3 +1,4 @@
+import '@/lib/i18n.js';
 import { render } from 'preact';
 import { html } from 'htm/preact';
 import { App } from './app.js';
