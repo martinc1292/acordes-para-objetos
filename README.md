@@ -1,116 +1,35 @@
-# Setlist · Sala de Ensayo
+# Acordes Para Objetos
 
-App web para tener el repertorio de la banda con letras, acordes, tabs y notas. Este repo ahora arranca la migración desde el HTML autocontenido original hacia una app Vite modular.
+App web para repertorios de banda con letras, acordes, tabs, favoritos, estados e invitaciones. La app actual vive en la raiz del repo y usa Vite, Preact, htm, Nanostores, i18next, Supabase y PWA.
 
-## Estado actual
-
-- Entrada principal nueva: `index.html` + `src/main.js`
-- Capa de datos: `src/lib/api.js` usa Supabase cuando hay env vars y fallback local cuando no
-- Datos del repertorio: `src/data/songs.js`
-- Estilos base: `src/style.css`
-- Colaboración básica: favoritos, estado por canción y comentarios compartidos
-- Respaldo legacy intacto: `setlist.html`
-
-La app puede correr sin Supabase usando los datos locales de `src/data/songs.js`. Con Supabase configurado, lee canciones desde la base y guarda estado/favoritos/comentarios compartidos.
-
-## Desarrollo local
-
-Instalar dependencias:
+## Desarrollo
 
 ```bash
 npm install
-```
-
-Levantar la app:
-
-```bash
 npm run dev
-```
-
-Crear build de producción:
-
-```bash
+npm test
 npm run build
 ```
 
-Previsualizar el build:
+Scripts utiles:
 
-```bash
-npm run preview
-```
+- `npm run preview`: sirve el build de produccion.
+- `npm run generate:pwa-assets`: regenera los iconos PWA desde `public/icon.svg`.
+- `npm run build:analyze`: genera el analisis del bundle.
 
-Validar que el repertorio mantiene el shape esperado:
+## Configuracion
 
-```bash
-npm run check:songs
-```
+Copia `.env.example` a `.env.local` y completa las variables de Supabase.
 
-La validación espera 37 canciones y falla si falta `title`, `artist`, `key` o si `tabs` no es un array.
+- `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se usan en el navegador.
+- `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son solo para scripts locales/admin.
 
-Ejecutar tests de scripts:
+## Estructura
 
-```bash
-npm test
-```
+- `src/`: app Preact, vistas, stores y librerias puras.
+- `supabase/`: schema, RPCs, seed SQL y migraciones.
+- `seeds/`: repertorio de ejemplo usado por tests y scripts.
+- `scripts/`: utilidades de seed.
+- `api/keepalive.js`: cron de Vercel para mantener Supabase activo.
 
-## Cómo editar canciones
-
-Editá `src/data/songs.js`. Cada canción conserva esta estructura:
-
-```js
-{
-  title: "Nombre de la canción",
-  artist: "Artista o banda",
-  key: "Dm",
-  tempo: "120 BPM",
-  structure: "Intro → Verse → Chorus",
-  progression: "Dm - Bb - Gm - A7",
-  tabs: [
-    {
-      title: "Riff principal",
-      tab: `e|--0-2-3--|`
-    }
-  ],
-  lyrics: "",
-  notes: "Notas de ejecución."
-}
-```
-
-## Setup Supabase
-
-1. Crear un proyecto en Supabase.
-2. Abrir SQL Editor y ejecutar `supabase/schema.sql`.
-3. Copiar `.env.example` a `.env.local`.
-4. Completar:
-
-```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-public-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
-
-La `SUPABASE_SERVICE_ROLE_KEY` es solo para scripts locales. No debe usarse en código del navegador ni subirse al repo.
-
-Antes de insertar datos reales, hacer un dry-run:
-
-```bash
-npm run migrate:songs
-```
-
-Cuando el schema esté creado y `.env.local` tenga las claves reales:
-
-```bash
-npm run migrate:songs -- --apply
-```
-
-El script de migración lee desde `src/data/songs.js`, no desde `setlist.html`.
-
-## Features colaborativas
-
-En el detalle de cada canción se puede:
-
-- Marcar o quitar favorita.
-- Cambiar estado entre `Pendiente`, `Ensayando` y `Lista`.
-- Agregar comentarios con nombre libre y color.
-
-Estas acciones escriben en Supabase cuando las variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` están configuradas. Sin Supabase, la app conserva el fallback local para seguir funcionando durante desarrollo.
+El HTML autocontenido original quedo archivado en `docs/archive/legacy-setlist.html`.
