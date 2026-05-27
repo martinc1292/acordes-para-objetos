@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSupabase } from '@/db/supabase.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 function safeNextPath(value) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/';
@@ -12,6 +13,7 @@ function shouldHandleLinkClick(event) {
 }
 
 export function AuthCallback({ navigate }) {
+  const t = useTranslation('auth');
   const [status, setStatus] = useState('exchanging');
   const [errorMessage, setErrorMessage] = useState('');
   const navigateRef = useRef(navigate);
@@ -34,23 +36,25 @@ export function AuthCallback({ navigate }) {
       const code = params.get('code');
       const next = safeNextPath(params.get('next'));
       if (!code) {
-        fail('Link invalido o expirado. Volve a /login.');
+        fail(t('callback.error'));
         return;
       }
       try {
         const supabase = getSupabase();
         if (!supabase) {
-          fail('Supabase no esta configurado.');
+          fail(t('callback.error'));
           return;
         }
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          fail(error.message);
+          console.error('exchangeCodeForSession failed', error);
+          fail(t('callback.error'));
           return;
         }
         if (active) navigateRef.current(next, { replace: true });
       } catch (err) {
-        fail(err.message || 'No pudimos completar el ingreso.');
+        console.error('AuthCallback run failed', err);
+        fail(t('callback.error'));
       }
     }
     run();
@@ -63,7 +67,7 @@ export function AuthCallback({ navigate }) {
   if (status === 'error') {
     return html`
       <main class="auth-shell">
-        <h1>No pudimos completar el ingreso</h1>
+        <h1>${t('callback.error')}</h1>
         <p role="alert">${errorMessage}</p>
         <a
           href="/login"
@@ -72,14 +76,14 @@ export function AuthCallback({ navigate }) {
             event.preventDefault();
             navigateRef.current('/login', { replace: true });
           }}
-        >Volver a /login</a>
+        >${t('common:action.back')}</a>
       </main>
     `;
   }
 
   return html`
     <main class="auth-shell">
-      <p aria-live="polite">Validando...</p>
+      <p aria-live="polite">${t('callback.loading')}</p>
     </main>
   `;
 }
