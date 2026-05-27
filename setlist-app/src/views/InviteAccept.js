@@ -104,9 +104,9 @@ export function InviteAccept({ token, navigate }) {
 
   return html`
     <main class="auth-shell">
-      <h1>Invitacion</h1>
+      <h1>${t('invite.title')}</h1>
       ${invite
-        ? html`<p>Te invitaron a unirte a <strong>${invite.bands?.name ?? 'una banda'}</strong> como ${invite.role}.</p>`
+        ? html`<p>${t('invite.description', { band: invite.bands?.name ?? '?', role: invite.role })}</p>`
         : html`<p>${t('invite.no_data')}</p>`}
       ${error && html`<p class="auth-error" role="alert">${error}</p>`}
       <div class="auth-actions">

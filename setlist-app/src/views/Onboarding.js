@@ -74,7 +74,8 @@ export function Onboarding({ navigate }) {
         try {
           await seedExampleSongs(supabase, { bandId });
         } catch (err) {
-          seedWarning = `Banda creada, pero el seed fallo: ${err.message}`;
+          console.error('seedExampleSongs failed', err);
+          seedWarning = t('onboarding.seed_warning');
         }
       }
       const band = rememberCreatedBand(bandId, trimmed, description.trim() || null);
@@ -103,7 +104,7 @@ export function Onboarding({ navigate }) {
 
   return html`
     <main class="onboarding-shell">
-      <h1>Bienvenido</h1>
+      <h1>${t('onboarding.welcome')}</h1>
 
       <section>
         <h2>${t('onboarding.create_band')}</h2>
@@ -119,7 +120,7 @@ export function Onboarding({ navigate }) {
             />
           </label>
           <label>
-            Descripcion
+            ${t('onboarding.description_label')}
             <input
               name="band-description"
               value=${description}
@@ -132,7 +133,7 @@ export function Onboarding({ navigate }) {
               checked=${withSeed}
               onInput=${(event) => setWithSeed(event.currentTarget.checked)}
             />
-            Empezar con canciones de ejemplo
+            ${t('onboarding.seed_songs')}
           </label>
           <button type="submit" disabled=${creating || Boolean(createdBandPath)}>
             ${creating ? t('onboarding.creating') : t('onboarding.create_band')}
@@ -161,7 +162,7 @@ export function Onboarding({ navigate }) {
         <h2>${t('onboarding.join_with_invite')}</h2>
         <form onSubmit=${(event) => { event.preventDefault(); onGoToInvite(); }}>
           <label>
-            Link o token
+            ${t('onboarding.invite_token_label')}
             <input
               name="invite-token"
               value=${tokenInput}
