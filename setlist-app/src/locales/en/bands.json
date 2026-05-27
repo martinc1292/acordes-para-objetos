@@ -6,9 +6,37 @@
     "leave": "Leave this band",
     "leave_confirm": "Leave this band?",
     "name_mismatch": "Name doesn't match.",
+    "saved": "Saved.",
+    "band_fallback": "Band",
+    "tab": {
+      "general": "General",
+      "members": "Members",
+      "advanced": "Advanced"
+    },
+    "field": {
+      "name": "Name",
+      "description": "Description"
+    },
     "member": {
       "email_label": "Email",
-      "loading": "Loading..."
-    }
+      "loading": "Loading...",
+      "title": "Members",
+      "remove": "Remove",
+      "remove_confirm": "Remove {{name}}?",
+      "role_aria": "Role of {{name}}"
+    },
+    "invitation": {
+      "title": "Invitations",
+      "role_label": "Role",
+      "generate": "Generate invitation",
+      "generated_link": "Generated link",
+      "generated_link_aria": "Generated invitation link",
+      "expires": "expires"
+    },
+    "leave_section": "Leave band",
+    "leave_action": "Leave",
+    "delete_section": "Delete band",
+    "delete_confirm_prompt": "Type {{name}} to confirm.",
+    "delete_confirm_label": "Confirmation"
   }
 }

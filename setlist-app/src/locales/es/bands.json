@@ -6,9 +6,37 @@
     "leave": "Salir de esta banda",
     "leave_confirm": "¿Salir de esta banda?",
     "name_mismatch": "El nombre no coincide.",
+    "saved": "Guardado.",
+    "band_fallback": "Banda",
+    "tab": {
+      "general": "General",
+      "members": "Miembros",
+      "advanced": "Avanzado"
+    },
+    "field": {
+      "name": "Nombre",
+      "description": "Descripcion"
+    },
     "member": {
       "email_label": "Email",
-      "loading": "Cargando..."
-    }
+      "loading": "Cargando...",
+      "title": "Miembros",
+      "remove": "Quitar",
+      "remove_confirm": "Quitar a {{name}}?",
+      "role_aria": "Rol de {{name}}"
+    },
+    "invitation": {
+      "title": "Invitaciones",
+      "role_label": "Rol",
+      "generate": "Generar invitacion",
+      "generated_link": "Link generado",
+      "generated_link_aria": "Link de invitacion generado",
+      "expires": "expira"
+    },
+    "leave_section": "Abandonar banda",
+    "leave_action": "Abandonar",
+    "delete_section": "Borrar banda",
+    "delete_confirm_prompt": "Escribi {{name}} para confirmar.",
+    "delete_confirm_label": "Confirmacion"
   }
 }

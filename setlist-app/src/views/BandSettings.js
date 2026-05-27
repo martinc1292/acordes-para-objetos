@@ -12,18 +12,16 @@ import {
 } from '@/db/bands.js';
 import { refreshBands, removeLocalBand, $currentUser, $bands } from '@/stores/auth.js';
 import { useStoreValue } from '@/stores/useStoreValue.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
-const TABS = [
-  { id: 'general', label: 'General' },
-  { id: 'members', label: 'Miembros' },
-  { id: 'advanced', label: 'Avanzado' }
-];
+const TABS = ['general', 'members', 'advanced'];
 
 function shouldHandleLinkClick(event) {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 export function BandSettings({ bandId, navigate }) {
+  const t = useTranslation('bands');
   const [tab, setTab] = useState('general');
   const tabRefs = useRef({});
   const currentUser = useStoreValue($currentUser);
@@ -32,7 +30,7 @@ export function BandSettings({ bandId, navigate }) {
   const isAdmin = band?.role === 'admin';
 
   function onTabKeyDown(event) {
-    const index = TABS.findIndex((item) => item.id === tab);
+    const index = TABS.findIndex((id) => id === tab);
     let nextIndex = index;
     if (event.key === 'ArrowRight') nextIndex = (index + 1) % TABS.length;
     else if (event.key === 'ArrowLeft') nextIndex = (index + TABS.length - 1) % TABS.length;
@@ -40,16 +38,16 @@ export function BandSettings({ bandId, navigate }) {
     else if (event.key === 'End') nextIndex = TABS.length - 1;
     else return;
     event.preventDefault();
-    setTab(TABS[nextIndex].id);
+    setTab(TABS[nextIndex]);
     setTimeout(() => {
-      tabRefs.current[TABS[nextIndex].id]?.focus();
+      tabRefs.current[TABS[nextIndex]]?.focus();
     }, 0);
   }
 
   return html`
     <main class="settings-shell">
       <header class="settings-header">
-        <h1>${band?.name ?? 'Banda'}</h1>
+        <h1>${band?.name ?? t('settings.band_fallback')}</h1>
         <a
           href=${`/band/${bandId}`}
           onClick=${(event) => {
@@ -57,24 +55,24 @@ export function BandSettings({ bandId, navigate }) {
             event.preventDefault();
             navigate(`/band/${bandId}`);
           }}
-        >Volver</a>
+        >${t('common:action.back')}</a>
       </header>
       <nav class="settings-tabs" role="tablist">
-        ${TABS.map((item) => html`
+        ${TABS.map((id) => html`
           <button
             type="button"
             role="tab"
-            id=${`settings-tab-${item.id}`}
+            id=${`settings-tab-${id}`}
             ref=${(node) => {
-              if (node) tabRefs.current[item.id] = node;
+              if (node) tabRefs.current[id] = node;
             }}
-            aria-controls=${`settings-panel-${item.id}`}
-            aria-selected=${tab === item.id}
-            tabIndex=${tab === item.id ? 0 : -1}
-            onClick=${() => setTab(item.id)}
+            aria-controls=${`settings-panel-${id}`}
+            aria-selected=${tab === id}
+            tabIndex=${tab === id ? 0 : -1}
+            onClick=${() => setTab(id)}
             onKeyDown=${onTabKeyDown}
-            class=${tab === item.id ? 'tab tab-active' : 'tab'}
-          >${item.label}</button>
+            class=${tab === id ? 'tab tab-active' : 'tab'}
+          >${t(`settings.tab.${id}`)}</button>
         `)}
       </nav>
       <section
@@ -91,6 +89,7 @@ export function BandSettings({ bandId, navigate }) {
 }
 
 function GeneralTab({ bandId, band, isAdmin }) {
+  const t = useTranslation('bands');
   const [name, setName] = useState(band?.name ?? '');
   const [description, setDescription] = useState(band?.description ?? '');
   const [saving, setSaving] = useState(false);
@@ -106,7 +105,7 @@ function GeneralTab({ bandId, band, isAdmin }) {
     if (saving || !isAdmin) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setMessage('Nombre requerido.');
+      setMessage(t('settings.name_required'));
       return;
     }
     setSaving(true);
@@ -119,14 +118,15 @@ function GeneralTab({ bandId, band, isAdmin }) {
         .update({ name: trimmedName, description: description.trim() || null })
         .eq('id', bandId);
       if (error) throw error;
-      setMessage('Guardado.');
+      setMessage(t('settings.saved'));
       try {
         await refreshBands(supabase);
       } catch (err) {
         console.error('refreshBands failed after band update', err);
       }
     } catch (err) {
-      setMessage(err.message);
+      console.error('band update failed', err);
+      setMessage(t('common:error.save_failed'));
     } finally {
       setSaving(false);
     }
@@ -135,7 +135,7 @@ function GeneralTab({ bandId, band, isAdmin }) {
   return html`
     <form onSubmit=${onSave}>
       <label>
-        Nombre
+        ${t('settings.field.name')}
         <input
           name="band-name"
           value=${name}
@@ -144,7 +144,7 @@ function GeneralTab({ bandId, band, isAdmin }) {
         />
       </label>
       <label>
-        Descripcion
+        ${t('settings.field.description')}
         <input
           name="band-description"
           value=${description}
@@ -153,7 +153,7 @@ function GeneralTab({ bandId, band, isAdmin }) {
         />
       </label>
       ${isAdmin && html`
-        <button type="submit" disabled=${saving}>${saving ? 'Guardando...' : 'Guardar'}</button>
+        <button type="submit" disabled=${saving}>${saving ? t('common:saving') : t('common:action.save')}</button>
       `}
       ${message && html`<p aria-live="polite">${message}</p>`}
     </form>
@@ -161,6 +161,7 @@ function GeneralTab({ bandId, band, isAdmin }) {
 }
 
 function MembersTab({ bandId, currentUserId, isAdmin }) {
+  const t = useTranslation('bands');
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -184,7 +185,8 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
       setInvites(inviteRows);
       setError('');
     } catch (err) {
-      if (canCommit() && reportError) setError(err.message);
+      console.error('members load failed', err);
+      if (canCommit() && reportError) setError(t('common:error.load_failed'));
     } finally {
       if (canCommit()) setLoading(false);
     }
@@ -212,7 +214,8 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
       setInviteEmail('');
       await load();
     } catch (err) {
-      setError(err.message);
+      console.error('createInvitation failed', err);
+      setError(t('common:error.save_failed'));
     } finally {
       setBusy(false);
     }
@@ -235,7 +238,8 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
         console.error('members reload failed after role update', err);
       }
     } catch (err) {
-      setError(err.message);
+      console.error('updateBandMemberRole failed', err);
+      setError(t('common:error.save_failed'));
     } finally {
       setBusy(false);
     }
@@ -243,7 +247,7 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
 
   async function onRemove(member) {
     if (busy) return;
-    if (!confirm(`Quitar a ${member.email}?`)) return;
+    if (!confirm(t('settings.member.remove_confirm', { name: member.email ?? member.userId }))) return;
     setBusy(true);
     setError('');
     try {
@@ -257,17 +261,18 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
         console.error('members reload failed after member removal', err);
       }
     } catch (err) {
-      setError(err.message);
+      console.error('removeBandMember failed', err);
+      setError(t('common:error.delete_failed'));
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return html`<p aria-live="polite">Cargando...</p>`;
+  if (loading) return html`<p aria-live="polite">${t('settings.member.loading')}</p>`;
 
   return html`
     <div>
-      <h2>Miembros</h2>
+      <h2>${t('settings.member.title')}</h2>
       <ul class="members-list">
         ${members.map((member) => html`
           <li key=${member.userId}>
@@ -275,14 +280,14 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
             ${isAdmin && member.userId !== currentUserId ? html`
               <select
                 value=${member.role}
-                aria-label=${`Rol de ${member.email ?? member.userId}`}
+                aria-label=${t('settings.member.role_aria', { name: member.email ?? member.userId })}
                 onChange=${(event) => onRoleChange(member, event.currentTarget.value)}
                 disabled=${busy}
               >
                 <option value="admin">admin</option>
                 <option value="member">member</option>
               </select>
-              <button type="button" onClick=${() => onRemove(member)} disabled=${busy}>Quitar</button>
+              <button type="button" onClick=${() => onRemove(member)} disabled=${busy}>${t('settings.member.remove')}</button>
             ` : html`<span>(${member.role})</span>`}
           </li>
         `)}
@@ -290,10 +295,10 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
 
       ${isAdmin && html`
         <section>
-          <h3>Invitaciones</h3>
+          <h3>${t('settings.invitation.title')}</h3>
           <form onSubmit=${onGenerate}>
             <label>
-              Email
+              ${t('settings.member.email_label')}
               <input
                 type="email"
                 name="invite-email"
@@ -304,7 +309,7 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
               />
             </label>
             <label>
-              Rol
+              ${t('settings.invitation.role_label')}
               <select
                 name="invite-role"
                 value=${inviteRole}
@@ -314,14 +319,14 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
                 <option value="admin">admin</option>
               </select>
             </label>
-            <button type="submit" disabled=${busy}>Generar invitacion</button>
+            <button type="submit" disabled=${busy}>${t('settings.invitation.generate')}</button>
           </form>
           ${generatedLink && html`
             <label>
-              Link generado
+              ${t('settings.invitation.generated_link')}
               <input
                 readonly
-                aria-label="Link de invitacion generado"
+                aria-label=${t('settings.invitation.generated_link_aria')}
                 value=${generatedLink}
                 onClick=${(event) => event.currentTarget.select()}
               />
@@ -329,7 +334,7 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
           `}
           <ul>
             ${invites.map((invite) => html`
-              <li key=${invite.id}>${invite.email} (${invite.role}) - expira ${invite.expiresAt}</li>
+              <li key=${invite.id}>${invite.email} (${invite.role}) - ${t('settings.invitation.expires')} ${invite.expiresAt}</li>
             `)}
           </ul>
         </section>
@@ -341,12 +346,13 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
 }
 
 function AdvancedTab({ bandId, band, isAdmin, navigate }) {
+  const t = useTranslation('bands');
   const [confirmName, setConfirmName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   async function onLeave() {
-    if (busy || !confirm('Salir de esta banda?')) return;
+    if (busy || !confirm(t('settings.leave_confirm'))) return;
     setBusy(true);
     setError('');
     try {
@@ -361,7 +367,8 @@ function AdvancedTab({ bandId, band, isAdmin, navigate }) {
       }
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message);
+      console.error('leaveBand failed', err);
+      setError(t('common:error.save_failed'));
       setBusy(false);
     }
   }
@@ -370,7 +377,7 @@ function AdvancedTab({ bandId, band, isAdmin, navigate }) {
     event.preventDefault();
     if (busy) return;
     if (confirmName.trim() !== band?.name) {
-      setError('El nombre no coincide.');
+      setError(t('settings.name_mismatch'));
       return;
     }
     setBusy(true);
@@ -387,7 +394,8 @@ function AdvancedTab({ bandId, band, isAdmin, navigate }) {
       }
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message);
+      console.error('deleteBand failed', err);
+      setError(t('common:error.delete_failed'));
       setBusy(false);
     }
   }
@@ -395,23 +403,23 @@ function AdvancedTab({ bandId, band, isAdmin, navigate }) {
   return html`
     <div>
       <section>
-        <h2>Abandonar banda</h2>
-        <button type="button" onClick=${onLeave} disabled=${busy}>Abandonar</button>
+        <h2>${t('settings.leave_section')}</h2>
+        <button type="button" onClick=${onLeave} disabled=${busy}>${t('settings.leave_action')}</button>
       </section>
       ${isAdmin && html`
         <section>
-          <h2>Borrar banda</h2>
-          <p>Escribi <strong>${band?.name}</strong> para confirmar.</p>
+          <h2>${t('settings.delete_section')}</h2>
+          <p>${t('settings.delete_confirm_prompt', { name: band?.name })}</p>
           <form onSubmit=${onDelete}>
             <label>
-              Confirmacion
+              ${t('settings.delete_confirm_label')}
               <input
                 name="delete-confirmation"
                 value=${confirmName}
                 onInput=${(event) => setConfirmName(event.currentTarget.value)}
               />
             </label>
-            <button type="submit" disabled=${busy}>Borrar</button>
+            <button type="submit" disabled=${busy}>${t('common:action.delete')}</button>
           </form>
         </section>
       `}
