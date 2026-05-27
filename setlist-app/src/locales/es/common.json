@@ -1,0 +1,32 @@
+{
+  "loading": "Cargando…",
+  "saving": "Guardando…",
+  "error": {
+    "load_failed": "No pudimos cargar los datos.",
+    "save_failed": "No pudimos guardar los cambios.",
+    "delete_failed": "No pudimos eliminar."
+  },
+  "action": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "back": "← Volver",
+    "retry": "Reintentar",
+    "create": "Crear",
+    "delete": "Borrar",
+    "edit": "Editar",
+    "accept": "Aceptar",
+    "reject": "Rechazar"
+  },
+  "nav": {
+    "settings": "Ajustes"
+  },
+  "theme": {
+    "dark": "Oscuro",
+    "light": "Claro",
+    "system": "Sistema"
+  },
+  "lang": {
+    "es": "ES",
+    "en": "EN"
+  }
+}

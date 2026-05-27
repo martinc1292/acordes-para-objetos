@@ -1,0 +1,14 @@
+{
+  "eyebrow": "REHEARSAL ROOM",
+  "settings": {
+    "title": "Band settings",
+    "name_required": "Name is required.",
+    "leave": "Leave this band",
+    "leave_confirm": "Leave this band?",
+    "name_mismatch": "Name doesn't match.",
+    "member": {
+      "email_label": "Email",
+      "loading": "Loading..."
+    }
+  }
+}
