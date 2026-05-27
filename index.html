@@ -2,19 +2,19 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <title>Setlist · Sala de Ensayo</title>
-
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#ff5722" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Setlist" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-
-    <!-- Description / OG -->
-    <meta name="description" content="Setlist y acordes de la banda — letras, tabs, notas" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Letras, acordes y notas para músicos. Colaborativa por banda." />
+    <title>Setlist &amp; Acordes</title>
+    <script>
+      (function () {
+        var stored = localStorage.getItem('theme') || 'dark';
+        var resolved = stored;
+        if (stored === 'system') {
+          resolved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-initial-theme', resolved);
+      }());
+    </script>
   </head>
   <body>
     <div id="app"></div>

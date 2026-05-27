@@ -1,5 +1,5 @@
 -- ============================================================================
--- setlist-app - Fase 1 RPCs
+-- Acordes Para Objetos - Fase 1 RPCs
 -- All SECURITY DEFINER with explicit search_path.
 -- ============================================================================
 

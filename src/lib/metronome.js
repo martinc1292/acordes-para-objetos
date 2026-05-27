@@ -1,115 +1,121 @@
-// Metrónomo singleton — Web Audio API, tap-tempo, parseo de tempo desde string
+const MIN_BPM = 20;
+const MAX_BPM = 300;
+const DEFAULT_BPM = 80;
 
-let audioCtx = null;
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
+function clampBPM(value) {
+  const rounded = Math.round(value);
+  if (Number.isNaN(rounded)) return DEFAULT_BPM;
+  return Math.max(MIN_BPM, Math.min(MAX_BPM, rounded));
 }
 
-function clickBeat(ctx, time) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
+export function parseBPM(input, fallback = DEFAULT_BPM) {
+  if (typeof input !== 'string') return fallback;
+  const match = input.match(/\d+/);
+  if (!match) return fallback;
+  const value = parseInt(match[0], 10);
+  if (value < MIN_BPM || value > MAX_BPM) return fallback;
+  return value;
+}
+
+function getAudioContextCtor() {
+  if (typeof globalThis === 'undefined') return null;
+  return globalThis.AudioContext || globalThis.webkitAudioContext || null;
+}
+
+function playClick(audioCtx, accent) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const now = audioCtx.currentTime;
+  osc.frequency.value = accent ? 1320 : 880;
+  gain.gain.setValueAtTime(accent ? 0.5 : 0.35, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
   osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.frequency.value = 880;
-  gain.gain.setValueAtTime(0.35, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-  osc.start(time);
-  osc.stop(time + 0.05);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.05);
 }
 
-// Estado global único
-const state = {
-  bpm: 80,
-  running: false,
-  intervalId: null,
-  nextBeatTime: 0,
-  tapTimes: [],
-  onChange: null, // callback para que la UI se actualice
-};
+export function createMetronome(options = {}) {
+  const {
+    bpm: initialBpm = DEFAULT_BPM,
+    beatsPerBar = 4,
+    onBeat = null
+  } = options;
 
-export function parseTempo(tempoStr) {
-  if (!tempoStr) return 80;
-  const match = String(tempoStr).match(/\d+/);
-  const bpm = match ? parseInt(match[0], 10) : 80;
-  if (bpm >= 20 && bpm <= 300) return bpm;
-  return 80;
-}
+  let currentBPM = clampBPM(initialBpm);
+  let currentBeat = 0;
+  let intervalId = null;
+  let audioCtx = null;
 
-export function getBpm() {
-  return state.bpm;
-}
-
-export function setBpm(bpm) {
-  const clamped = Math.max(20, Math.min(300, Math.round(bpm)));
-  state.bpm = clamped;
-  if (state.running) {
-    stop();
-    start();
+  function intervalMs() {
+    return 60_000 / currentBPM;
   }
-  state.onChange?.(clamped);
-}
 
-export function isRunning() {
-  return state.running;
-}
-
-export function start() {
-  if (state.running) return;
-  const ctx = getAudioCtx();
-  if (ctx.state === 'suspended') ctx.resume();
-  state.running = true;
-  state.nextBeatTime = ctx.currentTime;
-
-  state.intervalId = setInterval(() => {
-    const ctx = getAudioCtx();
-    // Programa beats con lookahead de 100ms para evitar glitches
-    while (state.nextBeatTime < ctx.currentTime + 0.1) {
-      clickBeat(ctx, state.nextBeatTime);
-      state.nextBeatTime += 60 / state.bpm;
+  function tick() {
+    currentBeat = (currentBeat % beatsPerBar) + 1;
+    if (audioCtx) {
+      try {
+        playClick(audioCtx, currentBeat === 1);
+      } catch {
+        // Audio failure should not stop the metronome
+      }
     }
-  }, 25);
-
-  state.onChange?.(state.bpm);
-}
-
-export function stop() {
-  if (!state.running) return;
-  clearInterval(state.intervalId);
-  state.intervalId = null;
-  state.running = false;
-  state.onChange?.(state.bpm);
-}
-
-export function toggle() {
-  state.running ? stop() : start();
-}
-
-export function tap() {
-  const now = Date.now();
-  state.tapTimes.push(now);
-
-  // Solo usar los últimos 8 taps
-  if (state.tapTimes.length > 8) state.tapTimes.shift();
-
-  if (state.tapTimes.length < 2) return state.bpm;
-
-  const intervals = [];
-  for (let i = 1; i < state.tapTimes.length; i++) {
-    intervals.push(state.tapTimes[i] - state.tapTimes[i - 1]);
+    if (typeof onBeat === 'function') {
+      onBeat(currentBeat);
+    }
   }
-  const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-  const newBpm = Math.round(60000 / avgMs);
-  setBpm(newBpm);
-  return state.bpm;
-}
 
-export function resetTaps() {
-  state.tapTimes = [];
-}
+  function startInterval() {
+    intervalId = setInterval(tick, intervalMs());
+  }
 
-// La UI se suscribe para recibir actualizaciones cuando cambia BPM o estado
-export function onMetronomeChange(cb) {
-  state.onChange = cb;
+  function stopInterval() {
+    if (intervalId !== null) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  }
+
+  function start() {
+    if (intervalId !== null) return;
+    const Ctor = getAudioContextCtor();
+    if (Ctor && !audioCtx) {
+      try {
+        audioCtx = new Ctor();
+      } catch {
+        audioCtx = null;
+      }
+    }
+    currentBeat = 0;
+    tick();
+    startInterval();
+  }
+
+  function stop() {
+    stopInterval();
+    currentBeat = 0;
+  }
+
+  function setBPM(value) {
+    currentBPM = clampBPM(value);
+    if (intervalId !== null) {
+      stopInterval();
+      startInterval();
+    }
+  }
+
+  return {
+    start,
+    stop,
+    setBPM,
+    get bpm() {
+      return currentBPM;
+    },
+    get beatsPerBar() {
+      return beatsPerBar;
+    },
+    get isRunning() {
+      return intervalId !== null;
+    }
+  };
 }

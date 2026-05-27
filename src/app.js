@@ -1,4 +1,5 @@
 import { html } from 'htm/preact';
+import { Fragment } from 'preact';
 import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
 import { $currentUser, $bands, $authReady, $activeBandId } from '@/stores/auth.js';
@@ -82,7 +83,7 @@ export function App({ router }) {
   if (redirect) return null;
 
   return html`
-    <>
+    <${Fragment}>
       ${(() => {
         switch (route.name) {
           case 'login':
@@ -107,6 +108,6 @@ export function App({ router }) {
         }
       })()}
       <${UpdateBanner} />
-    </>
+    </${Fragment}>
   `;
 }

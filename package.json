@@ -1,6 +1,6 @@
 {
   "name": "acordes-para-objetos",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,16 +8,26 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test",
-    "check:songs": "node scripts/check-songs.js",
-    "migrate:songs": "node scripts/migrate-songs.js"
-  },
-  "devDependencies": {
-    "fake-indexeddb": "^6.2.5"
+    "generate:pwa-assets": "pwa-assets-generator --preset minimal-2023 public/icon.svg",
+    "build:analyze": "cross-env ANALYZE=true vite build"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
-    "idb": "^8.0.3",
-    "vite": "^8.0.14",
+    "@supabase/supabase-js": "^2.106.2",
+    "htm": "^3.1.1",
+    "i18next": "^25.0.0",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "idb": "^8.0.0",
+    "nanostores": "^0.11.0",
+    "preact": "^10.0.0",
+    "workbox-window": "^7.4.1"
+  },
+  "devDependencies": {
+    "@vite-pwa/assets-generator": "^1.0.2",
+    "cross-env": "^10.1.0",
+    "fake-indexeddb": "^6.0.0",
+    "happy-dom": "^20.9.0",
+    "rollup-plugin-visualizer": "^7.0.1",
+    "vite": "^8.0.0",
     "vite-plugin-pwa": "^1.3.0"
   }
 }

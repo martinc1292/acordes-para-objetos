@@ -1,47 +1,151 @@
-create extension if not exists pgcrypto;
+-- ============================================================================
+-- Acordes Para Objetos - Fase 1 schema
+-- Multi-band model with row-level security.
+-- Apply by pasting the whole file into the Supabase SQL editor (clean reset).
+-- ============================================================================
 
--- ─── Profiles (rol admin) ─────────────────────────────────────────────────────
+-- Reset (Fase 1 starts fresh; no incremental migration from legacy schema)
+drop table if exists favorites cascade;
+drop table if exists comments cascade;
+drop table if exists song_images cascade;
+drop table if exists tabs cascade;
+drop table if exists songs cascade;
+drop table if exists invitations cascade;
+drop table if exists band_members cascade;
+drop table if exists bands cascade;
+drop table if exists profiles cascade;
+drop table if exists example_seed_tabs cascade;
+drop table if exists example_seed_songs cascade;
+drop function if exists is_band_member(uuid) cascade;
+drop function if exists is_band_admin(uuid) cascade;
+drop function if exists set_updated_at() cascade;
+drop function if exists handle_new_user() cascade;
 
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  is_admin boolean default false not null
+-- ---------- Extensions ----------
+create extension if not exists "pgcrypto";
+
+-- ---------- Tables ----------
+
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-alter table public.profiles enable row level security;
+create table bands (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-drop policy if exists profiles_read_own on public.profiles;
-create policy profiles_read_own on public.profiles
-for select using (auth.uid() = id);
+create table band_members (
+  band_id uuid not null references bands(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('admin', 'member')),
+  joined_at timestamptz not null default now(),
+  primary key (band_id, user_id)
+);
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql security definer
-as $$
-begin
-  insert into public.profiles (id, is_admin) values (new.id, false)
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
+create table invitations (
+  id uuid primary key default gen_random_uuid(),
+  band_id uuid not null references bands(id) on delete cascade,
+  email text not null,
+  role text not null check (role in ('admin', 'member')),
+  token uuid not null unique default gen_random_uuid(),
+  expires_at timestamptz not null,
+  accepted_at timestamptz
+);
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute function public.handle_new_user();
+create table songs (
+  id uuid primary key default gen_random_uuid(),
+  band_id uuid not null references bands(id) on delete cascade,
+  title text not null,
+  artist text,
+  key text,
+  tempo text,
+  structure text,
+  progression text,
+  lyrics text,
+  notes text,
+  status text not null default 'pending' check (status in ('pending','rehearsing','ready')),
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
--- ─── Helper para verificar admin ─────────────────────────────────────────────
+create table tabs (
+  id uuid primary key default gen_random_uuid(),
+  song_id uuid not null references songs(id) on delete cascade,
+  band_id uuid not null references bands(id) on delete cascade,
+  title text not null,
+  content text not null,
+  position integer not null default 0
+);
 
-create or replace function public.is_admin()
-returns boolean
-language sql security definer stable
-as $$
-  select coalesce(
-    (select is_admin from public.profiles where id = auth.uid()),
-    false
-  );
-$$;
+create table song_images (
+  id uuid primary key default gen_random_uuid(),
+  song_id uuid not null references songs(id) on delete cascade,
+  band_id uuid not null references bands(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
 
-create or replace function public.set_updated_at()
+create table comments (
+  id uuid primary key default gen_random_uuid(),
+  song_id uuid not null references songs(id) on delete cascade,
+  band_id uuid not null references bands(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  author_name_snapshot text,
+  text text not null,
+  color text not null default 'yellow' check (color in ('yellow','pink','blue','green','orange')),
+  created_at timestamptz not null default now()
+);
+
+create table favorites (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  song_id uuid not null references songs(id) on delete cascade,
+  band_id uuid not null references bands(id) on delete cascade,
+  primary key (user_id, song_id)
+);
+
+-- Internal seed tables (no RLS; only accessed via SECURITY DEFINER RPCs)
+create table example_seed_songs (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  artist text,
+  key text,
+  tempo text,
+  structure text,
+  progression text,
+  lyrics text,
+  notes text,
+  sort_order integer not null default 0
+);
+
+create table example_seed_tabs (
+  id uuid primary key default gen_random_uuid(),
+  song_id uuid not null references example_seed_songs(id) on delete cascade,
+  title text not null,
+  content text not null,
+  position integer not null default 0
+);
+
+-- ---------- Indexes ----------
+create index band_members_user_band_idx on band_members(user_id, band_id);
+create index songs_band_sort_idx on songs(band_id, sort_order);
+create index tabs_song_position_idx on tabs(song_id, position);
+create index comments_song_created_idx on comments(song_id, created_at);
+create index invitations_band_pending_idx on invitations(band_id, expires_at) where accepted_at is null;
+create index favorites_user_band_idx on favorites(user_id, band_id);
+create index favorites_song_idx on favorites(song_id);
+
+-- ---------- Triggers ----------
+
+create or replace function set_updated_at()
 returns trigger
 language plpgsql
 as $$
@@ -51,171 +155,116 @@ begin
 end;
 $$;
 
-create table if not exists public.songs (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  artist text not null,
-  song_key text not null,
-  tempo text,
-  structure text,
-  progression text,
-  tabs jsonb default '[]'::jsonb,
-  lyrics text,
-  notes text,
-  sort_order int default 0,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
+create trigger profiles_set_updated_at before update on profiles
+  for each row execute function set_updated_at();
+create trigger bands_set_updated_at before update on bands
+  for each row execute function set_updated_at();
+create trigger songs_set_updated_at before update on songs
+  for each row execute function set_updated_at();
 
-create index if not exists songs_sort_order_idx on public.songs(sort_order);
-
-drop trigger if exists set_songs_updated_at on public.songs;
-create trigger set_songs_updated_at
-before update on public.songs
-for each row execute function public.set_updated_at();
-
-create table if not exists public.song_meta (
-  song_id uuid primary key references public.songs(id) on delete cascade,
-  is_favorite boolean default false,
-  status text default 'pending' check (status in ('pending', 'rehearsing', 'ready')),
-  updated_at timestamptz default now()
-);
-
-drop trigger if exists set_song_meta_updated_at on public.song_meta;
-create trigger set_song_meta_updated_at
-before update on public.song_meta
-for each row execute function public.set_updated_at();
-
-create table if not exists public.comments (
-  id uuid primary key default gen_random_uuid(),
-  song_id uuid references public.songs(id) on delete cascade,
-  user_id uuid references auth.users,
-  author text not null,
-  text text not null,
-  color text default 'yellow' check (color in ('yellow', 'pink', 'blue', 'green', 'orange')),
-  created_at timestamptz default now()
-);
-
--- Migración segura: agrega la columna si ya existe la tabla sin ella
-do $$
+create or replace function handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
 begin
-  if not exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'comments' and column_name = 'user_id'
-  ) then
-    alter table public.comments add column user_id uuid references auth.users;
-  end if;
-end$$;
+  insert into profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
 
-create index if not exists comments_song_id_idx on public.comments(song_id);
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created after insert on auth.users
+  for each row execute function handle_new_user();
 
-create table if not exists public.suggestions (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  artist text not null,
-  suggested_by text not null,
-  notes text,
-  status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
-  created_at timestamptz default now()
+-- ---------- RLS helpers ----------
+
+create or replace function is_band_member(p_band_id uuid)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (
+    select 1 from band_members
+    where band_id = p_band_id and user_id = auth.uid()
+  );
+$$;
+
+create or replace function is_band_admin(p_band_id uuid)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (
+    select 1 from band_members
+    where band_id = p_band_id and user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- ---------- RLS ----------
+
+alter table profiles enable row level security;
+alter table bands enable row level security;
+alter table band_members enable row level security;
+alter table invitations enable row level security;
+alter table songs enable row level security;
+alter table tabs enable row level security;
+alter table song_images enable row level security;
+alter table comments enable row level security;
+alter table favorites enable row level security;
+
+-- profiles: a user can read profiles of users who share at least one band
+create policy profiles_select on profiles for select using (
+  id = auth.uid()
+  or exists (
+    select 1 from band_members bm1
+    join band_members bm2 on bm1.band_id = bm2.band_id
+    where bm1.user_id = auth.uid() and bm2.user_id = profiles.id
+  )
 );
+create policy profiles_update on profiles for update using (id = auth.uid()) with check (id = auth.uid());
 
-alter table public.songs enable row level security;
-alter table public.song_meta enable row level security;
-alter table public.comments enable row level security;
-alter table public.suggestions enable row level security;
+-- bands: members can read; INSERT/DELETE only via RPC; UPDATE only admins
+create policy bands_select on bands for select using (is_band_member(id));
+create policy bands_update on bands for update using (is_band_admin(id)) with check (is_band_admin(id));
 
-drop policy if exists songs_public_read on public.songs;
-create policy songs_public_read on public.songs
-for select using (true);
+-- band_members: members can read; writes go through RPCs so role/self-leave
+-- invariants stay server-side.
+create policy band_members_select on band_members for select using (is_band_member(band_id));
 
-drop policy if exists songs_public_insert on public.songs;
-drop policy if exists songs_admin_write on public.songs;
-drop policy if exists songs_admin_insert on public.songs;
-drop policy if exists songs_admin_update on public.songs;
-drop policy if exists songs_admin_delete on public.songs;
+-- invitations: admins only
+create policy invitations_select on invitations for select using (is_band_admin(band_id));
+create policy invitations_delete on invitations for delete using (is_band_admin(band_id));
 
-create policy songs_admin_insert on public.songs
-for insert with check (public.is_admin());
+-- songs / tabs: members read; admins write
+create policy songs_select on songs for select using (is_band_member(band_id));
+create policy songs_insert on songs for insert with check (is_band_admin(band_id));
+create policy songs_update on songs for update using (is_band_admin(band_id)) with check (is_band_admin(band_id));
+create policy songs_delete on songs for delete using (is_band_admin(band_id));
 
-create policy songs_admin_update on public.songs
-for update using (public.is_admin());
+create policy tabs_select on tabs for select using (is_band_member(band_id));
+create policy tabs_insert on tabs for insert with check (is_band_admin(band_id));
+create policy tabs_update on tabs for update using (is_band_admin(band_id)) with check (is_band_admin(band_id));
+create policy tabs_delete on tabs for delete using (is_band_admin(band_id));
 
-create policy songs_admin_delete on public.songs
-for delete using (public.is_admin());
+-- song_images: members read/write; only uploader or admin can delete
+create policy song_images_select on song_images for select using (is_band_member(band_id));
+create policy song_images_insert on song_images for insert with check (is_band_member(band_id) and user_id = auth.uid());
+create policy song_images_delete on song_images for delete using (user_id = auth.uid() or is_band_admin(band_id));
 
-drop policy if exists meta_public_read on public.song_meta;
-create policy meta_public_read on public.song_meta
-for select using (true);
+-- comments: members read/write; users edit/delete own; admins delete any
+create policy comments_select on comments for select using (is_band_member(band_id));
+create policy comments_insert on comments for insert with check (is_band_member(band_id) and user_id = auth.uid());
+create policy comments_update on comments for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy comments_delete on comments for delete using (user_id = auth.uid() or is_band_admin(band_id));
 
-drop policy if exists meta_public_write on public.song_meta;
-create policy meta_public_write on public.song_meta
-for all using (true) with check (true);
+-- favorites: own only
+create policy favorites_select on favorites for select using (user_id = auth.uid());
+create policy favorites_insert on favorites for insert with check (user_id = auth.uid() and is_band_member(band_id));
+create policy favorites_delete on favorites for delete using (user_id = auth.uid());
 
-drop policy if exists comments_public_read on public.comments;
-create policy comments_public_read on public.comments
-for select using (true);
-
-drop policy if exists comments_public_insert on public.comments;
-create policy comments_public_insert on public.comments
-for insert with check (true);
-
-drop policy if exists comments_admin_delete on public.comments;
-drop policy if exists comments_public_delete on public.comments;
-drop policy if exists comments_delete on public.comments;
-create policy comments_delete on public.comments
-for delete using (
-  user_id = auth.uid()
-  or public.is_admin()
-);
-
-drop policy if exists sugg_public_read on public.suggestions;
-create policy sugg_public_read on public.suggestions
-for select using (true);
-
-drop policy if exists sugg_public_insert on public.suggestions;
-create policy sugg_public_insert on public.suggestions
-for insert with check (true);
-
-drop policy if exists sugg_admin_update on public.suggestions;
-create policy sugg_admin_update on public.suggestions
-for update using (public.is_admin());
-
-drop policy if exists sugg_admin_delete on public.suggestions;
-create policy sugg_admin_delete on public.suggestions
-for delete using (public.is_admin());
-
-create table if not exists public.chat_messages (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users,
-  author text not null,
-  text text not null,
-  created_at timestamptz default now()
-);
-
-do $$
-begin
-  if not exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'chat_messages' and column_name = 'user_id'
-  ) then
-    alter table public.chat_messages add column user_id uuid references auth.users;
-  end if;
-end$$;
-
-alter table public.chat_messages enable row level security;
-
-drop policy if exists chat_public_read on public.chat_messages;
-create policy chat_public_read on public.chat_messages
-for select using (true);
-
-drop policy if exists chat_public_insert on public.chat_messages;
-create policy chat_public_insert on public.chat_messages
-for insert with check (true);
-
-drop policy if exists chat_admin_delete on public.chat_messages;
-drop policy if exists chat_delete on public.chat_messages;
-create policy chat_delete on public.chat_messages
-for delete using (
-  user_id = auth.uid()
-  or public.is_admin()
-);
+-- example_seed_* tables intentionally have no RLS and no policies; access via RPC only.
