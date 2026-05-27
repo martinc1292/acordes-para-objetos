@@ -8,17 +8,10 @@ import {
   getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus
 } from '@/db/songs.js';
 import { transposeText, transposeNote } from '@/lib/transpose.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_LABEL = { pending: 'Pendiente', rehearsing: 'Ensayando', ready: 'Lista' };
 const STATUS_COLOR = { pending: '#888', rehearsing: '#eab308', ready: '#22c55e' };
-
-const DETAIL_TABS = [
-  { id: 'acordes', label: 'Acordes' },
-  { id: 'tabs', label: 'Tabs' },
-  { id: 'letra', label: 'Letra' },
-  { id: 'notas', label: 'Notas' }
-];
 
 const EMPTY_FORM = {
   title: '', artist: '', key: '', tempo: '',
@@ -76,7 +69,15 @@ function normalizeTabEdits(tabEdits) {
 }
 
 export function SongDetail({ bandId, songId, navigate }) {
+  const t = useTranslation('songs');
   const isCreate = songId === null;
+
+  const DETAIL_TABS = [
+    { id: 'acordes',  label: t('section.chords') },
+    { id: 'tabs',     label: t('section.tabs') },
+    { id: 'letra',    label: t('section.lyrics') },
+    { id: 'notas',    label: t('section.notes') }
+  ];
 
   const songs = useStoreValue($songs);
   const bands = useStoreValue($bands);
@@ -111,7 +112,7 @@ export function SongDetail({ bandId, songId, navigate }) {
     getSongWithTabs(getSupabase(), { songId, bandId })
       .then((data) => {
         if (!active) return;
-        if (!data) { setLoadError('Canción no encontrada.'); return; }
+        if (!data) { setLoadError(t('action.not_found')); return; }
         setSong(data);
         setTabs(data.tabs ?? []);
         setForm(formFromSong(data));
@@ -119,7 +120,8 @@ export function SongDetail({ bandId, songId, navigate }) {
       })
       .catch((err) => {
         if (!active) return;
-        setLoadError(err.message || 'Error al cargar la canción.');
+        console.error('getSongWithTabs failed', err);
+        setLoadError(t('common:error.load_failed'));
         setLoading(false);
       });
     return () => { active = false; };
@@ -176,7 +178,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   async function onSave(e) {
     e.preventDefault();
     if (saving) return;
-    if (!form.title.trim()) { setSaveError('El título es requerido.'); return; }
+    if (!form.title.trim()) { setSaveError(t('action.title_required')); return; }
     setSaving(true);
     setSaveError('');
     setSaveMsg('');
@@ -204,10 +206,11 @@ export function SongDetail({ bandId, songId, navigate }) {
         tempo: saved.tempo,
         status: saved.status
       });
-      setSaveMsg('Guardado.');
+      setSaveMsg(t('action.saved'));
       setEditMode(false);
     } catch (err) {
-      setSaveError(err.message || 'Error al guardar.');
+      console.error('saveSongWithTabs failed', err);
+      setSaveError(t('common:error.save_failed'));
     } finally {
       setSaving(false);
     }
@@ -215,7 +218,7 @@ export function SongDetail({ bandId, songId, navigate }) {
 
   // ── delete ────────────────────────────────────────────────────────────────
   async function onDelete() {
-    if (!confirm(`¿Borrar "${song?.title}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(t('action.delete_confirm', { title: song?.title }))) return;
     setSaving(true);
     setSaveError('');
     try {
@@ -223,7 +226,8 @@ export function SongDetail({ bandId, songId, navigate }) {
       removeSongFromStore(songId);
       navigate(`/band/${bandId}`, { replace: true });
     } catch (err) {
-      setSaveError(err.message || 'Error al borrar.');
+      console.error('deleteSong failed', err);
+      setSaveError(t('common:error.delete_failed'));
       setSaving(false);
     }
   }
@@ -250,14 +254,14 @@ export function SongDetail({ bandId, songId, navigate }) {
 
   // ── render ────────────────────────────────────────────────────────────────
   if (loading && !song) {
-    return html`<main style="padding:16px;max-width:700px;margin:0 auto"><p style="color:var(--muted)">Cargando…</p></main>`;
+    return html`<main style="padding:16px;max-width:700px;margin:0 auto"><p style="color:var(--muted)">${t('common:loading')}</p></main>`;
   }
 
   if (loadError) {
     return html`
       <main style="padding:16px;max-width:700px;margin:0 auto">
         <p role="alert" style="color:#f87171">${loadError}</p>
-        <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent)">← Volver</a>
+        <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent)">${t('common:action.back')}</a>
       </main>
     `;
   }
@@ -271,7 +275,7 @@ export function SongDetail({ bandId, songId, navigate }) {
           href=${`/band/${bandId}`}
           onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
           style="color:var(--muted);font-size:0.9rem;white-space:nowrap;margin-top:4px"
-        >← Volver</a>
+        >${t('common:action.back')}</a>
 
         <div style="flex:1;min-width:0">
           ${editMode
@@ -280,7 +284,7 @@ export function SongDetail({ bandId, songId, navigate }) {
                 name="title"
                 value=${form.title}
                 onInput=${updateField('title')}
-                placeholder="Título *"
+                placeholder=${t('field.title')}
                 required
                 disabled=${saving}
                 style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-size:1.25rem;font-weight:700;padding:4px 8px;margin-bottom:6px"
@@ -289,13 +293,13 @@ export function SongDetail({ bandId, songId, navigate }) {
                 name="artist"
                 value=${form.artist}
                 onInput=${updateField('artist')}
-                placeholder="Artista"
+                placeholder=${t('field.artist')}
                 disabled=${saving}
                 style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-size:0.9rem;padding:4px 8px"
               />
             `
             : html`
-              <h1 style="margin:0 0 2px;font-size:1.4rem;line-height:1.2">${isCreate ? 'Nueva canción' : song?.title}</h1>
+              <h1 style="margin:0 0 2px;font-size:1.4rem;line-height:1.2">${isCreate ? t('action.new_song') : song?.title}</h1>
               ${song?.artist && html`<div style="color:var(--muted);font-size:0.9rem">${song.artist}</div>`}
             `
           }
@@ -315,17 +319,17 @@ export function SongDetail({ bandId, songId, navigate }) {
               type="button"
               onClick=${onStatusClick}
               style="padding:4px 10px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.85rem;cursor:pointer;font:inherit"
-              aria-label=${`Estado: ${STATUS_LABEL[song.status]}. Click para cambiar.`}
-            >${STATUS_LABEL[song.status] ?? song.status}</button>
+              aria-label=${t(`status.${song.status}`)}
+            >${t(`status.${song.status}`) ?? song.status}</button>
           `}
 
           ${isAdmin && !editMode && !isCreate && html`
-            <button type="button" onClick=${enterEdit} style="padding:4px 12px;border-radius:4px;background:var(--panel-strong);border:1px solid var(--line);color:var(--text);cursor:pointer;font:inherit">Editar</button>
+            <button type="button" onClick=${enterEdit} style="padding:4px 12px;border-radius:4px;background:var(--panel-strong);border:1px solid var(--line);color:var(--text);cursor:pointer;font:inherit">${t('common:action.edit')}</button>
           `}
           ${editMode && html`
-            <button type="button" onClick=${onSave} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:var(--accent);border:none;color:#fff;cursor:pointer;font:inherit;font-weight:600">${saving ? 'Guardando…' : (isCreate ? 'Crear' : 'Guardar')}</button>
-            <button type="button" onClick=${cancelEdit} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;font:inherit">Cancelar</button>
-            ${!isCreate && html`<button type="button" onClick=${onDelete} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid #7f1d1d;color:#f87171;cursor:pointer;font:inherit">Borrar</button>`}
+            <button type="button" onClick=${onSave} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:var(--accent);border:none;color:#fff;cursor:pointer;font:inherit;font-weight:600">${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}</button>
+            <button type="button" onClick=${cancelEdit} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;font:inherit">${t('common:action.cancel')}</button>
+            ${!isCreate && html`<button type="button" onClick=${onDelete} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid #7f1d1d;color:#f87171;cursor:pointer;font:inherit">${t('common:action.delete')}</button>`}
           `}
         </div>
       </div>
@@ -337,12 +341,12 @@ export function SongDetail({ bandId, songId, navigate }) {
       ${editMode && html`
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
           <label style="display:grid;gap:4px;font-size:0.85rem;color:var(--muted)">
-            Key
+            ${t('field.key')}
             <input name="key" value=${form.key} onInput=${updateField('key')} disabled=${saving}
               style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px" />
           </label>
           <label style="display:grid;gap:4px;font-size:0.85rem;color:var(--muted)">
-            Tempo
+            ${t('field.tempo')}
             <input name="tempo" value=${form.tempo} onInput=${updateField('tempo')} disabled=${saving}
               style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px" />
           </label>
@@ -351,26 +355,26 @@ export function SongDetail({ bandId, songId, navigate }) {
 
       <!-- Section tabs -->
       <nav role="tablist" style="display:flex;border-bottom:1px solid var(--line);margin-bottom:0;gap:0">
-        ${DETAIL_TABS.map((t) => html`
+        ${DETAIL_TABS.map((tab) => html`
           <button
             type="button"
             role="tab"
-            id=${`dtab-${t.id}`}
-            ref=${(node) => { if (node) tabRefs.current[t.id] = node; }}
-            aria-controls=${`dpanel-${t.id}`}
-            aria-selected=${activeTab === t.id}
-            tabIndex=${activeTab === t.id ? 0 : -1}
-            onClick=${() => setActiveTab(t.id)}
+            id=${`dtab-${tab.id}`}
+            ref=${(node) => { if (node) tabRefs.current[tab.id] = node; }}
+            aria-controls=${`dpanel-${tab.id}`}
+            aria-selected=${activeTab === tab.id}
+            tabIndex=${activeTab === tab.id ? 0 : -1}
+            onClick=${() => setActiveTab(tab.id)}
             onKeyDown=${onTabKeyDown}
-            style="padding:10px 16px;background:none;border:none;border-bottom:2px solid ${activeTab === t.id ? 'var(--accent)' : 'transparent'};color:${activeTab === t.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;font:inherit;font-weight:${activeTab === t.id ? '600' : '400'}"
-          >${t.label}</button>
+            style="padding:10px 16px;background:none;border:none;border-bottom:2px solid ${activeTab === tab.id ? 'var(--accent)' : 'transparent'};color:${activeTab === tab.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;font:inherit;font-weight:${activeTab === tab.id ? '600' : '400'}"
+          >${tab.label}</button>
         `)}
       </nav>
 
       <!-- Tab panels -->
       <div id="dpanel-acordes" role="tabpanel" aria-labelledby="dtab-acordes" style="${activeTab !== 'acordes' ? 'display:none' : 'padding:16px 0'}">
         <div style="margin-bottom:16px">
-          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">Progresión</div>
+          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">${t('section.progression')}</div>
           ${editMode
             ? html`<textarea name="progression" value=${form.progression} onInput=${updateField('progression')} disabled=${saving} rows="3"
                 style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:monospace;padding:8px;resize:vertical"></textarea>`
@@ -378,7 +382,7 @@ export function SongDetail({ bandId, songId, navigate }) {
           }
         </div>
         <div>
-          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">Estructura</div>
+          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">${t('section.structure')}</div>
           ${editMode
             ? html`<textarea name="structure" value=${form.structure} onInput=${updateField('structure')} disabled=${saving} rows="3"
                 style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
@@ -396,7 +400,7 @@ export function SongDetail({ bandId, songId, navigate }) {
                   <input
                     value=${te.title}
                     onInput=${(e) => updateTabEdit(i, 'title', e.currentTarget.value)}
-                    placeholder="Nombre del tab"
+                    placeholder=${t('placeholder.tab_name')}
                     disabled=${saving}
                     style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px"
                   />
@@ -406,7 +410,7 @@ export function SongDetail({ bandId, songId, navigate }) {
                 <textarea
                   value=${te.content}
                   onInput=${(e) => updateTabEdit(i, 'content', e.currentTarget.value)}
-                  placeholder="e|---..."
+                  placeholder=${t('placeholder.tab_content')}
                   rows="5"
                   disabled=${saving}
                   style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:monospace;font-size:0.85rem;padding:8px;resize:vertical"
@@ -415,12 +419,12 @@ export function SongDetail({ bandId, songId, navigate }) {
             `)}
             <button type="button" onClick=${addTabEdit} disabled=${saving}
               style="background:var(--panel);border:1px dashed var(--line);color:var(--muted);padding:8px 16px;border-radius:4px;cursor:pointer;font:inherit;width:100%">
-              + Agregar tab
+              ${t('action.add_tab')}
             </button>
           `
           : html`
             ${tabs.length === 0
-              ? html`<p style="color:var(--muted)">Sin tabs.</p>`
+              ? html`<p style="color:var(--muted)">${t('placeholder.no_tabs')}</p>`
               : tabs.map((tab) => html`
                 <div key=${tab.id} style="margin-bottom:20px">
                   <div style="font-weight:600;margin-bottom:8px;font-size:0.9rem">${tab.title}</div>
@@ -436,7 +440,7 @@ export function SongDetail({ bandId, songId, navigate }) {
         ${editMode
           ? html`<textarea name="lyrics" value=${form.lyrics} onInput=${updateField('lyrics')} disabled=${saving} rows="12"
               style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
-          : html`<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:${song?.lyrics ? 'var(--text)' : 'var(--muted)'}">${song?.lyrics || 'Sin letra.'}</pre>`
+          : html`<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:${song?.lyrics ? 'var(--text)' : 'var(--muted)'}">${song?.lyrics || t('placeholder.no_lyrics')}</pre>`
         }
       </div>
 
@@ -444,7 +448,7 @@ export function SongDetail({ bandId, songId, navigate }) {
         ${editMode
           ? html`<textarea name="notes" value=${form.notes} onInput=${updateField('notes')} disabled=${saving} rows="6"
               style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
-          : html`<p style="margin:0;color:${song?.notes ? 'var(--text)' : 'var(--muted)'}">${song?.notes || 'Sin notas.'}</p>`
+          : html`<p style="margin:0;color:${song?.notes ? 'var(--text)' : 'var(--muted)'}">${song?.notes || t('placeholder.no_notes')}</p>`
         }
       </div>
 
