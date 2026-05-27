@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
 import { $currentUser, $bands, $authReady, $activeBandId } from '@/stores/auth.js';
 import { clearSongs } from '@/stores/songs.js';
+import { clearFavorites } from '@/stores/favorites.js';
 import { Login } from '@/views/Login.js';
 import { AuthCallback } from '@/views/AuthCallback.js';
 import { Onboarding } from '@/views/Onboarding.js';
@@ -64,6 +65,7 @@ export function App({ router }) {
   // Clear songs cache when active band changes
   useEffect(() => {
     clearSongs();
+    clearFavorites();
   }, [activeBandId]);
 
   if (!ready) {
