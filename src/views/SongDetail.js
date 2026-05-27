@@ -11,7 +11,6 @@ import { useTranslation } from '@/stores/useTranslation.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
 const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
-const STATUS_ORDER = ['pending', 'rehearsing', 'ready'];
 
 const EMPTY_FORM = {
   title: '', artist: '', key: '', tempo: '',
@@ -481,38 +480,43 @@ export function SongDetail({ bandId, songId, navigate }) {
   return html`
     <main style="padding:16px;max-width:700px;margin:0 auto">
 
-      <!-- Back -->
-      <a
-        href=${`/band/${bandId}`}
-        onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
-        style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;display:block;margin-bottom:14px"
-      >← ${t('common:action.back')}</a>
+      <!-- Back + Edit -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <a
+          href=${`/band/${bandId}`}
+          onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
+          style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none"
+        >← ${t('common:action.back')}</a>
+        ${isAdmin && !isCreate && html`
+          <button
+            type="button"
+            onClick=${enterEdit}
+            style="background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;padding:5px 14px;border-radius:2px;cursor:pointer"
+          >${t('common:action.edit')}</button>
+        `}
+      </div>
 
       <!-- Song header -->
       <div style="border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px">
         <h1 style="margin:0 0 6px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:-0.02em;line-height:1.05">
           ${song?.title ?? t('action.new_song')}
         </h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:0.75rem;color:var(--muted)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);font-size:0.75rem;color:var(--muted)">
           ${song?.artist && html`<span>${song.artist}</span>`}
-          ${song?.artist && (song?.key || song?.tempo) && html`<span>·</span>`}
+          ${song?.artist && (displayKey || song?.tempo) && html`<span>·</span>`}
           ${displayKey && html`<span style="color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:2px">${transpose !== 0 ? `${song.key} → ${displayKey}` : displayKey}</span>`}
           ${song?.tempo && html`<span>·</span><span>${song.tempo}</span>`}
+          ${!isCreate && song && html`
+            <span
+              onClick=${() => isAdmin && onStatusClick(STATUS_NEXT[song.status] ?? 'pending')}
+              onKeyDown=${(e) => { if (isAdmin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onStatusClick(STATUS_NEXT[song.status] ?? 'pending'); } }}
+              role=${isAdmin ? 'button' : undefined}
+              tabIndex=${isAdmin ? '0' : undefined}
+              aria-label=${isAdmin ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
+              style="margin-left:auto;font-size:0.72rem;color:${STATUS_COLOR[song.status] ?? 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};white-space:nowrap"
+            >● ${t(`status.${song.status}`)}${isAdmin ? ' ▸' : ''}</span>
+          `}
         </div>
-        ${!isCreate && song && html`
-          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-            ${STATUS_ORDER.map((s) => html`
-              <button
-                key=${s}
-                type="button"
-                onClick=${() => onStatusClick(s)}
-                disabled=${!isAdmin}
-                style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px;border-radius:2px;border:1px solid ${song.status === s ? STATUS_COLOR[s] : 'var(--line)'};background:transparent;color:${song.status === s ? STATUS_COLOR[s] : 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};opacity:${isAdmin ? '1' : '0.75'}"
-                aria-pressed=${song.status === s}
-              >● ${t(`status.${s}`)}</button>
-            `)}
-          </div>
-        `}
       </div>
 
       ${saveMsg && html`<p aria-live="polite" style="color:var(--green);margin:0 0 12px;font-family:var(--mono);font-size:0.85rem">${saveMsg}</p>`}
@@ -589,15 +593,6 @@ export function SongDetail({ bandId, songId, navigate }) {
         <p style="color:var(--muted);font-family:var(--mono);font-size:0.85rem">${t('placeholder.no_songs')}</p>
       `}
 
-      <!-- Edit button -->
-      ${isAdmin && !isCreate && html`
-        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--line)">
-          <button type="button" onClick=${enterEdit}
-            style="background:var(--panel);border:1px solid var(--line);color:var(--text);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
-            ${t('common:action.edit')}
-          </button>
-        </div>
-      `}
     </main>
   `;
 }
