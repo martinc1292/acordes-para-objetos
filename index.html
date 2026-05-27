@@ -7,7 +7,7 @@
     <title>Setlist &amp; Acordes</title>
     <script>
       (function () {
-        var stored = localStorage.getItem('theme') || 'dark';
+        var stored = localStorage.getItem('setlist.theme') || 'system';
         var resolved = stored;
         if (stored === 'system') {
           resolved = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';

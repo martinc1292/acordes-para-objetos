@@ -39,7 +39,8 @@
     "delete_confirm": "Delete \"{{title}}\"? This cannot be undone.",
     "favorite_error": "Could not save favorite.",
     "saved": "Saved.",
-    "not_found": "Song not found."
+    "not_found": "Song not found.",
+    "admin_required": "You need to sign in with an admin user to edit songs."
   },
   "field": {
     "title": "Title *",

@@ -39,7 +39,8 @@
     "delete_confirm": "¿Borrar \"{{title}}\"? Esta acción no se puede deshacer.",
     "favorite_error": "No pudimos guardar el favorito.",
     "saved": "Guardado.",
-    "not_found": "Canción no encontrada."
+    "not_found": "Canción no encontrada.",
+    "admin_required": "Necesitás ingresar con un usuario administrador para editar canciones."
   },
   "field": {
     "title": "Título *",
