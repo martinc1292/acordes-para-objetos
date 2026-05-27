@@ -427,7 +427,10 @@ begin
       nullif(trim(coalesce(p_song ->> 'progression', '')), ''),
       nullif(trim(coalesce(p_song ->> 'lyrics', '')), ''),
       nullif(trim(coalesce(p_song ->> 'notes', '')), ''),
-      coalesce(nullif(p_song ->> 'sort_order', '')::int, 0)
+      coalesce(
+        nullif(p_song ->> 'sort_order', '')::int,
+        (select coalesce(max(sort_order) + 1, 0) from public.songs where band_id = p_band_id)
+      )
     )
     returning * into v_song;
     v_song_id := v_song.id;

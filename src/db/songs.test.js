@@ -182,6 +182,28 @@ describe('saveSongWithTabs', () => {
       /Solo admins/
     );
   });
+
+  it('omits sort_order when no sortOrder is provided', async () => {
+    const calls = [];
+    const savedSong = {
+      ...SONG_ROW,
+      title: 'Direct URL Song',
+      tabs: []
+    };
+    const client = fakeRpcClient((name, payload) => {
+      calls.push([name, payload]);
+      return Promise.resolve({ data: savedSong, error: null });
+    });
+
+    await saveSongWithTabs(client, {
+      bandId: 'b1',
+      songId: null,
+      fields: { title: 'Direct URL Song' },
+      tabs: []
+    });
+
+    assert.deepEqual(calls[0][1].p_song, { title: 'Direct URL Song' });
+  });
 });
 
 // -- createSong ---------------------------------------------------------------
