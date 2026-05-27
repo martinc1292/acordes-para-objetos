@@ -1,0 +1,95 @@
+<h2>Layout de lista de canciones</h2>
+<p class="subtitle">¿Cómo querés ver la lista principal?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Lista compacta con badge de status</h3>
+      <p>Una fila por canción, dense. Badge de color para status (verde=lista, amarillo=ensayando, gris=pendiente). Bueno para listas largas (36+ canciones).</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa</div>
+        <div class="mockup-body" style="padding:0">
+          <div style="font-family:monospace;font-size:13px">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #333">
+              <span style="background:#22c55e;width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span>
+              <span style="flex:1;font-weight:600">Careless Whisper</span>
+              <span style="color:#888;font-size:12px">George Michael</span>
+              <span style="color:#888;font-size:12px;margin-left:8px">Dm</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #333">
+              <span style="background:#eab308;width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span>
+              <span style="flex:1;font-weight:600">Heart of Glass</span>
+              <span style="color:#888;font-size:12px">Blondie</span>
+              <span style="color:#888;font-size:12px;margin-left:8px">E</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #333">
+              <span style="background:#444;width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0"></span>
+              <span style="flex:1;font-weight:600">Hot Stuff</span>
+              <span style="color:#888;font-size:12px">Donna Summer</span>
+              <span style="color:#888;font-size:12px;margin-left:8px">Am</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cards con más info visible</h3>
+      <p>Cada canción es una card con título, artista, key, tempo y status. Más espacio, más contexto de un vistazo. Grid de 2 columnas en tablet/desktop.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+            <div style="background:#1a1a1a;border-radius:6px;padding:12px;border-left:3px solid #22c55e">
+              <div style="font-weight:700;margin-bottom:4px">Careless Whisper</div>
+              <div style="color:#888;font-size:12px">George Michael</div>
+              <div style="display:flex;gap:8px;margin-top:8px;font-size:11px">
+                <span style="background:#333;padding:2px 6px;border-radius:4px">Dm</span>
+                <span style="background:#333;padding:2px 6px;border-radius:4px">76 BPM</span>
+                <span style="background:#22c55e22;color:#22c55e;padding:2px 6px;border-radius:4px">Lista</span>
+              </div>
+            </div>
+            <div style="background:#1a1a1a;border-radius:6px;padding:12px;border-left:3px solid #eab308">
+              <div style="font-weight:700;margin-bottom:4px">Heart of Glass</div>
+              <div style="color:#888;font-size:12px">Blondie</div>
+              <div style="display:flex;gap:8px;margin-top:8px;font-size:11px">
+                <span style="background:#333;padding:2px 6px;border-radius:4px">E</span>
+                <span style="background:#333;padding:2px 6px;border-radius:4px">116 BPM</span>
+                <span style="background:#eab30822;color:#eab308;padding:2px 6px;border-radius:4px">Ensayando</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Lista agrupada por status</h3>
+      <p>Las canciones se agrupan en secciones: "Listas", "Ensayando", "Pendientes". Dentro de cada grupo, lista compacta. Visión rápida del estado del ensayo.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa</div>
+        <div class="mockup-body" style="padding:0;font-size:13px">
+          <div style="padding:8px 14px;background:#22c55e18;color:#22c55e;font-weight:700;font-size:11px;letter-spacing:0.05em;text-transform:uppercase">● Listas (2)</div>
+          <div style="padding:8px 14px;border-bottom:1px solid #222;display:flex;gap:8px">
+            <span style="flex:1">Careless Whisper</span><span style="color:#888">Dm</span>
+          </div>
+          <div style="padding:8px 14px;border-bottom:1px solid #222;display:flex;gap:8px">
+            <span style="flex:1">Hot Stuff</span><span style="color:#888">Am</span>
+          </div>
+          <div style="padding:8px 14px;background:#eab30818;color:#eab308;font-weight:700;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;margin-top:4px">◉ Ensayando (1)</div>
+          <div style="padding:8px 14px;border-bottom:1px solid #222;display:flex;gap:8px">
+            <span style="flex:1">Heart of Glass</span><span style="color:#888">E</span>
+          </div>
+          <div style="padding:8px 14px;background:#44444418;color:#888;font-weight:700;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;margin-top:4px">○ Pendientes (33)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
