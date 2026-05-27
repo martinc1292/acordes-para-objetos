@@ -152,15 +152,24 @@ export function SongList({ bandId, navigate }) {
 
   return html`
     <main style="padding:16px;max-width:900px;margin:0 auto">
-      <header style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap">
-        <h1 style="margin:0;font-size:1.5rem">${band?.name ?? 'Setlist'}</h1>
-        <nav style="display:flex;gap:10px;align-items:center">
-          <a
-            href=${`/band/${bandId}/settings`}
-            onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}/settings`); }}
-            style="color:var(--muted);font-size:0.9rem"
-          >${t('common:nav.settings')}</a>
-        </nav>
+      <header style="margin-bottom:20px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">
+              ${t('bands:eyebrow')}
+            </div>
+            <h1 style="margin:0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.5rem,4vw,2.25rem);letter-spacing:-0.02em;line-height:1">
+              ${band?.name ?? 'Setlist'}
+            </h1>
+          </div>
+          <nav style="display:flex;gap:10px;align-items:center;margin-top:4px">
+            <a
+              href=${`/band/${bandId}/settings`}
+              onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}/settings`); }}
+              style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;letter-spacing:0.05em"
+            >${t('common:nav.settings')}</a>
+          </nav>
+        </div>
       </header>
 
       <input
@@ -223,10 +232,12 @@ export function SongList({ bandId, navigate }) {
               key=${song.id}
               href=${`/band/${bandId}/song/${song.id}`}
               onClick=${(e) => onCardClick(e, song.id)}
+              onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel-strong)'; }}
+              onMouseLeave=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
               style="display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-left:3px solid ${STATUS_COLOR[song.status] ?? '#888'};border-radius:8px;padding:16px;cursor:pointer;transition:background 0.15s"
             >
-              <div style="font-weight:700;margin-bottom:4px;font-size:1rem">${song.title}</div>
-              <div style="color:var(--muted);font-size:0.875rem;margin-bottom:12px">${song.artist ?? ''}</div>
+              <div style="font-family:var(--serif);font-style:italic;font-weight:400;margin-bottom:4px;font-size:1rem">${song.title}</div>
+              <div style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;margin-bottom:12px">${song.artist ?? ''}</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
                 <button
                   type="button"
@@ -236,13 +247,13 @@ export function SongList({ bandId, navigate }) {
                   aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
                   aria-pressed=${favoriteSet.has(song.id)}
                 >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
-                ${song.key && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;font-family:monospace">${song.key}</span>`}
-                ${song.tempo && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;color:var(--muted)">${song.tempo}</span>`}
+                ${song.key && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;font-family:var(--mono)">${song.key}</span>`}
+                ${song.tempo && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;color:var(--muted);font-family:var(--mono)">${song.tempo}</span>`}
                 <button
                   type="button"
                   onClick=${(e) => onStatusClick(e, song)}
                   disabled=${statusBusy === song.id}
-                  style="padding:2px 8px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.8rem;cursor:pointer;font:inherit;margin-left:auto"
+                  style="padding:2px 8px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.8rem;cursor:pointer;font:inherit;font-family:var(--mono);margin-left:auto"
                   aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
                 >${t(`status.${song.status}`) ?? song.status}</button>
               </div>
