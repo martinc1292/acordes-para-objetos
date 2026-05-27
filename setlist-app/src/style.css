@@ -31,6 +31,11 @@
   box-sizing: border-box;
 }
 
+html[data-initial-theme='light'] {
+  background: #faf7f2;
+  color: #1a1a1a;
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
