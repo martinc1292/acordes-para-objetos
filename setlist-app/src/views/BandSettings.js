@@ -13,6 +13,7 @@ import {
 import { refreshBands, removeLocalBand, $currentUser, $bands } from '@/stores/auth.js';
 import { useStoreValue } from '@/stores/useStoreValue.js';
 import { useTranslation } from '@/stores/useTranslation.js';
+import { LanguageToggle } from '@/views/LanguageToggle.js';
 
 const TABS = ['general', 'members', 'advanced'];
 
@@ -157,6 +158,12 @@ function GeneralTab({ bandId, band, isAdmin }) {
       `}
       ${message && html`<p aria-live="polite">${message}</p>`}
     </form>
+    <div style="margin-top:24px">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:8px">
+        ES / EN
+      </div>
+      <${LanguageToggle} />
+    </div>
   `;
 }
 
