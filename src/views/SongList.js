@@ -37,7 +37,7 @@ export function SongList({ bandId, navigate }) {
   const favoriteSongIds = useStoreValue($favoriteSongIds);
   const favoritesError = useStoreValue($favoritesError);
   const band = bands.find((b) => b.id === bandId);
-  const isAdmin = band?.role === 'admin';
+  const isAdmin = Boolean(user?.id && band?.role === 'admin');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [statusBusy, setStatusBusy] = useState(null);
@@ -66,7 +66,7 @@ export function SongList({ bandId, navigate }) {
   async function onStatusClick(event, song) {
     event.preventDefault();
     event.stopPropagation();
-    if (statusBusy) return;
+    if (statusBusy || !isAdmin) return;
     const next = STATUS_NEXT[song.status] ?? 'pending';
     const prev = song.status;
     setStatusBusy(song.id);
@@ -244,52 +244,55 @@ export function SongList({ bandId, navigate }) {
       <!-- Song rows -->
       ${loaded && filtered.length > 0 && html`
         <div>
-          ${filtered.map((song, index) => html`
-            <a
+          ${filtered.map((song) => html`
+            <div
               key=${song.id}
-              href=${`/band/${bandId}/song/${song.id}`}
-              onClick=${(e) => onRowClick(e, song.id)}
-              style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit;border-radius:2px;transition:background 0.1s"
-              onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
-              onMouseLeave=${(e) => { e.currentTarget.style.background = 'transparent'; }}
+              style="display:flex;align-items:stretch;margin-bottom:2px"
             >
-              <span style="color:var(--muted);font-size:0.9rem;user-select:none;flex-shrink:0" aria-hidden="true">⠿</span>
-              <span style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);min-width:18px;flex-shrink:0">
-                ${String(index + 1).padStart(2, '0')}
-              </span>
-              <span
-                style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};flex-shrink:0;cursor:pointer"
+              <div
+                style="width:16px;flex-shrink:0;display:flex;align-items:stretch;cursor:${isAdmin ? 'pointer' : 'default'}"
                 onClick=${(e) => onStatusClick(e, song)}
                 onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStatusClick(e, song); } }}
-                role="button"
-                aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
-                tabIndex="0"
-              ></span>
-              <div style="flex:1;min-width:0">
-                <div style="font-family:var(--serif);font-style:italic;font-size:1rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                  ${song.title}
+                role=${isAdmin ? 'button' : undefined}
+                tabIndex=${isAdmin ? '0' : undefined}
+                aria-label=${isAdmin ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
+              >
+                <div style="width:3px;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};border-radius:1px;align-self:stretch"></div>
+              </div>
+              <a
+                href=${`/band/${bandId}/song/${song.id}`}
+                onClick=${(e) => onRowClick(e, song.id)}
+                style="flex:1;padding:12px 12px 10px;text-decoration:none;color:inherit;min-width:0;transition:background 0.1s"
+                onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
+                onMouseLeave=${(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                  <div style="font-family:var(--serif);font-style:italic;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${song.title}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                    <button
+                      type="button"
+                      onClick=${(e) => onFavoriteClick(e, song)}
+                      disabled=${!user?.id || favoriteBusy === song.id}
+                      style="border:none;background:none;color:${favoriteSet.has(song.id) ? 'var(--yellow)' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0;line-height:1;flex-shrink:0"
+                      aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                      aria-pressed=${favoriteSet.has(song.id)}
+                    >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
+                    ${song.key && html`
+                      <span style="font-family:var(--mono);font-size:0.72rem;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:2px;flex-shrink:0">
+                        ${song.key}
+                      </span>
+                    `}
+                  </div>
                 </div>
                 ${song.artist && html`
-                  <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  <div style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                     ${song.artist}
                   </div>
                 `}
-              </div>
-              <button
-                type="button"
-                onClick=${(e) => onFavoriteClick(e, song)}
-                disabled=${!user?.id || favoriteBusy === song.id}
-                style="border:none;background:none;color:${favoriteSet.has(song.id) ? 'var(--yellow)' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0 2px;line-height:1;flex-shrink:0"
-                aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
-                aria-pressed=${favoriteSet.has(song.id)}
-              >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
-              ${song.key && html`
-                <span style="font-family:var(--mono);font-size:0.72rem;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:2px;flex-shrink:0">
-                  ${song.key}
-                </span>
-              `}
-              <span style="color:var(--muted);font-size:0.85rem;flex-shrink:0" aria-hidden="true">→</span>
-            </a>
+              </a>
+            </div>
           `)}
         </div>
       `}
