@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
 import { $songs, $songsLoaded, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
-import { $bands } from '@/stores/auth.js';
+import { $bands, $currentUser } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import { getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus } from '@/db/songs.js';
 import { transposeText, transposeNote } from '@/lib/transpose.js';
@@ -111,7 +111,7 @@ function Metronome({ initialTempo }) {
   const btnStyle = 'background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:0 8px;height:22px;border-radius:2px;cursor:pointer';
 
   return html`
-    <div style="display:flex;align-items:center;gap:10px;background:var(--panel);padding:10px 14px;border-left:2px solid var(--accent);flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div>
         <div style="font-family:var(--mono);font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1;letter-spacing:-0.03em">${bpm}</div>
         <div style="font-family:var(--mono);font-size:0.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.2em">BPM</div>
@@ -149,8 +149,9 @@ export function SongDetail({ bandId, songId, navigate }) {
   const songs = useStoreValue($songs);
   const songsLoaded = useStoreValue($songsLoaded);
   const bands = useStoreValue($bands);
+  const currentUser = useStoreValue($currentUser);
   const band = bands.find((b) => b.id === bandId);
-  const isAdmin = band?.role === 'admin';
+  const isAdmin = Boolean(currentUser?.id && band?.role === 'admin');
 
   const storeSong = songs.find((s) => s.id === songId) ?? null;
   const [song, setSong] = useState(isCreate ? null : storeSong);
@@ -232,7 +233,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   }
 
   async function onStatusClick(nextStatus) {
-    if (!song) return;
+    if (!song || !isAdmin) return;
     const prev = song.status;
     setSong((s) => ({ ...s, status: nextStatus }));
     patchSongInStore(songId, { status: nextStatus });
@@ -260,6 +261,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   async function onSave(e) {
     e.preventDefault();
     if (saving) return;
+    if (!isAdmin) { setSaveError(t('action.admin_required')); return; }
     if (!form.title.trim()) { setSaveError(t('action.title_required')); return; }
     setSaving(true);
     setSaveError('');
@@ -296,6 +298,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   }
 
   async function onDelete() {
+    if (!isAdmin) { setSaveError(t('action.admin_required')); return; }
     if (!confirm(t('action.delete_confirm', { title: song?.title }))) return;
     setSaving(true);
     setSaveError('');
@@ -329,6 +332,15 @@ export function SongDetail({ bandId, songId, navigate }) {
     return html`
       <main style="padding:16px;max-width:700px;margin:0 auto">
         <p role="alert" style="color:#f87171;font-family:var(--mono)">${loadError}</p>
+        <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent);font-family:var(--mono)">${t('common:action.back')}</a>
+      </main>
+    `;
+  }
+
+  if (isCreate && !isAdmin) {
+    return html`
+      <main style="padding:16px;max-width:700px;margin:0 auto">
+        <p role="alert" style="color:#f87171;font-family:var(--mono)">${t('action.admin_required')}</p>
         <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent);font-family:var(--mono)">${t('common:action.back')}</a>
       </main>
     `;
@@ -494,7 +506,8 @@ export function SongDetail({ bandId, songId, navigate }) {
                 key=${s}
                 type="button"
                 onClick=${() => onStatusClick(s)}
-                style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px;border-radius:2px;border:1px solid ${song.status === s ? STATUS_COLOR[s] : 'var(--line)'};background:transparent;color:${song.status === s ? STATUS_COLOR[s] : 'var(--muted)'};cursor:pointer"
+                disabled=${!isAdmin}
+                style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px;border-radius:2px;border:1px solid ${song.status === s ? STATUS_COLOR[s] : 'var(--line)'};background:transparent;color:${song.status === s ? STATUS_COLOR[s] : 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};opacity:${isAdmin ? '1' : '0.75'}"
                 aria-pressed=${song.status === s}
               >● ${t(`status.${s}`)}</button>
             `)}
