@@ -284,11 +284,11 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
                 onChange=${(event) => onRoleChange(member, event.currentTarget.value)}
                 disabled=${busy}
               >
-                <option value="admin">admin</option>
-                <option value="member">member</option>
+                <option value="admin">${t('role.admin')}</option>
+                <option value="member">${t('role.member')}</option>
               </select>
               <button type="button" onClick=${() => onRemove(member)} disabled=${busy}>${t('settings.member.remove')}</button>
-            ` : html`<span>(${member.role})</span>`}
+            ` : html`<span>(${t(`role.${member.role}`)})</span>`}
           </li>
         `)}
       </ul>
@@ -315,8 +315,8 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
                 value=${inviteRole}
                 onChange=${(event) => setInviteRole(event.currentTarget.value)}
               >
-                <option value="member">member</option>
-                <option value="admin">admin</option>
+                <option value="member">${t('role.member')}</option>
+                <option value="admin">${t('role.admin')}</option>
               </select>
             </label>
             <button type="submit" disabled=${busy}>${t('settings.invitation.generate')}</button>

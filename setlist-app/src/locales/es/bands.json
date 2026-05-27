@@ -25,6 +25,10 @@
       "remove_confirm": "Quitar a {{name}}?",
       "role_aria": "Rol de {{name}}"
     },
+    "role": {
+      "admin": "Admin",
+      "member": "Miembro"
+    },
     "invitation": {
       "title": "Invitaciones",
       "role_label": "Rol",

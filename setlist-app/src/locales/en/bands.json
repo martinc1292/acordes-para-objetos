@@ -25,6 +25,10 @@
       "remove_confirm": "Remove {{name}}?",
       "role_aria": "Role of {{name}}"
     },
+    "role": {
+      "admin": "Admin",
+      "member": "Member"
+    },
     "invitation": {
       "title": "Invitations",
       "role_label": "Role",
