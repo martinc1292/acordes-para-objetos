@@ -7,11 +7,9 @@ import { clearFavorites } from '@/stores/favorites.js';
 import { Login } from '@/views/Login.js';
 import { AuthCallback } from '@/views/AuthCallback.js';
 import { Onboarding } from '@/views/Onboarding.js';
-import { InviteAccept } from '@/views/InviteAccept.js';
-import { BandSettings } from '@/views/BandSettings.js';
 import { SongList } from '@/views/SongList.js';
-import { SongDetail } from '@/views/SongDetail.js';
 import { UpdateBanner } from '@/views/UpdateBanner.js';
+import { RouteLoader } from '@/views/RouteLoader.js';
 
 function getSearch() {
   return typeof window === 'undefined' ? '' : window.location.search;
@@ -35,6 +33,10 @@ function decidePostLogin({ route, bands, search }) {
   if (REENTRY.has(route.name)) return { path: `/band/${bands[0].id}`, replace: true };
   return null;
 }
+
+const loadInviteAccept = () => import('@/views/InviteAccept.js');
+const loadBandSettings = () => import('@/views/BandSettings.js');
+const loadSongDetail = () => import('@/views/SongDetail.js');
 
 function decideUnauthRedirect({ route }) {
   const PUBLIC = new Set(['login', 'auth-callback']);
@@ -90,15 +92,15 @@ export function App({ router }) {
           case 'onboarding':
             return html`<${Onboarding} navigate=${navigate} />`;
           case 'invite-accept':
-            return html`<${InviteAccept} token=${route.params.token} navigate=${navigate} />`;
+            return html`<${RouteLoader} load=${loadInviteAccept} props=${{ token: route.params.token, navigate }} />`;
           case 'band-settings':
-            return html`<${BandSettings} bandId=${route.params.bandId} navigate=${navigate} />`;
+            return html`<${RouteLoader} load=${loadBandSettings} props=${{ bandId: route.params.bandId, navigate }} />`;
           case 'band-home':
             return html`<${SongList} bandId=${route.params.bandId} navigate=${navigate} />`;
           case 'song-detail':
-            return html`<${SongDetail} bandId=${route.params.bandId} songId=${route.params.songId} navigate=${navigate} />`;
+            return html`<${RouteLoader} load=${loadSongDetail} props=${{ bandId: route.params.bandId, songId: route.params.songId, navigate }} />`;
           case 'song-new':
-            return html`<${SongDetail} bandId=${route.params.bandId} songId=${null} navigate=${navigate} />`;
+            return html`<${RouteLoader} load=${loadSongDetail} props=${{ bandId: route.params.bandId, songId: null, navigate }} />`;
           case 'home':
           default:
             return html`<main style="padding:24px"><p>Redirigiendo...</p></main>`;
