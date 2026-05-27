@@ -349,14 +349,22 @@ export function SongDetail({ bandId, songId, navigate }) {
   if (editMode) {
     return html`
       <main style="padding:16px;max-width:700px;margin:0 auto">
-        <a
-          href=${`/band/${bandId}`}
-          onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
-          style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;display:block;margin-bottom:16px"
-        >${t('common:action.back')}</a>
-
-        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.25em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">
-          ${isCreate ? t('action.new_song') : t('common:action.edit')}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:20px">
+          <a
+            href=${`/band/${bandId}`}
+            onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
+            style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none"
+          >← ${t('common:action.back')}</a>
+          <div style="display:flex;gap:6px">
+            <button type="button" onClick=${cancelEdit} disabled=${saving}
+              style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:5px 14px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em">
+              ${t('common:action.cancel')}
+            </button>
+            <button type="button" onClick=${onSave} disabled=${saving}
+              style="background:var(--accent);border:none;color:var(--accent-contrast);padding:5px 14px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-weight:700;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em">
+              ${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}
+            </button>
+          </div>
         </div>
 
         ${saveError && html`<p role="alert" style="color:#f87171;margin:0 0 12px;font-family:var(--mono);font-size:0.85rem">${saveError}</p>`}
@@ -455,23 +463,14 @@ export function SongDetail({ bandId, songId, navigate }) {
             style="${inputStyle};font-family:var(--mono);resize:vertical"></textarea>
         </div>
 
-        <!-- Actions -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--line)">
-          <button type="button" onClick=${onSave} disabled=${saving}
-            style="background:var(--accent);border:none;color:var(--accent-contrast);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
-            ${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}
-          </button>
-          <button type="button" onClick=${cancelEdit} disabled=${saving}
-            style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
-            ${t('common:action.cancel')}
-          </button>
-          ${!isCreate && html`
+        ${!isCreate && html`
+          <div style="margin-top:32px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end">
             <button type="button" onClick=${onDelete} disabled=${saving}
-              style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;margin-left:auto">
+              style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:6px 16px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
               ${t('common:action.delete')}
             </button>
-          `}
-        </div>
+          </div>
+        `}
       </main>
     `;
   }
