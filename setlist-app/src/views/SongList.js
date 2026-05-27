@@ -13,17 +13,10 @@ import { $bands, $currentUser } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import { updateSongStatus } from '@/db/songs.js';
 import { addFavorite, removeFavorite } from '@/db/favorites.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_LABEL = { pending: 'Pendiente', rehearsing: 'Ensayando', ready: 'Lista' };
 const STATUS_COLOR = { pending: '#888', rehearsing: '#eab308', ready: '#22c55e' };
-const FILTERS = [
-  { id: 'all', label: 'Todas' },
-  { id: 'favorites', label: 'Favoritas' },
-  { id: 'pending', label: 'Pendientes' },
-  { id: 'rehearsing', label: 'Ensayando' },
-  { id: 'ready', label: 'Listas' }
-];
 
 function shouldHandleLinkClick(e) {
   return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
@@ -43,6 +36,7 @@ function SkeletonCard() {
 }
 
 export function SongList({ bandId, navigate }) {
+  const t = useTranslation('songs');
   const songs = useStoreValue($songs);
   const loaded = useStoreValue($songsLoaded);
   const error = useStoreValue($songsError);
@@ -59,6 +53,14 @@ export function SongList({ bandId, navigate }) {
   const [favoriteToggleError, setFavoriteToggleError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
   const favoriteSet = useMemo(() => new Set(favoriteSongIds), [favoriteSongIds]);
+
+  const FILTERS = [
+    { id: 'all',        label: t('filter.all') },
+    { id: 'favorites',  label: t('filter.favorites') },
+    { id: 'pending',    label: t('filter.pending') },
+    { id: 'rehearsing', label: t('filter.rehearsing') },
+    { id: 'ready',      label: t('filter.ready') }
+  ];
 
   useEffect(() => {
     loadSongs(getSupabase(), bandId).catch((err) => {
@@ -108,7 +110,7 @@ export function SongList({ bandId, navigate }) {
     } catch (err) {
       if (wasFavorite) addFavoriteToStore(song.id);
       else removeFavoriteFromStore(song.id);
-      setFavoriteToggleError(err?.message || 'No pudimos guardar el favorito.');
+      setFavoriteToggleError(t('action.favorite_error'));
       console.error('toggle favorite failed', err);
     } finally {
       setFavoriteBusy(null);
@@ -145,12 +147,8 @@ export function SongList({ bandId, navigate }) {
   }), [favoriteSet, filter, search, songs]);
 
   const emptyLabel = search
-    ? 'Sin resultados.'
-    : filter === 'favorites'
-      ? 'Sin favoritas todavia.'
-      : filter === 'all'
-        ? 'Sin canciones todavia.'
-        : `Sin canciones en ${FILTERS.find((f) => f.id === filter)?.label.toLowerCase()}.`;
+    ? t('placeholder.no_results')
+    : t('placeholder.no_songs');
 
   return html`
     <main style="padding:16px;max-width:900px;margin:0 auto">
@@ -161,13 +159,13 @@ export function SongList({ bandId, navigate }) {
             href=${`/band/${bandId}/settings`}
             onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}/settings`); }}
             style="color:var(--muted);font-size:0.9rem"
-          >Ajustes</a>
+          >${t('common:nav.settings')}</a>
         </nav>
       </header>
 
       <input
         type="search"
-        placeholder="Buscar cancion o artista..."
+        placeholder=${t('placeholder.search')}
         value=${search}
         onInput=${(e) => setSearch(e.currentTarget.value)}
         style="width:100%;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit;margin-bottom:16px"
@@ -205,7 +203,7 @@ export function SongList({ bandId, navigate }) {
             type="button"
             onClick=${() => setRetryKey((k) => k + 1)}
             style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit"
-          >Reintentar</button>
+          >${t('common:action.retry')}</button>
         </div>
       `}
 
@@ -213,7 +211,7 @@ export function SongList({ bandId, navigate }) {
         <p style="color:var(--muted);text-align:center;padding:40px 0">
           ${emptyLabel}
           ${isAdmin && !search && filter === 'all' && html`
-            <a href=${`/band/${bandId}/song/new`} onClick=${onNewSong} style="display:block;margin-top:12px;color:var(--accent)">+ Agregar primera cancion</a>
+            <a href=${`/band/${bandId}/song/new`} onClick=${onNewSong} style="display:block;margin-top:12px;color:var(--accent)">${t('action.add_first')}</a>
           `}
         </p>
       `}
@@ -245,8 +243,8 @@ export function SongList({ bandId, navigate }) {
                   onClick=${(e) => onStatusClick(e, song)}
                   disabled=${statusBusy === song.id}
                   style="padding:2px 8px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.8rem;cursor:pointer;font:inherit;margin-left:auto"
-                  aria-label=${`Estado: ${STATUS_LABEL[song.status]}. Click para cambiar.`}
-                >${STATUS_LABEL[song.status] ?? song.status}</button>
+                  aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
+                >${t(`status.${song.status}`) ?? song.status}</button>
               </div>
             </a>
           `)}
@@ -257,7 +255,7 @@ export function SongList({ bandId, navigate }) {
         <a
           href=${`/band/${bandId}/song/new`}
           onClick=${onNewSong}
-          aria-label="Nueva cancion"
+          aria-label=${t('action.new_song')}
           style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;text-decoration:none;box-shadow:0 4px 16px rgba(0,0,0,0.4)"
         >+</a>
       `}
