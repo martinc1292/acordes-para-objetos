@@ -20,6 +20,8 @@ const routes = [
   { pattern: '/onboarding', name: 'onboarding' },
   { pattern: '/invite/:token', name: 'invite-accept' },
   { pattern: '/band/:bandId/settings', name: 'band-settings' },
+  { pattern: '/band/:bandId/song/new', name: 'song-new' },
+  { pattern: '/band/:bandId/song/:songId', name: 'song-detail' },
   { pattern: '/band/:bandId', name: 'band-home' }
 ];
 

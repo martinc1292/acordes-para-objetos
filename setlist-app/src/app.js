@@ -1,13 +1,15 @@
 import { html } from 'htm/preact';
 import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
-import { $currentUser, $bands, $authReady } from '@/stores/auth.js';
+import { $currentUser, $bands, $authReady, $activeBandId } from '@/stores/auth.js';
+import { clearSongs } from '@/stores/songs.js';
 import { Login } from '@/views/Login.js';
 import { AuthCallback } from '@/views/AuthCallback.js';
 import { Onboarding } from '@/views/Onboarding.js';
 import { InviteAccept } from '@/views/InviteAccept.js';
 import { BandSettings } from '@/views/BandSettings.js';
-import { Home } from '@/views/Home.js';
+import { SongList } from '@/views/SongList.js';
+import { SongDetail } from '@/views/SongDetail.js';
 
 function getSearch() {
   return typeof window === 'undefined' ? '' : window.location.search;
@@ -45,6 +47,7 @@ export function App({ router }) {
   const route = useStoreValue(router.$route);
   const user = useStoreValue($currentUser);
   const bands = useStoreValue($bands);
+  const activeBandId = useStoreValue($activeBandId);
   const ready = useStoreValue($authReady);
   const navigate = useCallback((path, opts) => router.navigate(path, opts), [router]);
   const redirect = useMemo(() => {
@@ -58,12 +61,17 @@ export function App({ router }) {
     if (redirect) navigate(redirect.path, { replace: redirect.replace });
   }, [navigate, redirect]);
 
+  // Clear songs cache when active band changes
+  useEffect(() => {
+    clearSongs();
+  }, [activeBandId]);
+
   if (!ready) {
-    return html`<main class="app-shell"><p>Cargando...</p></main>`;
+    return html`<main style="padding:24px"><p>Cargando...</p></main>`;
   }
 
   if (!route?.name) {
-    return html`<main class="app-shell"><h1>404</h1></main>`;
+    return html`<main style="padding:24px"><h1>404</h1></main>`;
   }
 
   if (redirect) return null;
@@ -80,9 +88,13 @@ export function App({ router }) {
     case 'band-settings':
       return html`<${BandSettings} bandId=${route.params.bandId} navigate=${navigate} />`;
     case 'band-home':
-      return html`<${Home} navigate=${navigate} />`;
+      return html`<${SongList} bandId=${route.params.bandId} navigate=${navigate} />`;
+    case 'song-detail':
+      return html`<${SongDetail} bandId=${route.params.bandId} songId=${route.params.songId} navigate=${navigate} />`;
+    case 'song-new':
+      return html`<${SongDetail} bandId=${route.params.bandId} songId=${null} navigate=${navigate} />`;
     case 'home':
     default:
-      return html`<${Home} navigate=${navigate} />`;
+      return html`<main style="padding:24px"><p>Redirigiendo...</p></main>`;
   }
 }
