@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
-import { $songs, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
+import { $songs, $songsLoaded, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
 import { $bands } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import { getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus } from '@/db/songs.js';
@@ -17,6 +17,10 @@ const EMPTY_FORM = {
   title: '', artist: '', key: '', tempo: '',
   structure: '', progression: '', lyrics: '', notes: ''
 };
+
+function emptyForm() {
+  return { ...EMPTY_FORM };
+}
 
 function shouldHandleLinkClick(e) {
   return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
@@ -143,6 +147,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   const isCreate = songId === null;
 
   const songs = useStoreValue($songs);
+  const songsLoaded = useStoreValue($songsLoaded);
   const bands = useStoreValue($bands);
   const band = bands.find((b) => b.id === bandId);
   const isAdmin = band?.role === 'admin';
@@ -156,21 +161,44 @@ export function SongDetail({ bandId, songId, navigate }) {
   const [transpose, setTranspose] = useState(0);
 
   const [editMode, setEditMode] = useState(isCreate);
-  const [form, setForm] = useState(isCreate ? EMPTY_FORM : formFromSong(storeSong));
+  const [form, setForm] = useState(isCreate ? emptyForm() : formFromSong(storeSong));
   const [tabEdits, setTabEdits] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    if (isCreate) return;
+    setSaveError('');
+    setSaveMsg('');
+    setTranspose(0);
+
+    if (isCreate) {
+      setSong(null);
+      setTabs([]);
+      setLoading(false);
+      setLoadError('');
+      setEditMode(true);
+      setForm(emptyForm());
+      setTabEdits([]);
+      return;
+    }
+
     let active = true;
+    setSong(storeSong);
+    setTabs([]);
+    setForm(formFromSong(storeSong));
+    setEditMode(false);
+    setTabEdits([]);
     setLoading(true);
     setLoadError('');
     getSongWithTabs(getSupabase(), { songId, bandId })
       .then((data) => {
         if (!active) return;
-        if (!data) { setLoadError(t('action.not_found')); return; }
+        if (!data) {
+          setLoadError(t('action.not_found'));
+          setLoading(false);
+          return;
+        }
         setSong(data);
         setTabs(data.tabs ?? []);
         setForm(formFromSong(data));
@@ -187,7 +215,7 @@ export function SongDetail({ bandId, songId, navigate }) {
 
   function enterEdit() {
     setForm(formFromSong(song));
-    setTabEdits(tabs.map((t) => ({ ...t, _isNew: false })));
+    setTabEdits(tabs.map((tab) => ({ ...tab, _isNew: false })));
     setSaveError('');
     setSaveMsg('');
     setEditMode(true);
@@ -222,7 +250,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   }
 
   function updateTabEdit(index, key, value) {
-    setTabEdits((prev) => prev.map((t, i) => (i === index ? { ...t, [key]: value } : t)));
+    setTabEdits((prev) => prev.map((tab, i) => (i === index ? { ...tab, [key]: value } : tab)));
   }
 
   function removeTabEdit(index) {
@@ -241,20 +269,22 @@ export function SongDetail({ bandId, songId, navigate }) {
       const saved = await saveSongWithTabs(supabase, {
         bandId,
         songId: isCreate ? null : songId,
-        fields: fieldsFromForm(form, isCreate ? songs.length : undefined),
+        fields: fieldsFromForm(form, isCreate && songsLoaded ? songs.length : undefined),
         tabs: normalizeTabEdits(tabEdits)
       });
       if (isCreate) {
         addSongToStore(saved);
+        setSong(saved);
+        setTabs(saved.tabs ?? []);
+        setForm(formFromSong(saved));
+        setTabEdits([]);
+        setEditMode(false);
         navigate(`/band/${bandId}/song/${saved.id}`, { replace: true });
         return;
       }
       setSong(saved);
       setTabs(saved.tabs ?? []);
-      patchSongInStore(songId, {
-        title: saved.title, artist: saved.artist,
-        key: saved.key, tempo: saved.tempo, status: saved.status
-      });
+      patchSongInStore(songId, saved);
       setSaveMsg(t('action.saved'));
       setEditMode(false);
     } catch (err) {
@@ -454,7 +484,7 @@ export function SongDetail({ bandId, songId, navigate }) {
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:0.75rem;color:var(--muted)">
           ${song?.artist && html`<span>${song.artist}</span>`}
           ${song?.artist && (song?.key || song?.tempo) && html`<span>·</span>`}
-          ${displayKey && html`<span style="color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:2px">${displayKey}${transpose !== 0 ? ` → ${displayKey}` : ''}</span>`}
+          ${displayKey && html`<span style="color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:2px">${transpose !== 0 ? `${song.key} → ${displayKey}` : displayKey}</span>`}
           ${song?.tempo && html`<span>·</span><span>${song.tempo}</span>`}
         </div>
         ${!isCreate && song && html`
