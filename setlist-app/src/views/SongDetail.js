@@ -210,7 +210,7 @@ export function SongDetail({ bandId, songId, navigate }) {
       for (const [i, te] of tabEdits.entries()) {
         if (te.id) {
           const orig = tabs.find((t) => t.id === te.id);
-          if (orig && (orig.title !== te.title || orig.content !== te.content)) {
+          if (orig && (orig.title !== te.title || orig.content !== te.content || orig.position !== i)) {
             const saved = await updateTab(supabase, { tabId: te.id, songId, fields: { title: te.title, content: te.content, position: i } });
             freshTabs.push(saved);
           } else if (orig) {
