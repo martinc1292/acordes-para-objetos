@@ -287,7 +287,7 @@ export function SongDetail({ bandId, songId, navigate }) {
                 placeholder=${t('field.title')}
                 required
                 disabled=${saving}
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-size:1.25rem;font-weight:700;padding:4px 8px;margin-bottom:6px"
+                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.25rem;padding:4px 8px;margin-bottom:6px"
               />
               <input
                 name="artist"
@@ -295,12 +295,18 @@ export function SongDetail({ bandId, songId, navigate }) {
                 onInput=${updateField('artist')}
                 placeholder=${t('field.artist')}
                 disabled=${saving}
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-size:0.9rem;padding:4px 8px"
+                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:var(--mono);font-size:0.85rem;padding:4px 8px"
               />
             `
             : html`
-              <h1 style="margin:0 0 2px;font-size:1.4rem;line-height:1.2">${isCreate ? t('action.new_song') : song?.title}</h1>
-              ${song?.artist && html`<div style="color:var(--muted);font-size:0.9rem">${song.artist}</div>`}
+              <h1 style="margin:0 0 4px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:-0.02em;line-height:1.1">
+                ${isCreate ? t('action.new_song') : song?.title}
+              </h1>
+              ${song?.artist && html`
+                <div style="font-family:var(--mono);font-size:0.85rem;color:var(--muted);margin-top:2px">
+                  ${song.artist}
+                </div>
+              `}
             `
           }
         </div>
