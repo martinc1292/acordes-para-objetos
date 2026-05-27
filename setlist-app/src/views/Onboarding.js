@@ -3,6 +3,7 @@ import { useState } from 'preact/hooks';
 import { getSupabase } from '@/db/supabase.js';
 import { createBand, seedExampleSongs } from '@/db/bands.js';
 import { addLocalBand, refreshBands } from '@/stores/auth.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 function parseToken(input) {
   const trimmed = input.trim();
@@ -13,6 +14,7 @@ function parseToken(input) {
 }
 
 export function Onboarding({ navigate }) {
+  const t = useTranslation('auth');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [withSeed, setWithSeed] = useState(false);
@@ -52,7 +54,7 @@ export function Onboarding({ navigate }) {
     if (creating) return;
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Nombre requerido.');
+      setError(t('onboarding.error.name_required'));
       return;
     }
     setError('');
@@ -64,7 +66,7 @@ export function Onboarding({ navigate }) {
     try {
       const supabase = getSupabase();
       if (!supabase) {
-        throw new Error('Supabase no esta configurado.');
+        throw new Error(t('callback.error'));
       }
       const bandId = await createBand(supabase, { name: trimmed, description: description.trim() || null });
       let seedWarning = '';
@@ -92,7 +94,7 @@ export function Onboarding({ navigate }) {
     if (creating) return;
     const token = parseToken(tokenInput);
     if (!token) {
-      setInviteError('Pega un link o token de invitacion valido.');
+      setInviteError(t('onboarding.paste_invite'));
       return;
     }
     setInviteError('');
@@ -104,10 +106,10 @@ export function Onboarding({ navigate }) {
       <h1>Bienvenido</h1>
 
       <section>
-        <h2>Crear banda nueva</h2>
+        <h2>${t('onboarding.create_band')}</h2>
         <form onSubmit=${onCreate}>
           <label>
-            Nombre
+            ${t('onboarding.band_name')}
             <input
               name="band-name"
               autocomplete="organization"
@@ -133,7 +135,7 @@ export function Onboarding({ navigate }) {
             Empezar con canciones de ejemplo
           </label>
           <button type="submit" disabled=${creating || Boolean(createdBandPath)}>
-            ${creating ? 'Creando...' : 'Crear banda'}
+            ${creating ? t('onboarding.creating') : t('onboarding.create_band')}
           </button>
         </form>
         <div aria-live="polite">
@@ -150,13 +152,13 @@ export function Onboarding({ navigate }) {
                 }
                 await activateCreatedBandAndNavigate(supabase, createdBand, createdBandPath);
               }}
-            >Continuar</button>
+            >${t('onboarding.continue')}</button>
           `}
         </div>
       </section>
 
       <section>
-        <h2>Tengo un link de invitacion</h2>
+        <h2>${t('onboarding.join_with_invite')}</h2>
         <form onSubmit=${(event) => { event.preventDefault(); onGoToInvite(); }}>
           <label>
             Link o token
@@ -173,7 +175,7 @@ export function Onboarding({ navigate }) {
               }}
             />
           </label>
-          <button type="submit" disabled=${creating}>Continuar</button>
+          <button type="submit" disabled=${creating}>${t('onboarding.continue')}</button>
         </form>
         <div aria-live="polite">
           ${inviteError && html`<p id="invite-error" class="auth-error" role="alert">${inviteError}</p>`}
