@@ -193,7 +193,7 @@ export function SongList({ bandId, navigate }) {
             onClick=${() => setFilter(item.id)}
             aria-pressed=${filter === item.id}
             style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:8px 10px;border:none;background:none;border-bottom:2px solid ${filter === item.id ? 'var(--accent)' : 'transparent'};color:${filter === item.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;white-space:nowrap;margin-bottom:-1px"
-          >${item.label}</button>
+          >${item.label}${html`<span style="margin-left:4px;font-size:0.6rem;opacity:0.7">${counts[item.id]}</span>`}</button>
         `)}
       </div>
 
@@ -276,7 +276,7 @@ export function SongList({ bandId, navigate }) {
                 type="button"
                 onClick=${(e) => onFavoriteClick(e, song)}
                 disabled=${!user?.id || favoriteBusy === song.id}
-                style="border:none;background:none;color:${favoriteSet.has(song.id) ? '#facc15' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0 2px;line-height:1;flex-shrink:0"
+                style="border:none;background:none;color:${favoriteSet.has(song.id) ? 'var(--yellow)' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0 2px;line-height:1;flex-shrink:0"
                 aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
                 aria-pressed=${favoriteSet.has(song.id)}
               >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
