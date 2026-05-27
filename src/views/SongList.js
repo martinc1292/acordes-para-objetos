@@ -171,6 +171,8 @@ export function SongList({ bandId, navigate }) {
             href=${`/band/${bandId}/settings`}
             onClick=${onSettingsClick}
             style="background:var(--panel);border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;padding:5px 8px;border-radius:2px;text-decoration:none"
+            tabIndex="-1"
+            aria-hidden="true"
           >⚙</a>
         </div>
       </header>
@@ -258,9 +260,10 @@ export function SongList({ bandId, navigate }) {
               <span
                 style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};flex-shrink:0;cursor:pointer"
                 onClick=${(e) => onStatusClick(e, song)}
+                onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStatusClick(e, song); } }}
                 role="button"
                 aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
-                tabIndex="-1"
+                tabIndex="0"
               ></span>
               <div style="flex:1;min-width:0">
                 <div style="font-family:var(--serif);font-style:italic;font-size:1rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
