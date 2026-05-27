@@ -92,7 +92,7 @@ export function InviteAccept({ token, navigate }) {
     } catch (err) {
       console.error('acceptInvitation failed', err);
       if (mountedRef.current) {
-        setError(err.message);
+        setError(t('invite.error.load_failed'));
         setStatus('ready');
       }
     }

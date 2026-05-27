@@ -37,12 +37,14 @@ export function Login({ next = null }) {
         options: { emailRedirectTo: redirect }
       });
       if (error) {
-        setStatus({ kind: 'error', message: error.message });
+        console.error('signInWithOtp failed', error);
+        setStatus({ kind: 'error', message: t('login.error.send_failed') });
         return;
       }
       setStatus({ kind: 'sent' });
     } catch (err) {
-      setStatus({ kind: 'error', message: err.message || t('login.error.send_failed') });
+      console.error('signInWithOtp threw', err);
+      setStatus({ kind: 'error', message: t('login.error.send_failed') });
     }
   }
 

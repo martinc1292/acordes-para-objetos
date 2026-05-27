@@ -85,7 +85,8 @@ export function Onboarding({ navigate }) {
         await activateCreatedBandAndNavigate(supabase, band, `/band/${bandId}`);
       }
     } catch (err) {
-      setError(err.message);
+      console.error('createBand failed', err);
+      setError(t('common:error.save_failed'));
     } finally {
       setCreating(false);
     }
