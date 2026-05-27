@@ -529,33 +529,40 @@ export function SongDetail({ bandId, songId, navigate }) {
         </div>
       `}
 
-      <!-- METRÓNOMO -->
-      ${!isCreate && html`
-        <div style="${secBlock}">
-          <${SecLabel} label=${t('section.metronome')} />
-          <${Metronome} initialTempo=${song?.tempo} />
-        </div>
-      `}
+      <!-- PLAY ZONE: metrónomo + progresión -->
+      ${!isCreate && (song?.tempo || song?.progression || song?.key) && html`
+        <div style="background:var(--panel);border-left:3px solid var(--accent);margin-bottom:20px">
 
-      <!-- PROGRESIÓN -->
-      ${(song?.progression || song?.key) && html`
-        <div style="${secBlock}">
-          <${SecLabel} label=${t('section.progression')} />
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:0.8rem">
-            <span style="color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">${t('section.chords')}</span>
-            <button type="button" onClick=${() => setTranspose((v) => v - 1)}
-              style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">−</button>
-            <span style="font-family:var(--mono);font-size:0.8rem;color:${transpose !== 0 ? 'var(--accent)' : 'var(--muted)'};min-width:24px;text-align:center">${transpose > 0 ? `+${transpose}` : transpose}</span>
-            <button type="button" onClick=${() => setTranspose((v) => v + 1)}
-              style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">+</button>
-            ${transpose !== 0 && html`
-              <button type="button" onClick=${() => setTranspose(0)}
-                style="background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.65rem;padding:0 6px;height:22px;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:0.1em">Reset</button>
-            `}
-          </div>
-          ${displayProgression && html`
-            <div style="${sectionBoxStyle};font-size:1rem">${displayProgression}</div>
+          ${song?.tempo && html`
+            <div style="padding:14px 14px 12px">
+              <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:10px">
+                ${t('section.metronome')}
+              </div>
+              <${Metronome} initialTempo=${song.tempo} />
+            </div>
           `}
+
+          ${(song?.progression || song?.key) && html`
+            ${song?.tempo && html`<div style="border-top:1px solid var(--line)"></div>`}
+            <div style="padding:12px 14px 14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:0.8rem">
+                <span style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em">${t('section.chords')}</span>
+                <button type="button" onClick=${() => setTranspose((v) => v - 1)}
+                  style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">−</button>
+                <span style="font-family:var(--mono);font-size:0.8rem;color:${transpose !== 0 ? 'var(--accent)' : 'var(--muted)'};min-width:24px;text-align:center">${transpose > 0 ? `+${transpose}` : transpose}</span>
+                <button type="button" onClick=${() => setTranspose((v) => v + 1)}
+                  style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">+</button>
+                ${transpose !== 0 && html`
+                  <button type="button" onClick=${() => setTranspose(0)}
+                    style="background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.65rem;padding:0 6px;height:22px;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:0.1em">Reset</button>
+                `}
+              </div>
+              ${displayProgression && html`
+                <div style="font-family:var(--mono);font-size:1rem;line-height:1.6;background:var(--panel-strong);padding:12px 14px;white-space:pre-wrap;word-break:break-word">${displayProgression}</div>
+              `}
+            </div>
+          `}
+
         </div>
       `}
 
