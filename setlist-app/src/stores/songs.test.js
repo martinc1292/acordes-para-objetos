@@ -39,9 +39,6 @@ function fakeSupabase(songs = [SONG], error = null) {
 
 describe('stores/songs', () => {
   beforeEach(() => {
-    $songs.set([]);
-    $songsLoaded.set(false);
-    $songsError.set(null);
     clearSongs();
   });
 
