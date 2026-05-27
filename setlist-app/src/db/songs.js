@@ -49,19 +49,14 @@ export async function getSongs(client, { bandId }) {
 export async function getSongWithTabs(client, { songId, bandId }) {
   const row = unwrap(await client
     .from('songs')
-    .select('*, tabs(id, title, content, position)')
+    .select('*, tabs(id, song_id, band_id, title, content, position)')
     .eq('id', songId)
     .eq('band_id', bandId)
     .single());
   if (!row) return null;
   return {
     ...mapSong(row),
-    tabs: (row.tabs ?? []).map((t) => ({
-      id: t.id,
-      title: t.title,
-      content: t.content,
-      position: t.position
-    }))
+    tabs: (row.tabs ?? []).map(mapTab)
   };
 }
 
