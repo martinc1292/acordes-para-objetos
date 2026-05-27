@@ -4,14 +4,14 @@ import { useStoreValue } from '@/stores/useStoreValue.js';
 import { $songs, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
 import { $bands } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
-import {
-  getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus
-} from '@/db/songs.js';
+import { getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus } from '@/db/songs.js';
 import { transposeText, transposeNote } from '@/lib/transpose.js';
+import { createMetronome, parseBPM } from '@/lib/metronome.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_COLOR = { pending: '#888', rehearsing: '#eab308', ready: '#22c55e' };
+const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
+const STATUS_ORDER = ['pending', 'rehearsing', 'ready'];
 
 const EMPTY_FORM = {
   title: '', artist: '', key: '', tempo: '',
@@ -46,7 +46,6 @@ function fieldsFromForm(form, sortOrder) {
     lyrics: form.lyrics.trim() || null,
     notes: form.notes.trim() || null
   };
-
   if (sortOrder !== undefined) fields.sortOrder = sortOrder;
   return fields;
 }
@@ -57,41 +56,103 @@ function normalizeTabEdits(tabEdits) {
       const title = (tab.title ?? '').trim();
       const content = tab.content ?? '';
       if (!title && !content.trim()) return null;
-
-      return {
-        id: tab.id,
-        title: title || 'Tab',
-        content,
-        position: index
-      };
+      return { id: tab.id, title: title || 'Tab', content, position: index };
     })
     .filter(Boolean);
 }
 
+// ── Section label helper ──────────────────────────────────────────────────────
+function SecLabel({ label }) {
+  return html`
+    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:10px">
+      ${label}
+    </div>
+  `;
+}
+
+// ── Metronome component ───────────────────────────────────────────────────────
+function Metronome({ initialTempo }) {
+  const [bpm, setBpm] = useState(() => parseBPM(String(initialTempo ?? ''), 80));
+  const [playing, setPlaying] = useState(false);
+  const [beat, setBeat] = useState(0);
+  const metroRef = useRef(null);
+
+  useEffect(() => {
+    const m = createMetronome({ bpm, beatsPerBar: 4, onBeat: (b) => setBeat(b) });
+    metroRef.current = m;
+    return () => m.stop();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function changeBpm(delta) {
+    setBpm((prev) => {
+      const next = Math.min(300, Math.max(20, prev + delta));
+      metroRef.current?.setBPM(next);
+      return next;
+    });
+  }
+
+  function togglePlay() {
+    const m = metroRef.current;
+    if (!m) return;
+    if (playing) {
+      m.stop();
+      setPlaying(false);
+      setBeat(0);
+    } else {
+      m.start();
+      setPlaying(true);
+    }
+  }
+
+  const btnStyle = 'background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;padding:0 8px;height:22px;border-radius:2px;cursor:pointer';
+
+  return html`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--panel);padding:10px 14px;border-left:2px solid var(--accent);flex-wrap:wrap">
+      <div>
+        <div style="font-family:var(--mono);font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1;letter-spacing:-0.03em">${bpm}</div>
+        <div style="font-family:var(--mono);font-size:0.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.2em">BPM</div>
+      </div>
+      <div style="display:flex;gap:3px;align-items:center">
+        <button type="button" onClick=${() => changeBpm(-5)} style=${btnStyle}>−5</button>
+        <button type="button" onClick=${() => changeBpm(-1)} style=${btnStyle}>−1</button>
+        <button
+          type="button"
+          onClick=${togglePlay}
+          style="width:30px;height:30px;border-radius:50%;border:none;background:${playing ? 'var(--green)' : 'var(--accent)'};color:var(--accent-contrast);font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(255,87,34,0.4)"
+          aria-label=${playing ? 'Detener metrónomo' : 'Iniciar metrónomo'}
+          aria-pressed=${playing}
+        >${playing ? '■' : '▶'}</button>
+        <button type="button" onClick=${() => changeBpm(1)} style=${btnStyle}>+1</button>
+        <button type="button" onClick=${() => changeBpm(5)} style=${btnStyle}>+5</button>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;margin-left:auto">
+        ${[1, 2, 3, 4].map((b) => html`
+          <span
+            key=${b}
+            style="width:${b === 1 ? '9px' : '7px'};height:${b === 1 ? '9px' : '7px'};border-radius:50%;background:${beat === b ? (b === 1 ? 'var(--yellow)' : 'var(--accent)') : 'var(--line)'};transition:background 0.05s;flex-shrink:0"
+          ></span>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function SongDetail({ bandId, songId, navigate }) {
   const t = useTranslation('songs');
   const isCreate = songId === null;
-
-  const DETAIL_TABS = [
-    { id: 'acordes',  label: t('section.chords') },
-    { id: 'tabs',     label: t('section.tabs') },
-    { id: 'letra',    label: t('section.lyrics') },
-    { id: 'notas',    label: t('section.notes') }
-  ];
 
   const songs = useStoreValue($songs);
   const bands = useStoreValue($bands);
   const band = bands.find((b) => b.id === bandId);
   const isAdmin = band?.role === 'admin';
 
-  // Bootstrap from store while fresh data loads
   const storeSong = songs.find((s) => s.id === songId) ?? null;
   const [song, setSong] = useState(isCreate ? null : storeSong);
   const [tabs, setTabs] = useState([]);
   const [loading, setLoading] = useState(!isCreate);
   const [loadError, setLoadError] = useState('');
 
-  const [activeTab, setActiveTab] = useState('acordes');
   const [transpose, setTranspose] = useState(0);
 
   const [editMode, setEditMode] = useState(isCreate);
@@ -101,9 +162,6 @@ export function SongDetail({ bandId, songId, navigate }) {
   const [saveError, setSaveError] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
 
-  const tabRefs = useRef({});
-
-  // Fetch fresh song + tabs (skip for create mode)
   useEffect(() => {
     if (isCreate) return;
     let active = true;
@@ -145,15 +203,13 @@ export function SongDetail({ bandId, songId, navigate }) {
     return (e) => setForm((prev) => ({ ...prev, [key]: e.currentTarget.value }));
   }
 
-  // ── status cycling ────────────────────────────────────────────────────────
-  async function onStatusClick() {
+  async function onStatusClick(nextStatus) {
     if (!song) return;
-    const next = STATUS_NEXT[song.status] ?? 'pending';
     const prev = song.status;
-    setSong((s) => ({ ...s, status: next }));
-    patchSongInStore(songId, { status: next });
+    setSong((s) => ({ ...s, status: nextStatus }));
+    patchSongInStore(songId, { status: nextStatus });
     try {
-      await updateSongStatus(getSupabase(), { songId, bandId, status: next });
+      await updateSongStatus(getSupabase(), { songId, bandId, status: nextStatus });
     } catch (err) {
       setSong((s) => ({ ...s, status: prev }));
       patchSongInStore(songId, { status: prev });
@@ -161,7 +217,6 @@ export function SongDetail({ bandId, songId, navigate }) {
     }
   }
 
-  // ── tab edit helpers ──────────────────────────────────────────────────────
   function addTabEdit() {
     setTabEdits((prev) => [...prev, { id: null, title: '', content: '', position: prev.length, _isNew: true }]);
   }
@@ -174,7 +229,6 @@ export function SongDetail({ bandId, songId, navigate }) {
     setTabEdits((prev) => prev.filter((_, i) => i !== index));
   }
 
-  // ── save ──────────────────────────────────────────────────────────────────
   async function onSave(e) {
     e.preventDefault();
     if (saving) return;
@@ -190,21 +244,16 @@ export function SongDetail({ bandId, songId, navigate }) {
         fields: fieldsFromForm(form, isCreate ? songs.length : undefined),
         tabs: normalizeTabEdits(tabEdits)
       });
-
       if (isCreate) {
         addSongToStore(saved);
         navigate(`/band/${bandId}/song/${saved.id}`, { replace: true });
         return;
       }
-
       setSong(saved);
       setTabs(saved.tabs ?? []);
       patchSongInStore(songId, {
-        title: saved.title,
-        artist: saved.artist,
-        key: saved.key,
-        tempo: saved.tempo,
-        status: saved.status
+        title: saved.title, artist: saved.artist,
+        key: saved.key, tempo: saved.tempo, status: saved.status
       });
       setSaveMsg(t('action.saved'));
       setEditMode(false);
@@ -216,7 +265,6 @@ export function SongDetail({ bandId, songId, navigate }) {
     }
   }
 
-  // ── delete ────────────────────────────────────────────────────────────────
   async function onDelete() {
     if (!confirm(t('action.delete_confirm', { title: song?.title }))) return;
     setSaving(true);
@@ -232,19 +280,6 @@ export function SongDetail({ bandId, songId, navigate }) {
     }
   }
 
-  // ── tab keyboard nav ──────────────────────────────────────────────────────
-  function onTabKeyDown(e) {
-    const index = DETAIL_TABS.findIndex((t) => t.id === activeTab);
-    let next = index;
-    if (e.key === 'ArrowRight') next = (index + 1) % DETAIL_TABS.length;
-    else if (e.key === 'ArrowLeft') next = (index + DETAIL_TABS.length - 1) % DETAIL_TABS.length;
-    else return;
-    e.preventDefault();
-    setActiveTab(DETAIL_TABS[next].id);
-    setTimeout(() => tabRefs.current[DETAIL_TABS[next].id]?.focus(), 0);
-  }
-
-  // ── derived display values ────────────────────────────────────────────────
   const displayKey = song?.key
     ? (transpose === 0 ? song.key : (transposeNote(song.key, transpose) ?? song.key))
     : '';
@@ -252,212 +287,274 @@ export function SongDetail({ bandId, songId, navigate }) {
     ? (transpose === 0 ? song.progression : transposeText(song.progression, transpose))
     : '';
 
-  // ── render ────────────────────────────────────────────────────────────────
+  const inputStyle = 'width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px 10px';
+  const secBlock = 'margin-bottom:20px';
+  const sectionBoxStyle = 'font-family:var(--mono);font-size:0.9rem;line-height:1.6;background:var(--panel);padding:12px 14px;border-left:2px solid var(--accent);white-space:pre-wrap;word-break:break-word';
+
   if (loading && !song) {
-    return html`<main style="padding:16px;max-width:700px;margin:0 auto"><p style="color:var(--muted)">${t('common:loading')}</p></main>`;
+    return html`<main style="padding:16px;max-width:700px;margin:0 auto"><p style="color:var(--muted);font-family:var(--mono)">${t('common:loading')}</p></main>`;
   }
 
   if (loadError) {
     return html`
       <main style="padding:16px;max-width:700px;margin:0 auto">
-        <p role="alert" style="color:#f87171">${loadError}</p>
-        <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent)">${t('common:action.back')}</a>
+        <p role="alert" style="color:#f87171;font-family:var(--mono)">${loadError}</p>
+        <a href=${`/band/${bandId}`} onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }} style="color:var(--accent);font-family:var(--mono)">${t('common:action.back')}</a>
       </main>
     `;
   }
 
-  return html`
-    <main style="padding:16px;max-width:700px;margin:0 auto">
-
-      <!-- Header -->
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+  // ── EDIT MODE ────────────────────────────────────────────────────────────────
+  if (editMode) {
+    return html`
+      <main style="padding:16px;max-width:700px;margin:0 auto">
         <a
           href=${`/band/${bandId}`}
           onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
-          style="color:var(--muted);font-size:0.9rem;white-space:nowrap;margin-top:4px"
+          style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;display:block;margin-bottom:16px"
         >${t('common:action.back')}</a>
 
-        <div style="flex:1;min-width:0">
-          ${editMode
-            ? html`
-              <input
-                name="title"
-                value=${form.title}
-                onInput=${updateField('title')}
-                placeholder=${t('field.title')}
-                required
-                disabled=${saving}
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.25rem;padding:4px 8px;margin-bottom:6px"
-              />
-              <input
-                name="artist"
-                value=${form.artist}
-                onInput=${updateField('artist')}
-                placeholder=${t('field.artist')}
-                disabled=${saving}
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:var(--mono);font-size:0.85rem;padding:4px 8px"
-              />
-            `
-            : html`
-              <h1 style="margin:0 0 4px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.4rem,4vw,2rem);letter-spacing:-0.02em;line-height:1.1">
-                ${isCreate ? t('action.new_song') : song?.title}
-              </h1>
-              ${song?.artist && html`
-                <div style="font-family:var(--mono);font-size:0.85rem;color:var(--muted);margin-top:2px">
-                  ${song.artist}
-                </div>
-              `}
-            `
-          }
+        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.25em;color:var(--accent);text-transform:uppercase;margin-bottom:6px">
+          ${isCreate ? t('action.new_song') : t('common:action.edit')}
         </div>
 
-        <!-- Controls: transpose + status + edit actions -->
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:2px">
-          ${!isCreate && song && html`
-            <!-- Transpose -->
-            <div style="display:flex;align-items:center;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:2px 6px">
-              <button type="button" onClick=${() => setTranspose((t) => t - 1)} style="background:none;border:none;color:var(--text);cursor:pointer;padding:0 4px;font:inherit">−</button>
-              <span style="font-family:monospace;min-width:2ch;text-align:center;font-size:0.9rem">${displayKey || '?'}</span>
-              <button type="button" onClick=${() => setTranspose((t) => t + 1)} style="background:none;border:none;color:var(--text);cursor:pointer;padding:0 4px;font:inherit">+</button>
+        ${saveError && html`<p role="alert" style="color:#f87171;margin:0 0 12px;font-family:var(--mono);font-size:0.85rem">${saveError}</p>`}
+
+        <!-- Title -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('field.title')} />
+          <input
+            name="title"
+            value=${form.title}
+            onInput=${updateField('title')}
+            placeholder=${t('field.title')}
+            required
+            disabled=${saving}
+            style="${inputStyle};font-family:var(--serif);font-style:italic;font-size:1.4rem;margin-bottom:8px"
+          />
+          <input
+            name="artist"
+            value=${form.artist}
+            onInput=${updateField('artist')}
+            placeholder=${t('field.artist')}
+            disabled=${saving}
+            style="${inputStyle};font-family:var(--mono);font-size:0.9rem"
+          />
+        </div>
+
+        <!-- Key + Tempo -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;${secBlock}">
+          <div>
+            <${SecLabel} label=${t('field.key')} />
+            <input name="key" value=${form.key} onInput=${updateField('key')} disabled=${saving} style="${inputStyle}" />
+          </div>
+          <div>
+            <${SecLabel} label=${t('field.tempo')} />
+            <input name="tempo" value=${form.tempo} onInput=${updateField('tempo')} disabled=${saving} style="${inputStyle}" />
+          </div>
+        </div>
+
+        <!-- Estructura -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.structure')} />
+          <textarea name="structure" value=${form.structure} onInput=${updateField('structure')} disabled=${saving} rows="3"
+            style="${inputStyle};resize:vertical"></textarea>
+        </div>
+
+        <!-- Progresión -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.progression')} />
+          <textarea name="progression" value=${form.progression} onInput=${updateField('progression')} disabled=${saving} rows="3"
+            style="${inputStyle};font-family:var(--mono);resize:vertical"></textarea>
+        </div>
+
+        <!-- Tabs -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.tabs')} />
+          ${tabEdits.map((te, i) => html`
+            <div key=${i} style="border:1px solid var(--line);border-radius:4px;padding:12px;margin-bottom:8px">
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input
+                  value=${te.title}
+                  onInput=${(e) => updateTabEdit(i, 'title', e.currentTarget.value)}
+                  placeholder=${t('placeholder.tab_name')}
+                  disabled=${saving}
+                  style="flex:1;${inputStyle}"
+                />
+                <button type="button" onClick=${() => removeTabEdit(i)} disabled=${saving}
+                  style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:4px 10px;border-radius:2px;cursor:pointer;font:inherit">✕</button>
+              </div>
+              <textarea
+                value=${te.content}
+                onInput=${(e) => updateTabEdit(i, 'content', e.currentTarget.value)}
+                placeholder=${t('placeholder.tab_content')}
+                rows="5"
+                disabled=${saving}
+                style="${inputStyle};font-family:var(--mono);font-size:0.85rem;resize:vertical"
+              ></textarea>
             </div>
-            <!-- Status badge -->
-            <button
-              type="button"
-              onClick=${onStatusClick}
-              style="padding:4px 10px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.85rem;cursor:pointer;font:inherit"
-              aria-label=${t(`status.${song.status}`)}
-            >${t(`status.${song.status}`) ?? song.status}</button>
-          `}
+          `)}
+          <button type="button" onClick=${addTabEdit} disabled=${saving}
+            style="background:var(--panel);border:1px dashed var(--line);color:var(--muted);padding:8px 16px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;width:100%">
+            ${t('action.add_tab')}
+          </button>
+        </div>
 
-          ${isAdmin && !editMode && !isCreate && html`
-            <button type="button" onClick=${enterEdit} style="padding:4px 12px;border-radius:4px;background:var(--panel-strong);border:1px solid var(--line);color:var(--text);cursor:pointer;font:inherit">${t('common:action.edit')}</button>
-          `}
-          ${editMode && html`
-            <button type="button" onClick=${onSave} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:var(--accent);border:none;color:#fff;cursor:pointer;font:inherit;font-weight:600">${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}</button>
-            <button type="button" onClick=${cancelEdit} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;font:inherit">${t('common:action.cancel')}</button>
-            ${!isCreate && html`<button type="button" onClick=${onDelete} disabled=${saving} style="padding:4px 12px;border-radius:4px;background:transparent;border:1px solid #7f1d1d;color:#f87171;cursor:pointer;font:inherit">${t('common:action.delete')}</button>`}
+        <!-- Letra -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.lyrics')} />
+          <textarea name="lyrics" value=${form.lyrics} onInput=${updateField('lyrics')} disabled=${saving} rows="10"
+            style="${inputStyle};font-family:var(--serif);font-size:1rem;line-height:1.6;resize:vertical"></textarea>
+        </div>
+
+        <!-- Notas -->
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.notes')} />
+          <textarea name="notes" value=${form.notes} onInput=${updateField('notes')} disabled=${saving} rows="4"
+            style="${inputStyle};font-family:var(--mono);resize:vertical"></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--line)">
+          <button type="button" onClick=${onSave} disabled=${saving}
+            style="background:var(--accent);border:none;color:var(--accent-contrast);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
+            ${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}
+          </button>
+          <button type="button" onClick=${cancelEdit} disabled=${saving}
+            style="background:transparent;border:1px solid var(--line);color:var(--muted);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
+            ${t('common:action.cancel')}
+          </button>
+          ${!isCreate && html`
+            <button type="button" onClick=${onDelete} disabled=${saving}
+              style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;margin-left:auto">
+              ${t('common:action.delete')}
+            </button>
           `}
         </div>
+      </main>
+    `;
+  }
+
+  // ── VIEW MODE ────────────────────────────────────────────────────────────────
+  return html`
+    <main style="padding:16px;max-width:700px;margin:0 auto">
+
+      <!-- Back -->
+      <a
+        href=${`/band/${bandId}`}
+        onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
+        style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;display:block;margin-bottom:14px"
+      >← ${t('common:action.back')}</a>
+
+      <!-- Song header -->
+      <div style="border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px">
+        <h1 style="margin:0 0 6px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:-0.02em;line-height:1.05">
+          ${song?.title ?? t('action.new_song')}
+        </h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:0.75rem;color:var(--muted)">
+          ${song?.artist && html`<span>${song.artist}</span>`}
+          ${song?.artist && (song?.key || song?.tempo) && html`<span>·</span>`}
+          ${displayKey && html`<span style="color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:2px">${displayKey}${transpose !== 0 ? ` → ${displayKey}` : ''}</span>`}
+          ${song?.tempo && html`<span>·</span><span>${song.tempo}</span>`}
+        </div>
+        ${!isCreate && song && html`
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            ${STATUS_ORDER.map((s) => html`
+              <button
+                key=${s}
+                type="button"
+                onClick=${() => onStatusClick(s)}
+                style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:4px 8px;border-radius:2px;border:1px solid ${song.status === s ? STATUS_COLOR[s] : 'var(--line)'};background:transparent;color:${song.status === s ? STATUS_COLOR[s] : 'var(--muted)'};cursor:pointer"
+                aria-pressed=${song.status === s}
+              >● ${t(`status.${s}`)}</button>
+            `)}
+          </div>
+        `}
       </div>
 
-      ${saveError && html`<p role="alert" style="color:#f87171;margin:0 0 12px">${saveError}</p>`}
-      ${saveMsg && html`<p aria-live="polite" style="color:#22c55e;margin:0 0 12px">${saveMsg}</p>`}
+      ${saveMsg && html`<p aria-live="polite" style="color:var(--green);margin:0 0 12px;font-family:var(--mono);font-size:0.85rem">${saveMsg}</p>`}
 
-      <!-- Inline meta fields in edit mode -->
-      ${editMode && html`
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-          <label style="display:grid;gap:4px;font-size:0.85rem;color:var(--muted)">
-            ${t('field.key')}
-            <input name="key" value=${form.key} onInput=${updateField('key')} disabled=${saving}
-              style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px" />
-          </label>
-          <label style="display:grid;gap:4px;font-size:0.85rem;color:var(--muted)">
-            ${t('field.tempo')}
-            <input name="tempo" value=${form.tempo} onInput=${updateField('tempo')} disabled=${saving}
-              style="background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px" />
-          </label>
+      <!-- ESTRUCTURA -->
+      ${song?.structure && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.structure')} />
+          <div style="${sectionBoxStyle}">${song.structure}</div>
         </div>
       `}
 
-      <!-- Section tabs -->
-      <nav role="tablist" style="display:flex;border-bottom:1px solid var(--line);margin-bottom:0;gap:0">
-        ${DETAIL_TABS.map((tab) => html`
-          <button
-            type="button"
-            role="tab"
-            id=${`dtab-${tab.id}`}
-            ref=${(node) => { if (node) tabRefs.current[tab.id] = node; }}
-            aria-controls=${`dpanel-${tab.id}`}
-            aria-selected=${activeTab === tab.id}
-            tabIndex=${activeTab === tab.id ? 0 : -1}
-            onClick=${() => setActiveTab(tab.id)}
-            onKeyDown=${onTabKeyDown}
-            style="padding:10px 16px;background:none;border:none;border-bottom:2px solid ${activeTab === tab.id ? 'var(--accent)' : 'transparent'};color:${activeTab === tab.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;font:inherit;font-weight:${activeTab === tab.id ? '600' : '400'}"
-          >${tab.label}</button>
-        `)}
-      </nav>
-
-      <!-- Tab panels -->
-      <div id="dpanel-acordes" role="tabpanel" aria-labelledby="dtab-acordes" style="${activeTab !== 'acordes' ? 'display:none' : 'padding:16px 0'}">
-        <div style="margin-bottom:16px">
-          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">${t('section.progression')}</div>
-          ${editMode
-            ? html`<textarea name="progression" value=${form.progression} onInput=${updateField('progression')} disabled=${saving} rows="3"
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:monospace;padding:8px;resize:vertical"></textarea>`
-            : html`<pre style="margin:0;font-family:monospace;white-space:pre-wrap;word-break:break-word;color:var(--text)">${displayProgression || html`<span style="color:var(--muted)">—</span>`}</pre>`
-          }
+      <!-- METRÓNOMO -->
+      ${!isCreate && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.metronome')} />
+          <${Metronome} initialTempo=${song?.tempo} />
         </div>
-        <div>
-          <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px">${t('section.structure')}</div>
-          ${editMode
-            ? html`<textarea name="structure" value=${form.structure} onInput=${updateField('structure')} disabled=${saving} rows="3"
-                style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
-            : html`<p style="margin:0;color:${song?.structure ? 'var(--text)' : 'var(--muted)'}">${song?.structure || '—'}</p>`
-          }
+      `}
+
+      <!-- PROGRESIÓN -->
+      ${(song?.progression || song?.key) && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.progression')} />
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:0.8rem">
+            <span style="color:var(--muted);text-transform:uppercase;letter-spacing:0.1em">${t('section.chords')}</span>
+            <button type="button" onClick=${() => setTranspose((v) => v - 1)}
+              style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">−</button>
+            <span style="font-family:var(--mono);font-size:0.8rem;color:${transpose !== 0 ? 'var(--accent)' : 'var(--muted)'};min-width:24px;text-align:center">${transpose > 0 ? `+${transpose}` : transpose}</span>
+            <button type="button" onClick=${() => setTranspose((v) => v + 1)}
+              style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:0.75rem;width:22px;height:22px;border-radius:2px;cursor:pointer">+</button>
+            ${transpose !== 0 && html`
+              <button type="button" onClick=${() => setTranspose(0)}
+                style="background:transparent;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.65rem;padding:0 6px;height:22px;border-radius:2px;cursor:pointer;text-transform:uppercase;letter-spacing:0.1em">Reset</button>
+            `}
+          </div>
+          ${displayProgression && html`
+            <div style="${sectionBoxStyle};font-size:1rem">${displayProgression}</div>
+          `}
         </div>
-      </div>
+      `}
 
-      <div id="dpanel-tabs" role="tabpanel" aria-labelledby="dtab-tabs" style="${activeTab !== 'tabs' ? 'display:none' : 'padding:16px 0'}">
-        ${editMode
-          ? html`
-            ${tabEdits.map((te, i) => html`
-              <div key=${i} style="border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:10px">
-                <div style="display:flex;gap:8px;margin-bottom:8px">
-                  <input
-                    value=${te.title}
-                    onInput=${(e) => updateTabEdit(i, 'title', e.currentTarget.value)}
-                    placeholder=${t('placeholder.tab_name')}
-                    disabled=${saving}
-                    style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:6px 8px"
-                  />
-                  <button type="button" onClick=${() => removeTabEdit(i)} disabled=${saving}
-                    style="background:transparent;border:1px solid #7f1d1d;color:#f87171;padding:4px 10px;border-radius:4px;cursor:pointer;font:inherit">✕</button>
-                </div>
-                <textarea
-                  value=${te.content}
-                  onInput=${(e) => updateTabEdit(i, 'content', e.currentTarget.value)}
-                  placeholder=${t('placeholder.tab_content')}
-                  rows="5"
-                  disabled=${saving}
-                  style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;font-family:monospace;font-size:0.85rem;padding:8px;resize:vertical"
-                ></textarea>
-              </div>
-            `)}
-            <button type="button" onClick=${addTabEdit} disabled=${saving}
-              style="background:var(--panel);border:1px dashed var(--line);color:var(--muted);padding:8px 16px;border-radius:4px;cursor:pointer;font:inherit;width:100%">
-              ${t('action.add_tab')}
-            </button>
-          `
-          : html`
-            ${tabs.length === 0
-              ? html`<p style="color:var(--muted)">${t('placeholder.no_tabs')}</p>`
-              : tabs.map((tab) => html`
-                <div key=${tab.id} style="margin-bottom:20px">
-                  <div style="font-weight:600;margin-bottom:8px;font-size:0.9rem">${tab.title}</div>
-                  <pre style="background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;margin:0;font-family:monospace;font-size:0.85rem;white-space:pre;overflow-x:auto;line-height:1.5">${tab.content}</pre>
-                </div>
-              `)
-            }
-          `
-        }
-      </div>
+      <!-- TABS / RIFFS -->
+      ${tabs.length > 0 && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.tabs')} />
+          ${tabs.map((tab) => html`
+            <div key=${tab.id} style="margin-bottom:16px">
+              ${tab.title && html`<div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px">${tab.title}</div>`}
+              <pre style="margin:0;font-family:var(--mono);font-size:0.85rem;background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:12px;white-space:pre;overflow-x:auto;line-height:1.4">${tab.content}</pre>
+            </div>
+          `)}
+        </div>
+      `}
 
-      <div id="dpanel-letra" role="tabpanel" aria-labelledby="dtab-letra" style="${activeTab !== 'letra' ? 'display:none' : 'padding:16px 0'}">
-        ${editMode
-          ? html`<textarea name="lyrics" value=${form.lyrics} onInput=${updateField('lyrics')} disabled=${saving} rows="12"
-              style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
-          : html`<pre style="margin:0;white-space:pre-wrap;word-break:break-word;color:${song?.lyrics ? 'var(--text)' : 'var(--muted)'}">${song?.lyrics || t('placeholder.no_lyrics')}</pre>`
-        }
-      </div>
+      <!-- LETRA -->
+      ${song?.lyrics && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.lyrics')} />
+          <div style="font-family:var(--serif);font-size:1rem;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text)">${song.lyrics}</div>
+        </div>
+      `}
 
-      <div id="dpanel-notas" role="tabpanel" aria-labelledby="dtab-notas" style="${activeTab !== 'notas' ? 'display:none' : 'padding:16px 0'}">
-        ${editMode
-          ? html`<textarea name="notes" value=${form.notes} onInput=${updateField('notes')} disabled=${saving} rows="6"
-              style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--text);font:inherit;padding:8px;resize:vertical"></textarea>`
-          : html`<p style="margin:0;color:${song?.notes ? 'var(--text)' : 'var(--muted)'}">${song?.notes || t('placeholder.no_notes')}</p>`
-        }
-      </div>
+      <!-- NOTAS -->
+      ${song?.notes && html`
+        <div style="${secBlock}">
+          <${SecLabel} label=${t('section.notes')} />
+          <div style="font-family:var(--mono);font-size:0.85rem;line-height:1.6;color:var(--muted);white-space:pre-wrap;word-break:break-word">${song.notes}</div>
+        </div>
+      `}
 
+      <!-- Empty state for new songs -->
+      ${isCreate && html`
+        <p style="color:var(--muted);font-family:var(--mono);font-size:0.85rem">${t('placeholder.no_songs')}</p>
+      `}
+
+      <!-- Edit button -->
+      ${isAdmin && !isCreate && html`
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--line)">
+          <button type="button" onClick=${enterEdit}
+            style="background:var(--panel);border:1px solid var(--line);color:var(--text);padding:8px 18px;border-radius:2px;cursor:pointer;font:inherit;font-family:var(--mono);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em">
+            ${t('common:action.edit')}
+          </button>
+        </div>
+      `}
     </main>
   `;
 }
