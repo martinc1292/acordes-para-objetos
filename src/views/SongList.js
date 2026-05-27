@@ -205,10 +205,12 @@ export function SongList({ bandId, navigate }) {
 
       <!-- Loading skeleton -->
       ${!loaded && !error && [1, 2, 3].map((i) => html`
-        <div key=${i} style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid var(--line);opacity:0.35">
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--line)"></div>
-          <div style="flex:1;height:13px;background:var(--line);border-radius:2px"></div>
-          <div style="width:28px;height:13px;background:var(--line);border-radius:2px"></div>
+        <div key=${i} style="display:flex;align-items:stretch;margin-bottom:2px;opacity:0.35">
+          <div style="width:3px;background:var(--line);border-radius:1px;align-self:stretch;min-height:52px"></div>
+          <div style="flex:1;padding:12px 12px 10px">
+            <div style="height:14px;background:var(--line);border-radius:2px;margin-bottom:6px;width:60%"></div>
+            <div style="height:11px;background:var(--line);border-radius:2px;width:35%"></div>
+          </div>
         </div>
       `)}
 

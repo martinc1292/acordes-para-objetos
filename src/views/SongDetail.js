@@ -511,7 +511,7 @@ export function SongDetail({ bandId, songId, navigate }) {
               onKeyDown=${(e) => { if (isAdmin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onStatusClick(STATUS_NEXT[song.status] ?? 'pending'); } }}
               role=${isAdmin ? 'button' : undefined}
               tabIndex=${isAdmin ? '0' : undefined}
-              aria-label=${isAdmin ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
+              aria-label=${isAdmin ? `Estado: ${t(`status.${song.status ?? 'pending'}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status ?? 'pending'}`)}`}
               style="margin-left:auto;font-size:0.72rem;color:${STATUS_COLOR[song.status] ?? 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};white-space:nowrap"
             >● ${t(`status.${song.status ?? 'pending'}`)}${isAdmin ? ' ▸' : ''}</span>
           `}
