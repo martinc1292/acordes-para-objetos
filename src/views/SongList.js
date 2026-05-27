@@ -167,13 +167,6 @@ export function SongList({ bandId, navigate }) {
             <span style="font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em">${band?.name ?? ''}</span>
             <span style="color:var(--muted);font-size:0.7rem">▾</span>
           </a>
-          <a
-            href=${`/band/${bandId}/settings`}
-            onClick=${onSettingsClick}
-            style="background:var(--panel);border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;padding:5px 8px;border-radius:2px;text-decoration:none"
-            tabIndex="-1"
-            aria-hidden="true"
-          >⚙</a>
         </div>
       </header>
 
