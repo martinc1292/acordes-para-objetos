@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
-import { $songs, $songsLoaded, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
+import { $songs, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
 import { $bands } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import {
@@ -47,7 +47,6 @@ export function SongDetail({ bandId, songId, navigate }) {
   const isCreate = songId === null;
 
   const songs = useStoreValue($songs);
-  const loaded = useStoreValue($songsLoaded);
   const bands = useStoreValue($bands);
   const band = bands.find((b) => b.id === bandId);
   const isAdmin = band?.role === 'admin';
@@ -198,7 +197,6 @@ export function SongDetail({ bandId, songId, navigate }) {
       });
 
       // Reconcile tabs: delete removed, create new, update changed
-      const originalIds = new Set(tabs.map((t) => t.id));
       const editIds = new Set(tabEdits.filter((t) => t.id).map((t) => t.id));
 
       for (const origTab of tabs) {
