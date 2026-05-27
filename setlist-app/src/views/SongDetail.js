@@ -5,8 +5,7 @@ import { $songs, patchSongInStore, addSongToStore, removeSongFromStore } from '@
 import { $bands } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import {
-  getSongWithTabs, createSong, updateSong, deleteSong, updateSongStatus,
-  createTab, updateTab, deleteTab
+  getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus
 } from '@/db/songs.js';
 import { transposeText, transposeNote } from '@/lib/transpose.js';
 
@@ -41,6 +40,39 @@ function formFromSong(song) {
     lyrics: song?.lyrics ?? '',
     notes: song?.notes ?? ''
   };
+}
+
+function fieldsFromForm(form, sortOrder) {
+  const fields = {
+    title: form.title.trim(),
+    artist: form.artist.trim() || null,
+    key: form.key.trim() || null,
+    tempo: form.tempo.trim() || null,
+    structure: form.structure.trim() || null,
+    progression: form.progression.trim() || null,
+    lyrics: form.lyrics.trim() || null,
+    notes: form.notes.trim() || null
+  };
+
+  if (sortOrder !== undefined) fields.sortOrder = sortOrder;
+  return fields;
+}
+
+function normalizeTabEdits(tabEdits) {
+  return tabEdits
+    .map((tab, index) => {
+      const title = (tab.title ?? '').trim();
+      const content = tab.content ?? '';
+      if (!title && !content.trim()) return null;
+
+      return {
+        id: tab.id,
+        title: title || 'Tab',
+        content,
+        position: index
+      };
+    })
+    .filter(Boolean);
 }
 
 export function SongDetail({ bandId, songId, navigate }) {
@@ -150,84 +182,28 @@ export function SongDetail({ bandId, songId, navigate }) {
     setSaveMsg('');
     try {
       const supabase = getSupabase();
+      const saved = await saveSongWithTabs(supabase, {
+        bandId,
+        songId: isCreate ? null : songId,
+        fields: fieldsFromForm(form, isCreate ? songs.length : undefined),
+        tabs: normalizeTabEdits(tabEdits)
+      });
 
       if (isCreate) {
-        const newSong = await createSong(supabase, {
-          bandId,
-          title: form.title.trim(),
-          artist: form.artist.trim() || null,
-          key: form.key.trim() || null,
-          tempo: form.tempo.trim() || null,
-          structure: form.structure.trim() || null,
-          progression: form.progression.trim() || null,
-          lyrics: form.lyrics.trim() || null,
-          notes: form.notes.trim() || null,
-          sortOrder: songs.length
-        });
-        // Create any tabs added during create flow
-        for (const te of tabEdits) {
-          if (te.title.trim() || te.content.trim()) {
-            await createTab(supabase, {
-              songId: newSong.id, bandId,
-              title: te.title.trim() || 'Tab',
-              content: te.content,
-              position: te.position
-            });
-          }
-        }
-        addSongToStore(newSong);
-        navigate(`/band/${bandId}/song/${newSong.id}`, { replace: true });
+        addSongToStore(saved);
+        navigate(`/band/${bandId}/song/${saved.id}`, { replace: true });
         return;
       }
 
-      // Update existing song fields
-      const updated = await updateSong(supabase, {
-        songId,
-        bandId,
-        fields: {
-          title: form.title.trim(),
-          artist: form.artist.trim() || null,
-          key: form.key.trim() || null,
-          tempo: form.tempo.trim() || null,
-          structure: form.structure.trim() || null,
-          progression: form.progression.trim() || null,
-          lyrics: form.lyrics.trim() || null,
-          notes: form.notes.trim() || null
-        }
+      setSong(saved);
+      setTabs(saved.tabs ?? []);
+      patchSongInStore(songId, {
+        title: saved.title,
+        artist: saved.artist,
+        key: saved.key,
+        tempo: saved.tempo,
+        status: saved.status
       });
-
-      // Reconcile tabs: delete removed, create new, update changed
-      const editIds = new Set(tabEdits.filter((t) => t.id).map((t) => t.id));
-
-      for (const origTab of tabs) {
-        if (!editIds.has(origTab.id)) {
-          await deleteTab(supabase, { tabId: origTab.id, songId });
-        }
-      }
-      const freshTabs = [];
-      for (const [i, te] of tabEdits.entries()) {
-        if (te.id) {
-          const orig = tabs.find((t) => t.id === te.id);
-          if (orig && (orig.title !== te.title || orig.content !== te.content || orig.position !== i)) {
-            const saved = await updateTab(supabase, { tabId: te.id, songId, fields: { title: te.title, content: te.content, position: i } });
-            freshTabs.push(saved);
-          } else if (orig) {
-            freshTabs.push({ ...orig, position: i });
-          }
-        } else if (te.title.trim() || te.content.trim()) {
-          const saved = await createTab(supabase, {
-            songId, bandId,
-            title: te.title.trim() || 'Tab',
-            content: te.content,
-            position: i
-          });
-          freshTabs.push(saved);
-        }
-      }
-
-      setSong({ ...updated, tabs: freshTabs });
-      setTabs(freshTabs);
-      patchSongInStore(songId, { title: updated.title, artist: updated.artist, key: updated.key });
       setSaveMsg('Guardado.');
       setEditMode(false);
     } catch (err) {

@@ -37,6 +37,48 @@ function mapTab(row) {
   };
 }
 
+function mapSongWithTabs(row) {
+  return {
+    ...mapSong(row),
+    tabs: (row.tabs ?? []).map(mapTab)
+  };
+}
+
+function toSongPayload(fields) {
+  const payload = {};
+  const fieldMap = {
+    title: 'title',
+    artist: 'artist',
+    key: 'key',
+    tempo: 'tempo',
+    structure: 'structure',
+    progression: 'progression',
+    lyrics: 'lyrics',
+    notes: 'notes',
+    sortOrder: 'sort_order',
+    sort_order: 'sort_order'
+  };
+
+  for (const [key, column] of Object.entries(fieldMap)) {
+    if (key in fields && fields[key] !== undefined) {
+      payload[column] = fields[key];
+    }
+  }
+
+  return payload;
+}
+
+function toTabPayload(tab, index) {
+  const payload = {
+    title: tab.title,
+    content: tab.content,
+    position: tab.position ?? index
+  };
+
+  if (tab.id) payload.id = tab.id;
+  return payload;
+}
+
 export async function getSongs(client, { bandId }) {
   const rows = unwrap(await client
     .from('songs')
@@ -54,10 +96,17 @@ export async function getSongWithTabs(client, { songId, bandId }) {
     .eq('band_id', bandId)
     .single());
   if (!row) return null;
-  return {
-    ...mapSong(row),
-    tabs: (row.tabs ?? []).map(mapTab)
-  };
+  return mapSongWithTabs(row);
+}
+
+export async function saveSongWithTabs(client, { bandId, songId = null, fields, tabs = [] }) {
+  const row = unwrap(await client.rpc('save_song_with_tabs', {
+    p_band_id: bandId,
+    p_song_id: songId,
+    p_song: toSongPayload(fields),
+    p_tabs: tabs.map(toTabPayload)
+  }));
+  return mapSongWithTabs(row);
 }
 
 export async function createSong(client, {

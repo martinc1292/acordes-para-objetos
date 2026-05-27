@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   getSongs,
   getSongWithTabs,
+  saveSongWithTabs,
   createSong,
   updateSong,
   deleteSong,
@@ -47,6 +48,10 @@ function trackingBuilder(calls, data, error = null) {
 
 function fakeClient(fromImpl) {
   return { from: fromImpl };
+}
+
+function fakeRpcClient(rpcImpl) {
+  return { rpc: rpcImpl };
 }
 
 // Minimal DB row for a song
@@ -117,7 +122,69 @@ describe('getSongWithTabs', () => {
   });
 });
 
-// ── createSong ───────────────────────────────────────────────────────────────
+// -- saveSongWithTabs ---------------------------------------------------------
+
+describe('saveSongWithTabs', () => {
+  it('calls the transactional RPC with normalized payload and maps the result', async () => {
+    const calls = [];
+    const savedSong = {
+      ...SONG_ROW,
+      title: 'New Title',
+      artist: null,
+      key: 'G',
+      sort_order: 3,
+      tabs: [{ ...TAB_ROW, title: 'Solo', content: 'e|--3--', position: 0 }]
+    };
+    const client = fakeRpcClient((name, payload) => {
+      calls.push([name, payload]);
+      return Promise.resolve({ data: savedSong, error: null });
+    });
+
+    const result = await saveSongWithTabs(client, {
+      bandId: 'b1',
+      songId: 's1',
+      fields: { title: 'New Title', artist: null, key: 'G', sortOrder: 3 },
+      tabs: [
+        { id: 't1', title: 'Solo', content: 'e|--3--' },
+        { id: null, title: 'Bridge', content: 'B|--1--', position: 1 }
+      ]
+    });
+
+    assert.equal(calls[0][0], 'save_song_with_tabs');
+    assert.deepEqual(calls[0][1], {
+      p_band_id: 'b1',
+      p_song_id: 's1',
+      p_song: { title: 'New Title', artist: null, key: 'G', sort_order: 3 },
+      p_tabs: [
+        { id: 't1', title: 'Solo', content: 'e|--3--', position: 0 },
+        { title: 'Bridge', content: 'B|--1--', position: 1 }
+      ]
+    });
+    assert.equal(result.id, 's1');
+    assert.equal(result.title, 'New Title');
+    assert.equal(result.artist, null);
+    assert.equal(result.sortOrder, 3);
+    assert.equal(result.tabs[0].title, 'Solo');
+  });
+
+  it('throws when the RPC returns an error', async () => {
+    const client = fakeRpcClient(() => Promise.resolve({
+      data: null,
+      error: { message: 'Solo admins pueden guardar canciones' }
+    }));
+    await assert.rejects(
+      () => saveSongWithTabs(client, {
+        bandId: 'b1',
+        songId: null,
+        fields: { title: 'New Title' },
+        tabs: []
+      }),
+      /Solo admins/
+    );
+  });
+});
+
+// -- createSong ---------------------------------------------------------------
 
 describe('createSong', () => {
   it('inserts with band_id and required fields, returns mapped song', async () => {

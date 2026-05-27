@@ -139,6 +139,8 @@ create index band_members_user_band_idx on band_members(user_id, band_id);
 create index songs_band_sort_idx on songs(band_id, sort_order);
 create index tabs_song_position_idx on tabs(song_id, position);
 create index comments_song_created_idx on comments(song_id, created_at);
+create index invitations_band_pending_idx on invitations(band_id, expires_at) where accepted_at is null;
+create index favorites_user_band_idx on favorites(user_id, band_id);
 create index favorites_song_idx on favorites(song_id);
 
 -- ---------- Triggers ----------
