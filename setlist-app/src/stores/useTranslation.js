@@ -7,6 +7,6 @@ export function useTranslation(ns = 'common') {
     const h = () => tick((n) => n + 1);
     i18n.on('languageChanged', h);
     return () => i18n.off('languageChanged', h);
-  }, []);
+  }, [ns]);
   return i18n.getFixedT(null, ns);
 }
