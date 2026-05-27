@@ -16,23 +16,15 @@ import { addFavorite, removeFavorite } from '@/db/favorites.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_COLOR = { pending: '#888', rehearsing: '#eab308', ready: '#22c55e' };
+const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
 
 function shouldHandleLinkClick(e) {
   return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }
 
-function SkeletonCard() {
-  return html`
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;opacity:0.5">
-      <div style="height:18px;background:var(--line);border-radius:4px;width:60%;margin-bottom:8px"></div>
-      <div style="height:14px;background:var(--line);border-radius:4px;width:40%"></div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <div style="height:22px;width:40px;background:var(--line);border-radius:4px"></div>
-        <div style="height:22px;width:60px;background:var(--line);border-radius:4px"></div>
-      </div>
-    </div>
-  `;
+function bandInitials(name) {
+  if (!name) return '?';
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 }
 
 export function SongList({ bandId, navigate }) {
@@ -56,22 +48,19 @@ export function SongList({ bandId, navigate }) {
 
   const FILTERS = [
     { id: 'all',        label: t('filter.all') },
-    { id: 'favorites',  label: t('filter.favorites') },
-    { id: 'pending',    label: t('filter.pending') },
-    { id: 'rehearsing', label: t('filter.rehearsing') },
-    { id: 'ready',      label: t('filter.ready') }
+    { id: 'favorites',  label: `★ ${t('filter.favorites')}` },
+    { id: 'ready',      label: `● ${t('filter.ready')}` },
+    { id: 'rehearsing', label: `● ${t('filter.rehearsing')}` },
+    { id: 'pending',    label: t('filter.pending') }
   ];
 
   useEffect(() => {
-    loadSongs(getSupabase(), bandId).catch((err) => {
-      console.error('loadSongs failed', err);
-    });
+    loadSongs(getSupabase(), bandId).catch((err) => console.error('loadSongs failed', err));
   }, [bandId, retryKey]);
 
   useEffect(() => {
-    loadFavorites(getSupabase(), { bandId, userId: user?.id }).catch((err) => {
-      console.error('loadFavorites failed', err);
-    });
+    loadFavorites(getSupabase(), { bandId, userId: user?.id })
+      .catch((err) => console.error('loadFavorites failed', err));
   }, [bandId, user?.id]);
 
   async function onStatusClick(event, song) {
@@ -117,7 +106,7 @@ export function SongList({ bandId, navigate }) {
     }
   }
 
-  function onCardClick(event, songId) {
+  function onRowClick(event, songId) {
     if (!shouldHandleLinkClick(event)) return;
     event.preventDefault();
     navigate(`/band/${bandId}/song/${songId}`);
@@ -127,6 +116,12 @@ export function SongList({ bandId, navigate }) {
     if (!shouldHandleLinkClick(event)) return;
     event.preventDefault();
     navigate(`/band/${bandId}/song/new`);
+  }
+
+  function onSettingsClick(event) {
+    if (!shouldHandleLinkClick(event)) return;
+    event.preventDefault();
+    navigate(`/band/${bandId}/settings`);
   }
 
   const counts = useMemo(() => songs.reduce((acc, song) => {
@@ -146,128 +141,163 @@ export function SongList({ bandId, navigate }) {
     return matchesSearch && matchesFilter;
   }), [favoriteSet, filter, search, songs]);
 
-  const emptyLabel = search
-    ? t('placeholder.no_results')
-    : t('placeholder.no_songs');
+  const initials = bandInitials(band?.name);
 
   return html`
-    <main style="padding:16px;max-width:900px;margin:0 auto">
-      <header style="margin-bottom:20px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <div style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">
-              ${t('bands:eyebrow')}
+    <main style="padding:16px;max-width:680px;margin:0 auto">
+
+      <!-- Header -->
+      <header style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
+        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">
+          ${t('bands:eyebrow')}
+        </div>
+        <h1 style="margin:0 0 10px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.6rem,5vw,2.5rem);letter-spacing:-0.025em;line-height:0.95">
+          Setlist <span style="color:var(--accent)">&amp;</span> Acordes
+        </h1>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <a
+            href=${`/band/${bandId}/settings`}
+            onClick=${onSettingsClick}
+            style="display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 4px;text-decoration:none;color:inherit"
+            aria-label="Ajustes de banda"
+          >
+            <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);font-family:var(--mono);font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              ${initials}
             </div>
-            <h1 style="margin:0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.5rem,4vw,2.25rem);letter-spacing:-0.02em;line-height:1">
-              ${band?.name ?? 'Setlist'}
-            </h1>
-          </div>
-          <nav style="display:flex;gap:10px;align-items:center;margin-top:4px">
-            <a
-              href=${`/band/${bandId}/settings`}
-              onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}/settings`); }}
-              style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;letter-spacing:0.05em"
-            >${t('common:nav.settings')}</a>
-          </nav>
+            <span style="font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em">${band?.name ?? ''}</span>
+            <span style="color:var(--muted);font-size:0.7rem">▾</span>
+          </a>
+          <a
+            href=${`/band/${bandId}/settings`}
+            onClick=${onSettingsClick}
+            style="background:var(--panel);border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;padding:5px 8px;border-radius:2px;text-decoration:none"
+          >⚙</a>
         </div>
       </header>
 
+      <!-- Search -->
       <input
         type="search"
         placeholder=${t('placeholder.search')}
         value=${search}
         onInput=${(e) => setSearch(e.currentTarget.value)}
-        style="width:100%;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;color:var(--text);font:inherit;margin-bottom:16px"
+        style="width:100%;padding:9px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px;color:var(--text);font:inherit;font-family:var(--mono);font-size:0.85rem;margin-bottom:10px"
       />
 
-      <div role="toolbar" aria-label="Filtros" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+      <!-- Filter tabs (underline style) -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:10px;overflow-x:auto">
         ${FILTERS.map((item) => html`
           <button
             key=${item.id}
             type="button"
             onClick=${() => setFilter(item.id)}
             aria-pressed=${filter === item.id}
-            style="display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:6px 10px;border-radius:6px;border:1px solid ${filter === item.id ? 'var(--accent)' : 'var(--line)'};background:${filter === item.id ? 'var(--panel-strong)' : 'transparent'};color:${filter === item.id ? 'var(--text)' : 'var(--muted)'};cursor:pointer;font:inherit;font-size:0.85rem"
-          >
-            <span>${item.label}</span>
-            <span style="font-family:monospace;font-size:0.78rem;color:var(--muted)">${counts[item.id] ?? 0}</span>
-          </button>
+            style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:8px 10px;border:none;background:none;border-bottom:2px solid ${filter === item.id ? 'var(--accent)' : 'transparent'};color:${filter === item.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;white-space:nowrap;margin-bottom:-1px"
+          >${item.label}</button>
         `)}
       </div>
 
       ${(favoritesError || favoriteToggleError) && html`
-        <p role="alert" style="color:#f87171;margin:0 0 12px">${favoriteToggleError || favoritesError}</p>
+        <p role="alert" style="color:#f87171;margin:0 0 12px;font-family:var(--mono);font-size:0.8rem">${favoriteToggleError || favoritesError}</p>
       `}
 
-      ${!loaded && !error && html`
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
-          <${SkeletonCard}/><${SkeletonCard}/><${SkeletonCard}/>
+      <!-- Count line -->
+      ${loaded && filtered.length > 0 && html`
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">
+          ${t('count', { count: filtered.length })}
         </div>
       `}
 
+      <!-- Loading skeleton -->
+      ${!loaded && !error && [1, 2, 3].map((i) => html`
+        <div key=${i} style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid var(--line);opacity:0.35">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--line)"></div>
+          <div style="flex:1;height:13px;background:var(--line);border-radius:2px"></div>
+          <div style="width:28px;height:13px;background:var(--line);border-radius:2px"></div>
+        </div>
+      `)}
+
+      <!-- Error -->
       ${error && html`
-        <div role="alert" style="color:#f87171;padding:16px;border:1px solid #7f1d1d;border-radius:6px;margin-bottom:16px">
+        <div role="alert" style="color:#f87171;padding:16px;border:1px solid #7f1d1d;border-radius:4px;margin-bottom:16px;font-family:var(--mono);font-size:0.85rem">
           <p style="margin:0 0 8px">${error}</p>
           <button
             type="button"
             onClick=${() => setRetryKey((k) => k + 1)}
-            style="background:var(--panel-strong);border:1px solid var(--line);color:var(--text);padding:6px 12px;border-radius:4px;cursor:pointer;font:inherit"
+            style="background:var(--panel);border:1px solid var(--line);color:var(--text);padding:6px 12px;border-radius:2px;cursor:pointer;font:inherit"
           >${t('common:action.retry')}</button>
         </div>
       `}
 
+      <!-- Empty state -->
       ${loaded && filtered.length === 0 && html`
-        <p style="color:var(--muted);text-align:center;padding:40px 0">
-          ${emptyLabel}
+        <p style="color:var(--muted);text-align:center;padding:40px 0;font-family:var(--mono);font-size:0.85rem">
+          ${search ? t('placeholder.no_results') : t('placeholder.no_songs')}
           ${isAdmin && !search && filter === 'all' && html`
             <a href=${`/band/${bandId}/song/new`} onClick=${onNewSong} style="display:block;margin-top:12px;color:var(--accent)">${t('action.add_first')}</a>
           `}
         </p>
       `}
 
+      <!-- Song rows -->
       ${loaded && filtered.length > 0 && html`
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
-          ${filtered.map((song) => html`
+        <div>
+          ${filtered.map((song, index) => html`
             <a
               key=${song.id}
               href=${`/band/${bandId}/song/${song.id}`}
-              onClick=${(e) => onCardClick(e, song.id)}
-              onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel-strong)'; }}
-              onMouseLeave=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
-              style="display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--line);border-left:3px solid ${STATUS_COLOR[song.status] ?? '#888'};border-radius:8px;padding:16px;cursor:pointer;transition:background 0.15s"
+              onClick=${(e) => onRowClick(e, song.id)}
+              style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit;border-radius:2px;transition:background 0.1s"
+              onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
+              onMouseLeave=${(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <div style="font-family:var(--serif);font-style:italic;font-weight:400;margin-bottom:4px;font-size:1rem">${song.title}</div>
-              <div style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;margin-bottom:12px">${song.artist ?? ''}</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                <button
-                  type="button"
-                  onClick=${(e) => onFavoriteClick(e, song)}
-                  disabled=${!user?.id || favoriteBusy === song.id}
-                  style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid ${favoriteSet.has(song.id) ? '#facc15' : 'var(--line)'};background:${favoriteSet.has(song.id) ? 'rgba(250,204,21,0.14)' : 'transparent'};color:${favoriteSet.has(song.id) ? '#facc15' : 'var(--muted)'};cursor:pointer;font:inherit;line-height:1"
-                  aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
-                  aria-pressed=${favoriteSet.has(song.id)}
-                >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
-                ${song.key && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;font-family:var(--mono)">${song.key}</span>`}
-                ${song.tempo && html`<span style="background:var(--panel-strong);padding:2px 8px;border-radius:4px;font-size:0.8rem;color:var(--muted);font-family:var(--mono)">${song.tempo}</span>`}
-                <button
-                  type="button"
-                  onClick=${(e) => onStatusClick(e, song)}
-                  disabled=${statusBusy === song.id}
-                  style="padding:2px 8px;border-radius:4px;border:1px solid ${STATUS_COLOR[song.status] ?? '#888'};background:transparent;color:${STATUS_COLOR[song.status] ?? '#888'};font-size:0.8rem;cursor:pointer;font:inherit;font-family:var(--mono);margin-left:auto"
-                  aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
-                >${t(`status.${song.status}`) ?? song.status}</button>
+              <span style="color:var(--muted);font-size:0.9rem;user-select:none;flex-shrink:0" aria-hidden="true">⠿</span>
+              <span style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);min-width:18px;flex-shrink:0">
+                ${String(index + 1).padStart(2, '0')}
+              </span>
+              <span
+                style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};flex-shrink:0;cursor:pointer"
+                onClick=${(e) => onStatusClick(e, song)}
+                role="button"
+                aria-label=${`Estado: ${t(`status.${song.status}`)}. Click para cambiar.`}
+                tabIndex="-1"
+              ></span>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--serif);font-style:italic;font-size:1rem;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${song.title}
+                </div>
+                ${song.artist && html`
+                  <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${song.artist}
+                  </div>
+                `}
               </div>
+              <button
+                type="button"
+                onClick=${(e) => onFavoriteClick(e, song)}
+                disabled=${!user?.id || favoriteBusy === song.id}
+                style="border:none;background:none;color:${favoriteSet.has(song.id) ? '#facc15' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0 2px;line-height:1;flex-shrink:0"
+                aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                aria-pressed=${favoriteSet.has(song.id)}
+              >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
+              ${song.key && html`
+                <span style="font-family:var(--mono);font-size:0.72rem;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:2px;flex-shrink:0">
+                  ${song.key}
+                </span>
+              `}
+              <span style="color:var(--muted);font-size:0.85rem;flex-shrink:0" aria-hidden="true">→</span>
             </a>
           `)}
         </div>
       `}
 
+      <!-- FAB -->
       ${isAdmin && html`
         <a
           href=${`/band/${bandId}/song/new`}
           onClick=${onNewSong}
           aria-label=${t('action.new_song')}
-          style="position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;text-decoration:none;box-shadow:0 4px 16px rgba(0,0,0,0.4)"
+          style="position:fixed;bottom:24px;right:24px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:300;text-decoration:none;box-shadow:0 3px 14px rgba(255,87,34,0.5)"
         >+</a>
       `}
     </main>
