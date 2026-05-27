@@ -1,9 +1,14 @@
 import './style.css';
 import {
+  addChatMessage,
   addSongComment,
   addSuggestion,
   createSong,
+  deleteChatMessage,
   deleteSong,
+  deleteSongComment,
+  deleteSuggestion,
+  getChatMessages,
   getPendingCount,
   getSongComments,
   getSongs,
@@ -17,16 +22,48 @@ import {
   updateSongMeta
 } from './lib/api.js';
 import { isAdmin, login, logout, onAuthChange } from './lib/auth.js';
+import {
+  getBpm,
+  isRunning,
+  onMetronomeChange,
+  parseTempo,
+  resetTaps,
+  setBpm,
+  tap as metronomeTap,
+  toggle as metronomeToggle
+} from './lib/metronome.js';
+import { dbPruneTombstones } from './lib/db.js';
 import { navigate, route, startRouter } from './lib/router.js';
 
 const app = document.querySelector('#app');
 
 app.innerHTML = `
+  <a class="skip-link" href="#view">Saltar al contenido</a>
   <div class="app">
     <div id="connectivity-bar" class="connectivity-bar connectivity-bar--hidden" aria-live="polite"></div>
-    <div id="view"></div>
+    <main id="view" tabindex="-1"></main>
   </div>
   <div class="hint" id="install-hint" hidden>Instalá la app: compartir → Añadir a inicio</div>
+  <button class="metro-fab" id="metro-fab" type="button" aria-label="Metrónomo" hidden>
+    <span class="metro-fab-icon" aria-hidden="true">♩</span>
+    <span class="metro-fab-bpm" id="metro-fab-bpm"></span>
+  </button>
+  <div class="metro-float-panel" id="metro-float-panel" hidden></div>
+  <div class="present-overlay" id="present-overlay" hidden></div>
+  <div class="drawer-overlay" id="drawer-overlay" hidden></div>
+  <nav class="drawer" id="drawer" aria-label="Menú" hidden>
+    <div class="drawer-header">
+      <div class="drawer-title">Sala &amp; Ensayo</div>
+      <button class="drawer-close" id="drawer-close" type="button" aria-label="Cerrar menú">✕</button>
+    </div>
+    <ul class="drawer-nav">
+      <li><a class="drawer-link" href="#/" id="dnav-setlist">Setlist</a></li>
+      <li><a class="drawer-link" href="#/favoritos" id="dnav-favs">Favoritos</a></li>
+      <li><a class="drawer-link" href="#/sugerencias" id="dnav-suggestions">+ Sugerencias</a></li>
+      <li><a class="drawer-link" href="#/chat" id="dnav-chat">Chat</a></li>
+      <li><a class="drawer-link" href="#/admin" id="dnav-admin">Admin</a></li>
+    </ul>
+  </nav>
 `;
 
 // ── Conectividad ──────────────────────────────────────────────────────────────
@@ -45,7 +82,7 @@ async function updateConnectivityBar() {
     connectivityBar.textContent = 'Sin conexión — los cambios se guardarán localmente';
     connectivityBar.classList.remove('connectivity-bar--hidden');
   } else if (pending > 0) {
-    connectivityBar.textContent = `Sincronizando ${pending} cambio${pending === 1 ? '' : 's'}...`;
+    connectivityBar.textContent = `Sincronizando ${pending} cambio${pending === 1 ? '' : 's'}…`;
     connectivityBar.classList.remove('connectivity-bar--hidden');
   } else {
     connectivityBar.classList.add('connectivity-bar--hidden');
@@ -115,6 +152,82 @@ let commentsState = 'idle';
 let adminMode = false;
 let realtimeMetaChannel = null;
 let realtimeCommentsChannel = null;
+let realtimeChatChannel = null;
+let presentMode = false;
+let chatMessages = [];
+let chatState = 'idle';
+let songDetailEdit = null;
+
+window.addEventListener('beforeunload', (event) => {
+  if (!songDetailEdit) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+// ─── Metrónomo ───────────────────────────────────────────────────────────────
+
+function renderMetronomeHtml(bpm, running) {
+  return `
+    <div class="metro-section" id="metro-section">
+      <div class="section-label">Metrónomo</div>
+      <div class="metro-panel">
+        <div class="metro-controls">
+          <button class="metro-toggle" id="metro-toggle" type="button">
+            ${running ? '⏹ Stop' : '▶ Play'}
+          </button>
+          <div class="metro-bpm-display">
+            <button class="metro-adj" id="metro-minus" type="button" aria-label="Bajar BPM">−</button>
+            <div class="metro-bpm-value" id="metro-bpm-value">${bpm}</div>
+            <button class="metro-adj" id="metro-plus" type="button" aria-label="Subir BPM">+</button>
+          </div>
+          <button class="metro-tap" id="metro-tap" type="button">Tap</button>
+        </div>
+        <input
+          class="metro-slider"
+          id="metro-slider"
+          type="range"
+          min="20" max="300"
+          value="${bpm}"
+          aria-label="BPM"
+        />
+        <div class="metro-labels">
+          <span>20</span><span>BPM</span><span>300</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function attachMetronomeHandlers(container) {
+  const toggle = container.querySelector('#metro-toggle');
+  const minus = container.querySelector('#metro-minus');
+  const plus = container.querySelector('#metro-plus');
+  const tapBtn = container.querySelector('#metro-tap');
+  const slider = container.querySelector('#metro-slider');
+
+  toggle?.addEventListener('click', () => { metronomeToggle(); });
+  minus?.addEventListener('click', () => { setBpm(getBpm() - 1); });
+  plus?.addEventListener('click', () => { setBpm(getBpm() + 1); });
+  tapBtn?.addEventListener('click', () => { metronomeTap(); });
+  slider?.addEventListener('input', (e) => { resetTaps(); setBpm(Number(e.target.value)); });
+}
+
+function syncMetronomeUI(bpm, running) {
+  // Actualiza todos los paneles de metrónomo en la página sin re-renderizar
+  document.querySelectorAll('#metro-toggle').forEach((el) => {
+    el.textContent = running ? '⏹ Stop' : '▶ Play';
+    el.closest('.metro-panel')?.classList.toggle('metro-panel--running', running);
+  });
+  document.querySelectorAll('#metro-bpm-value').forEach((el) => { el.textContent = bpm; });
+  document.querySelectorAll('#metro-slider').forEach((el) => { el.value = bpm; });
+  document.querySelectorAll('#metro-fab-bpm').forEach((el) => { el.textContent = running ? `${bpm}` : ''; });
+  document.querySelectorAll('.metro-fab').forEach((el) => {
+    el.classList.toggle('metro-fab--running', running);
+  });
+  // Panel flotante si está abierto
+  const floatPanel = document.querySelector('#metro-float-panel');
+  if (floatPanel && !floatPanel.hidden) renderFloatPanel();
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -157,20 +270,48 @@ function formatDate(value) {
   }).format(date);
 }
 
+// ─── Drawer ──────────────────────────────────────────────────────────────────
+
+function openDrawer() {
+  document.querySelector('#drawer').hidden = false;
+  document.querySelector('#drawer-overlay').hidden = false;
+  document.querySelector('#drawer').querySelector('a').focus();
+}
+
+function closeDrawer() {
+  document.querySelector('#drawer').hidden = true;
+  document.querySelector('#drawer-overlay').hidden = true;
+}
+
+function initDrawer() {
+  document.querySelector('#drawer-close').addEventListener('click', closeDrawer);
+  document.querySelector('#drawer-overlay').addEventListener('click', closeDrawer);
+  document.querySelector('#drawer').addEventListener('click', (e) => {
+    if (e.target.closest('.drawer-link')) closeDrawer();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !document.querySelector('#drawer').hidden) closeDrawer();
+  });
+}
+
 // ─── Vista Lista ─────────────────────────────────────────────────────────────
 
 function renderListView(filter = '') {
+  songDetailEdit = null;
   const normalizedFilter = filter.toLowerCase().trim();
   const filtered = songs.filter((s) =>
     s.title.toLowerCase().includes(normalizedFilter) ||
     s.artist.toLowerCase().includes(normalizedFilter)
   );
 
-  const adminLink = adminMode
-    ? `<a class="admin-link" href="#/admin">Admin</a>`
-    : '';
+  const adminLink = `<a class="admin-link" href="#/admin">${adminMode ? 'Admin' : 'Entrar'}</a>`;
 
-  const suggestBtn = `<button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>`;
+  const suggestBtn = `
+    <div class="list-cta-row">
+      <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
+      <button class="create-song-btn" id="create-song-btn" type="button">+ Agregar canción</button>
+    </div>
+  `;
 
   const items = filtered.map((song) => {
     const status = song.meta?.status || 'pending';
@@ -187,7 +328,12 @@ function renderListView(filter = '') {
           <div class="song-status status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>
           <div class="song-key">${escapeHtml(song.key)}</div>
         </div>
-        <div class="song-arrow">→</div>
+        ${adminMode ? `
+          <div class="song-row-actions">
+            <button class="item-edit-btn" data-id="${escapeHtml(song.id)}" type="button">Editar</button>
+            <button class="item-delete-btn" data-id="${escapeHtml(song.id)}" aria-label="Eliminar canción" title="Eliminar">✕</button>
+          </div>
+        ` : ''}
       </li>
     `;
   }).join('');
@@ -195,12 +341,17 @@ function renderListView(filter = '') {
   view.innerHTML = `
     <header>
       <div class="header-row">
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
         <div class="eyebrow">Setlist</div>
-        ${adminLink}
+        <div class="header-actions">
+          ${adminLink}
+        </div>
       </div>
       <h1>Sala <span class="ampersand">&amp;</span> Ensayo</h1>
       <div class="subtitle">Letras · acordes · tabs · notas</div>
     </header>
+
+    ${suggestBtn}
 
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
@@ -208,7 +359,7 @@ function renderListView(filter = '') {
         id="search"
         class="search"
         type="search"
-        placeholder="buscar canción o artista..."
+        placeholder="buscar canción o artista…"
         autocomplete="off"
         value="${escapeHtml(filter)}"
       />
@@ -216,14 +367,40 @@ function renderListView(filter = '') {
 
     <div class="count" id="count">${filtered.length} canci${filtered.length === 1 ? 'ón' : 'ones'}</div>
     <ol class="songs" id="song-list">${items || '<div class="empty">Sin resultados</div>'}</ol>
-    ${suggestBtn}
   `;
 
   const searchInput = view.querySelector('#search');
   searchInput.addEventListener('input', (e) => renderListView(e.target.value));
   searchInput.focus({ preventScroll: true });
 
-  view.querySelector('#song-list').addEventListener('click', (e) => {
+  view.querySelector('#song-list').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.item-edit-btn');
+    if (editBtn) {
+      e.stopPropagation();
+      openEditSongModal(editBtn.dataset.id, {
+        onSaved: () => renderListView(view.querySelector('#search')?.value || '')
+      });
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.item-delete-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const id = deleteBtn.dataset.id;
+      const song = songs.find((s) => s.id === id);
+      if (!song) return;
+      if (!confirm(`¿Eliminar "${song.title}" del setlist?`)) return;
+      deleteBtn.disabled = true;
+      songs = songs.filter((s) => s.id !== id);
+      renderListView(view.querySelector('#search')?.value || '');
+      try {
+        await deleteSong(id);
+      } catch {
+        songs = await getSongs();
+        renderListView(view.querySelector('#search')?.value || '');
+      }
+      return;
+    }
     const item = e.target.closest('.song-item');
     if (item) navigate(`/song/${item.dataset.id}`);
   });
@@ -237,6 +414,10 @@ function renderListView(filter = '') {
   view.querySelector('#suggest-btn').addEventListener('click', () => {
     openSuggestModal();
   });
+  view.querySelector('#create-song-btn').addEventListener('click', () => {
+    openCreateSongModal();
+  });
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
 }
 
 function renderListLoading() {
@@ -246,7 +427,7 @@ function renderListLoading() {
       <h1>Sala <span class="ampersand">&amp;</span> Ensayo</h1>
     </header>
     <div class="count">Cargando repertorio</div>
-    <div class="empty">Cargando canciones...</div>
+    <div class="empty">Cargando canciones…</div>
   `;
 }
 
@@ -261,19 +442,25 @@ function renderListError(error) {
 // ─── Vista Detalle ───────────────────────────────────────────────────────────
 
 function renderCommentsHtml(comments, state) {
-  if (state === 'loading') return '<div class="comments-empty">Cargando comentarios...</div>';
+  if (state === 'loading') return '<div class="comments-empty">Cargando comentarios…</div>';
   if (state === 'error') return '<div class="comments-empty comments-empty--error">No se pudieron cargar los comentarios.</div>';
   if (comments.length === 0) return '<div class="comments-empty">Sin comentarios todavía</div>';
 
-  return comments.map((c) => `
-    <article class="comment comment-${escapeHtml(c.color)}">
+  const myAuthor = getStoredAuthor();
+
+  return comments.map((c) => {
+    const canDelete = myAuthor && myAuthor === c.author;
+    return `
+    <article class="comment comment-${escapeHtml(c.color)}" data-comment-id="${escapeHtml(c.id)}">
       <div class="comment-meta">
         <span>${escapeHtml(c.author)}</span>
         <time>${escapeHtml(formatDate(c.createdAt))}</time>
+        ${canDelete ? `<button class="comment-delete-btn" data-id="${escapeHtml(c.id)}" type="button" aria-label="Borrar comentario">✕</button>` : ''}
       </div>
       <div class="comment-text">${escapeHtml(c.text)}</div>
     </article>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderCollabHtml(song, comments, state, feedback = '') {
@@ -319,7 +506,7 @@ function renderCollabHtml(song, comments, state, feedback = '') {
             <div class="comment-colors" aria-label="Color del comentario">${colorOptions}</div>
           </div>
           <textarea class="comment-input" name="text" rows="3"
-            placeholder="Comentario de ensayo..." required></textarea>
+            placeholder="Comentario de ensayo…" required></textarea>
           <button class="comment-submit" type="submit">Agregar comentario</button>
         </form>
       </div>
@@ -327,13 +514,142 @@ function renderCollabHtml(song, comments, state, feedback = '') {
   `;
 }
 
-function renderSongView(song, options = {}) {
-  const comments = options.comments ?? currentComments;
-  const state = options.commentsState ?? commentsState;
-  const feedback = options.feedback ?? '';
+function createSongEditDraft(song) {
+  return {
+    title: song.title || '',
+    artist: song.artist || '',
+    key: song.key || '',
+    tempo: song.tempo || '',
+    structure: song.structure || '',
+    progression: song.progression || '',
+    tabs: Array.isArray(song.tabs)
+      ? song.tabs.map((tab) => ({
+        title: tab.title || '',
+        tab: tab.tab || ''
+      }))
+      : [],
+    lyrics: song.lyrics || '',
+    notes: song.notes || ''
+  };
+}
 
-  const tabsHtml = song.tabs.length > 0
-    ? song.tabs.map((t) => `
+function getSongForEdit(song) {
+  if (songDetailEdit?.id !== song.id) return song;
+  return {
+    ...song,
+    ...songDetailEdit.draft,
+    tabs: songDetailEdit.draft.tabs
+  };
+}
+
+function readSongEditForm(form, { keepEmptyTabs = false } = {}) {
+  const fd = new FormData(form);
+  const tabTitles = fd.getAll('tabTitle').map((value) => String(value || ''));
+  const tabBodies = fd.getAll('tabBody').map((value) => String(value || ''));
+  const tabs = tabTitles
+    .map((title, index) => ({
+      title,
+      tab: tabBodies[index] || ''
+    }))
+    .filter((tab) => keepEmptyTabs || tab.title.trim() || tab.tab.trim());
+
+  return {
+    title: String(fd.get('title') || ''),
+    artist: String(fd.get('artist') || ''),
+    key: String(fd.get('key') || ''),
+    tempo: String(fd.get('tempo') || ''),
+    structure: String(fd.get('structure') || ''),
+    progression: String(fd.get('progression') || ''),
+    tabs,
+    lyrics: String(fd.get('lyrics') || ''),
+    notes: String(fd.get('notes') || '')
+  };
+}
+
+function renderTabEditorRow(tab = {}) {
+  return `
+    <div class="tab-editor" data-tab-editor>
+      <div class="tab-editor-head">
+        <label class="field-label tab-title-field">
+          Título del tab o riff
+          <input class="field-input" name="tabTitle" type="text" autocomplete="off" value="${escapeHtml(tab.title || '')}" placeholder="Riff intro, bajo, solo…" />
+        </label>
+        <button class="tab-remove-btn" type="button">Quitar</button>
+      </div>
+      <label class="field-label">
+        Tab / riff
+        <textarea class="field-input song-edit-mono" name="tabBody" rows="6" autocomplete="off" placeholder="e|----------------|">${escapeHtml(tab.tab || '')}</textarea>
+      </label>
+    </div>
+  `;
+}
+
+function renderSongEditHtml(song, feedback = '') {
+  const tabs = Array.isArray(song.tabs) && song.tabs.length > 0
+    ? song.tabs
+    : [{ title: '', tab: '' }];
+
+  return `
+    <form class="song-edit-form" id="song-edit-form">
+      <div class="song-edit-section">
+        <div class="section-label">Datos principales</div>
+        <div class="song-edit-grid">
+          <label class="field-label">Título *
+            <input class="field-input" name="title" type="text" autocomplete="off" required value="${escapeHtml(song.title)}" />
+          </label>
+          <label class="field-label">Artista *
+            <input class="field-input" name="artist" type="text" autocomplete="off" required value="${escapeHtml(song.artist)}" />
+          </label>
+          <label class="field-label">Tonalidad
+            <input class="field-input" name="key" type="text" autocomplete="off" value="${escapeHtml(song.key)}" />
+          </label>
+          <label class="field-label">Tempo / BPM
+            <input class="field-input" name="tempo" type="text" autocomplete="off" value="${escapeHtml(song.tempo)}" placeholder="120 BPM" />
+          </label>
+        </div>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Estructura</div>
+        <textarea class="field-input song-edit-textarea" name="structure" rows="4" autocomplete="off" placeholder="Intro - Verso - Coro…">${escapeHtml(song.structure)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Progresión de acordes</div>
+        <textarea class="field-input song-edit-mono" name="progression" rows="4" autocomplete="off" placeholder="Am - G - F - E">${escapeHtml(song.progression)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Tabs / Riffs</div>
+        <div class="tabs-editor-list" id="tabs-editor-list">
+          ${tabs.map((tab) => renderTabEditorRow(tab)).join('')}
+        </div>
+        <button class="tab-add-btn" id="add-tab-btn" type="button">+ Agregar tab / riff</button>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Letra</div>
+        <textarea class="field-input song-edit-lyrics" name="lyrics" rows="14" autocomplete="off" placeholder="Pegá la letra acá…">${escapeHtml(song.lyrics)}</textarea>
+      </div>
+
+      <div class="song-edit-section">
+        <div class="section-label">Notas adicionales</div>
+        <textarea class="field-input song-edit-textarea" name="notes" rows="4" autocomplete="off" placeholder="Referencias, arreglos, links, observaciones…">${escapeHtml(song.notes)}</textarea>
+      </div>
+
+      <div class="song-edit-feedback" id="song-edit-feedback" role="status">${escapeHtml(feedback)}</div>
+      <div class="song-edit-actions song-edit-actions--bottom">
+        <button class="comment-submit" type="submit">Guardar cambios</button>
+        <button class="admin-cancel cancel-song-edit-btn" type="button">Cancelar</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderSongReadOnlySections(song) {
+  const tabs = Array.isArray(song.tabs) ? song.tabs : [];
+  const tabsHtml = tabs.length > 0
+    ? tabs.map((t) => `
         <div class="tab-title">${escapeHtml(t.title)}</div>
         <div class="tabs-block">${escapeHtml(t.tab)}</div>
       `).join('')
@@ -343,18 +659,7 @@ function renderSongView(song, options = {}) {
     ? `<div class="lyrics-block">${escapeHtml(song.lyrics)}</div>`
     : '<div class="lyrics-placeholder">Pegá la letra en src/data/songs.js cuando esté lista.</div>';
 
-  view.innerHTML = `
-    <button class="back-btn" id="back-btn">← Volver al setlist</button>
-    <div class="song-header">
-      <h2>${escapeHtml(song.title)}</h2>
-      <div class="song-meta">
-        <span>${escapeHtml(song.artist)}</span>
-        <span class="dot"></span>
-        <span class="key-tag">${escapeHtml(song.key)}</span>
-        ${song.tempo ? `<span class="dot"></span><span>${escapeHtml(song.tempo)}</span>` : ''}
-      </div>
-    </div>
-
+  return `
     ${song.structure ? `
       <div class="section">
         <div class="section-label">Estructura</div>
@@ -382,30 +687,174 @@ function renderSongView(song, options = {}) {
         <div class="section-label">Notas</div>
         <div class="notes-block">${escapeHtml(song.notes)}</div>
       </div>` : ''}
+  `;
+}
+
+function renderSongView(song, options = {}) {
+  const comments = options.comments ?? currentComments;
+  const state = options.commentsState ?? commentsState;
+  const feedback = options.feedback ?? '';
+  const editMode = options.editMode ?? songDetailEdit?.id === song.id;
+  const editFeedback = options.editFeedback ?? songDetailEdit?.feedback ?? '';
+
+  if (editMode && songDetailEdit?.id !== song.id) {
+    songDetailEdit = { id: song.id, draft: createSongEditDraft(song), feedback: '' };
+  }
+
+  const displaySong = editMode ? getSongForEdit(song) : song;
+
+  view.innerHTML = `
+    <div class="song-action-bar">
+      <button class="back-btn" id="back-btn">← Volver al setlist</button>
+      <div class="song-action-actions">
+        ${editMode ? `
+          <button class="edit-song-btn edit-song-btn--primary" form="song-edit-form" type="submit">Guardar cambios</button>
+          <button class="present-btn cancel-song-edit-btn" type="button">Cancelar</button>
+        ` : `
+          ${adminMode ? `<button class="edit-song-btn" id="edit-song-btn" type="button">Editar canción</button>` : ''}
+          <button class="present-btn" id="present-btn" type="button">⛶ Presentar</button>
+        `}
+      </div>
+    </div>
+    <div class="song-header ${editMode ? 'song-header--editing' : ''}">
+      <div class="song-mode-label">${editMode ? 'Modo edición' : 'Canción'}</div>
+      <h1 class="song-heading">${escapeHtml(displaySong.title)}</h1>
+      <div class="song-meta">
+        <span>${escapeHtml(displaySong.artist)}</span>
+        <span class="dot"></span>
+        <span class="key-tag">${escapeHtml(displaySong.key)}</span>
+        ${displaySong.tempo ? `<span class="dot"></span><span>${escapeHtml(displaySong.tempo)}</span>` : ''}
+      </div>
+    </div>
+
+    ${renderMetronomeHtml(getBpm(), isRunning())}
+
+    ${editMode ? renderSongEditHtml(displaySong, editFeedback) : renderSongReadOnlySections(displaySong)}
 
     ${renderCollabHtml(song, comments, state, feedback)}
   `;
 
-  view.querySelector('#back-btn').addEventListener('click', () => navigate('/'));
+  view.querySelector('#back-btn').addEventListener('click', () => {
+    songDetailEdit = null;
+    navigate('/');
+  });
+  view.querySelector('#present-btn')?.addEventListener('click', () => openPresentMode(song));
+  view.querySelector('#edit-song-btn')?.addEventListener('click', () => {
+    songDetailEdit = { id: song.id, draft: createSongEditDraft(song), feedback: '' };
+    renderSongView(song, { editMode: true });
+  });
+  attachSongEditHandlers(song);
   view.querySelector('#favorite-btn').addEventListener('click', handleFavoriteToggle);
   view.querySelector('#status-select').addEventListener('change', handleStatusChange);
   view.querySelector('#comment-form').addEventListener('submit', handleCommentSubmit);
+  view.querySelector('#comments-list').addEventListener('click', handleCommentDelete);
+
+  attachMetronomeHandlers(view);
+
+  // Muestra el FAB flotante
+  const fab = document.querySelector('#metro-fab');
+  if (fab) {
+    fab.hidden = false;
+    document.querySelector('#metro-fab-bpm').textContent = isRunning() ? `${getBpm()}` : '';
+    fab.classList.toggle('metro-fab--running', isRunning());
+  }
+}
+
+function attachSongEditHandlers(song) {
+  const form = view.querySelector('#song-edit-form');
+  if (!form || songDetailEdit?.id !== song.id) return;
+
+  const updateDraft = () => {
+    songDetailEdit = {
+      ...songDetailEdit,
+      draft: readSongEditForm(form, { keepEmptyTabs: true }),
+      feedback: ''
+    };
+  };
+
+  form.addEventListener('input', updateDraft);
+
+  view.querySelectorAll('.cancel-song-edit-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      songDetailEdit = null;
+      const current = getSongById(song.id) || song;
+      renderSongView(current);
+    });
+  });
+
+  const tabsList = form.querySelector('#tabs-editor-list');
+  form.querySelector('#add-tab-btn')?.addEventListener('click', () => {
+    tabsList.insertAdjacentHTML('beforeend', renderTabEditorRow());
+    updateDraft();
+    const added = tabsList.querySelector('[data-tab-editor]:last-child input');
+    added?.focus();
+  });
+
+  tabsList?.addEventListener('click', (event) => {
+    const removeBtn = event.target.closest('.tab-remove-btn');
+    if (!removeBtn) return;
+    const row = removeBtn.closest('[data-tab-editor]');
+    row?.remove();
+    updateDraft();
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const data = readSongEditForm(form);
+    const saveButtons = view.querySelectorAll('[form="song-edit-form"], #song-edit-form button[type="submit"]');
+    const feedbackEl = view.querySelector('#song-edit-feedback');
+    saveButtons.forEach((button) => { button.disabled = true; });
+    if (feedbackEl) feedbackEl.textContent = 'Guardando cambios…';
+
+    try {
+      const saved = await updateSong(song.id, data);
+      const updatedSong = mergeSavedSong(song.id, song, saved);
+      songDetailEdit = null;
+      setBpm(parseTempo(updatedSong.tempo));
+      renderSongView(updatedSong);
+      refreshSongsAfterSave();
+      await updateConnectivityBar();
+    } catch (err) {
+      songDetailEdit = {
+        id: song.id,
+        draft: readSongEditForm(form, { keepEmptyTabs: true }),
+        feedback: err.message || 'No se pudieron guardar los cambios.'
+      };
+      renderSongView(song, { editMode: true });
+    }
+  });
 }
 
 function getSongById(id) {
   return songs.find((s) => s.id === id) || null;
 }
 
+function mergeSavedSong(id, baseSong, saved) {
+  const updatedSong = { ...baseSong, ...saved };
+  songs = songs.map((s) => (s.id === id ? { ...s, ...updatedSong } : s));
+  return updatedSong;
+}
+
+function refreshSongsAfterSave() {
+  syncFromRemote().then((fresh) => {
+    if (fresh) songs = fresh;
+  }).catch(() => {});
+}
+
 function teardownRealtimeChannels() {
   unsubscribe(realtimeMetaChannel);
   unsubscribe(realtimeCommentsChannel);
+  if (realtimeChatChannel) clearInterval(realtimeChatChannel);
   realtimeMetaChannel = null;
   realtimeCommentsChannel = null;
+  realtimeChatChannel = null;
 }
 
 async function loadSongView(id) {
   const song = getSongById(id);
   if (!song) { navigate('/'); return; }
+  if (songDetailEdit?.id !== id) songDetailEdit = null;
 
   teardownRealtimeChannels();
 
@@ -413,6 +862,8 @@ async function loadSongView(id) {
   currentComments = [];
   commentsState = 'loading';
   window.scrollTo(0, 0);
+  // Ajusta el BPM al tempo de la canción solo al cargarla, no en cada re-render
+  setBpm(parseTempo(song.tempo));
   renderSongView(song);
 
   try {
@@ -437,9 +888,21 @@ async function loadSongView(id) {
 
   realtimeCommentsChannel = subscribeToComments(song.id, (newComment) => {
     if (currentSongId !== id) return;
-    const alreadyExists = currentComments.some((c) => c.id === newComment.id);
-    if (alreadyExists) return;
-    currentComments = [...currentComments, newComment];
+    // Reemplaza un comentario local optimista con el mismo texto+autor, o ignora si ya existe
+    const localIdx = currentComments.findIndex(
+      (c) => c.id.startsWith('local-') && c.text === newComment.text && c.author === newComment.author
+    );
+    if (localIdx !== -1) {
+      currentComments = [
+        ...currentComments.slice(0, localIdx),
+        newComment,
+        ...currentComments.slice(localIdx + 1)
+      ];
+    } else if (!currentComments.some((c) => c.id === newComment.id)) {
+      currentComments = [...currentComments, newComment];
+    } else {
+      return;
+    }
     commentsState = 'loaded';
     const s = getSongById(currentSongId);
     if (s) renderSongView(s);
@@ -513,6 +976,23 @@ async function handleCommentSubmit(event) {
   }
 }
 
+async function handleCommentDelete(event) {
+  const btn = event.target.closest('.comment-delete-btn');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const song = getSongById(currentSongId);
+  if (!song) return;
+  btn.disabled = true;
+  currentComments = currentComments.filter((c) => c.id !== id);
+  const s = getSongById(currentSongId);
+  if (s) renderSongView(s);
+  try {
+    await deleteSongComment(id);
+  } catch {
+    showCollabFeedback('No se pudo borrar el comentario.');
+  }
+}
+
 // ─── Modal Sugerir Canción ───────────────────────────────────────────────────
 
 function openSuggestModal() {
@@ -528,7 +1008,7 @@ function openSuggestModal() {
         <label class="field-label">Título <input class="field-input" name="title" type="text" required placeholder="Hey Jude" /></label>
         <label class="field-label">Artista <input class="field-input" name="artist" type="text" required placeholder="The Beatles" /></label>
         <label class="field-label">Tu nombre <input class="field-input" name="suggestedBy" type="text" placeholder="Martín" /></label>
-        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Por qué la incluirías..."></textarea></label>
+        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Por qué la incluirías…"></textarea></label>
         <div class="modal-feedback" id="modal-feedback"></div>
         <button class="comment-submit" type="submit">Enviar sugerencia</button>
       </form>
@@ -566,6 +1046,135 @@ function openSuggestModal() {
   });
 }
 
+// ─── Modal Crear Canción (público) ────────────────────────────────────────────
+
+function openCreateSongModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="Agregar canción">
+      <div class="modal-header">
+        <div class="modal-title">Agregar canción al setlist</div>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <form class="modal-form" id="create-song-form">
+        <div class="admin-form-grid">
+          <label class="field-label">Título * <input class="field-input" name="title" type="text" required placeholder="Hey Jude" /></label>
+          <label class="field-label">Artista * <input class="field-input" name="artist" type="text" required placeholder="The Beatles" /></label>
+          <label class="field-label">Tonalidad <input class="field-input" name="key" type="text" placeholder="Am" /></label>
+          <label class="field-label">Tempo <input class="field-input" name="tempo" type="text" placeholder="120 bpm" /></label>
+        </div>
+        <label class="field-label">Estructura <input class="field-input" name="structure" type="text" placeholder="Intro - Verso - Coro…" /></label>
+        <label class="field-label">Progresión <input class="field-input" name="progression" type="text" placeholder="Am - G - F - E" /></label>
+        <label class="field-label">Letra <textarea class="field-input" name="lyrics" rows="5" placeholder="Pegá la letra acá…"></textarea></label>
+        <label class="field-label">Notas <textarea class="field-input" name="notes" rows="2" placeholder="Referencias, links, observaciones…"></textarea></label>
+        <div class="modal-feedback" id="modal-feedback"></div>
+        <div class="admin-form-actions">
+          <button class="comment-submit" type="submit">Agregar canción</button>
+          <button class="admin-cancel" id="cancel-create" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-close').addEventListener('click', close);
+  overlay.querySelector('#cancel-create').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#create-song-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const feedback = overlay.querySelector('#modal-feedback');
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+
+    try {
+      await createSong({
+        title: String(fd.get('title') || ''),
+        artist: String(fd.get('artist') || ''),
+        key: String(fd.get('key') || ''),
+        tempo: String(fd.get('tempo') || ''),
+        structure: String(fd.get('structure') || ''),
+        progression: String(fd.get('progression') || ''),
+        lyrics: String(fd.get('lyrics') || ''),
+        notes: String(fd.get('notes') || ''),
+        tabs: [],
+        sortOrder: songs.length
+      });
+      songs = await getSongs();
+      feedback.textContent = '¡Canción agregada al setlist!';
+      feedback.className = 'modal-feedback modal-feedback--ok';
+      setTimeout(() => {
+        close();
+        renderListView();
+      }, 1200);
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'modal-feedback modal-feedback--error';
+      btn.disabled = false;
+    }
+  });
+}
+
+// ─── Modal Editar Letra ───────────────────────────────────────────────────────
+
+function openEditLyricsModal(song) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="Editar letra">
+      <div class="modal-header">
+        <div class="modal-title">Editar letra: ${escapeHtml(song.title)}</div>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <form class="modal-form" id="edit-lyrics-form">
+        <label class="field-label">
+          Letra
+          <textarea class="field-input" name="lyrics" rows="16" placeholder="Pegá la letra acá…">${escapeHtml(song.lyrics)}</textarea>
+        </label>
+        <div class="modal-feedback" id="modal-feedback"></div>
+        <div class="admin-form-actions">
+          <button class="comment-submit" type="submit">Guardar letra</button>
+          <button class="admin-cancel" id="cancel-lyrics" type="button">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#modal-close').addEventListener('click', close);
+  overlay.querySelector('#cancel-lyrics').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#edit-lyrics-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const lyrics = String(new FormData(form).get('lyrics') || '');
+    const btn = form.querySelector('button[type="submit"]');
+    const feedback = overlay.querySelector('#modal-feedback');
+    btn.disabled = true;
+
+    try {
+      const saved = await updateSong(song.id, { lyrics });
+      const updatedSong = mergeSavedSong(song.id, song, saved);
+      close();
+      renderSongView(updatedSong);
+      refreshSongsAfterSave();
+      await updateConnectivityBar();
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'modal-feedback modal-feedback--error';
+      btn.disabled = false;
+    }
+  });
+}
+
 // ─── Vista Admin ─────────────────────────────────────────────────────────────
 
 function songFormHtml(song = null) {
@@ -592,6 +1201,7 @@ function songFormHtml(song = null) {
 }
 
 async function renderAdminView() {
+  songDetailEdit = null;
   const admin = await isAdmin();
 
   if (!admin) {
@@ -716,7 +1326,7 @@ function attachAdminHandlers() {
     const deleteBtn = e.target.closest('.admin-delete-btn');
 
     if (editBtn) {
-      openEditModal(editBtn.dataset.id);
+      openEditSongModal(editBtn.dataset.id, { onSaved: renderAdminView });
     }
 
     if (deleteBtn) {
@@ -736,7 +1346,7 @@ function attachAdminHandlers() {
   });
 }
 
-function openEditModal(id) {
+function openEditSongModal(id, options = {}) {
   const song = getSongById(id);
   if (!song) return;
 
@@ -766,7 +1376,7 @@ function openEditModal(id) {
     btn.disabled = true;
 
     try {
-      await updateSong(id, {
+      const data = {
         title: String(fd.get('title') || ''),
         artist: String(fd.get('artist') || ''),
         key: String(fd.get('key') || ''),
@@ -775,10 +1385,17 @@ function openEditModal(id) {
         progression: String(fd.get('progression') || ''),
         lyrics: String(fd.get('lyrics') || ''),
         notes: String(fd.get('notes') || '')
-      });
-      songs = await getSongs();
+      };
+      const saved = await updateSong(id, data);
+      const updatedSong = mergeSavedSong(id, song, saved);
       overlay.remove();
-      renderAdminView();
+      refreshSongsAfterSave();
+      await updateConnectivityBar();
+      if (typeof options.onSaved === 'function') {
+        options.onSaved(updatedSong);
+      } else {
+        renderAdminView();
+      }
     } catch (err) {
       feedback.textContent = err.message;
       btn.disabled = false;
@@ -823,16 +1440,406 @@ function renderLoginView() {
   });
 }
 
+// ─── Metrónomo flotante ───────────────────────────────────────────────────────
+
+function renderFloatPanel() {
+  const panel = document.querySelector('#metro-float-panel');
+  if (!panel) return;
+  const bpm = getBpm();
+  const running = isRunning();
+  panel.innerHTML = `
+    <div class="metro-float-inner">
+      <div class="metro-float-header">
+        <span class="metro-float-title">Metrónomo</span>
+        <button class="metro-float-close" id="metro-float-close" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="metro-panel metro-panel--float">
+        <div class="metro-controls">
+          <button class="metro-toggle" id="metro-toggle" type="button">
+            ${running ? '⏹ Stop' : '▶ Play'}
+          </button>
+          <div class="metro-bpm-display">
+            <button class="metro-adj" id="metro-minus" type="button" aria-label="Bajar BPM">−</button>
+            <div class="metro-bpm-value" id="metro-bpm-value">${bpm}</div>
+            <button class="metro-adj" id="metro-plus" type="button" aria-label="Subir BPM">+</button>
+          </div>
+          <button class="metro-tap" id="metro-tap" type="button">Tap</button>
+        </div>
+        <input class="metro-slider" id="metro-slider" type="range" min="20" max="300" value="${bpm}" aria-label="BPM" />
+        <div class="metro-labels"><span>20</span><span>BPM</span><span>300</span></div>
+      </div>
+    </div>
+  `;
+  panel.hidden = false;
+  attachMetronomeHandlers(panel);
+  panel.querySelector('#metro-float-close').addEventListener('click', () => { panel.hidden = true; });
+}
+
+function initMetronomeFloat() {
+  const fab = document.querySelector('#metro-fab');
+  const panel = document.querySelector('#metro-float-panel');
+  if (!fab || !panel) return;
+
+  fab.addEventListener('click', () => {
+    if (panel.hidden) {
+      renderFloatPanel();
+    } else {
+      panel.hidden = true;
+    }
+  });
+
+  // Cierra el panel al hacer click fuera
+  document.addEventListener('click', (e) => {
+    if (!panel.hidden && !panel.contains(e.target) && e.target !== fab && !fab.contains(e.target)) {
+      panel.hidden = true;
+    }
+  });
+}
+
+// Oculta el FAB cuando el usuario vuelve al listado
+function hideFab() {
+  const fab = document.querySelector('#metro-fab');
+  if (fab) fab.hidden = true;
+  const panel = document.querySelector('#metro-float-panel');
+  if (panel) panel.hidden = true;
+}
+
+// ─── Modo presentación ────────────────────────────────────────────────────────
+
+function openPresentMode(song) {
+  const overlay = document.querySelector('#present-overlay');
+  if (!overlay) return;
+
+  const lyricsHtml = song.lyrics.trim()
+    ? `<div class="present-lyrics">${escapeHtml(song.lyrics)}</div>`
+    : `<div class="present-lyrics present-lyrics--empty">Sin letra cargada todavía.</div>`;
+
+  overlay.innerHTML = `
+    <div class="present-header">
+      <div class="present-song-info">
+        <span class="present-title">${escapeHtml(song.title)}</span>
+        <span class="present-artist">${escapeHtml(song.artist)}</span>
+        ${song.key ? `<span class="present-key">${escapeHtml(song.key)}</span>` : ''}
+      </div>
+      <button class="present-close" id="present-close" type="button" aria-label="Cerrar presentación">✕ Cerrar</button>
+    </div>
+    <div class="present-body">
+      ${lyricsHtml}
+    </div>
+  `;
+
+  overlay.hidden = false;
+  presentMode = true;
+  document.body.classList.add('presenting');
+
+  overlay.querySelector('#present-close').addEventListener('click', closePresentMode);
+}
+
+function closePresentMode() {
+  const overlay = document.querySelector('#present-overlay');
+  if (overlay) overlay.hidden = true;
+  presentMode = false;
+  document.body.classList.remove('presenting');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && presentMode) closePresentMode();
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+// ─── Vista Favoritos ──────────────────────────────────────────────────────────
+
+function renderFavoritesView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  songDetailEdit = null;
+  hideFab();
+
+  const favs = songs.filter((s) => s.meta?.isFavorite);
+
+  const items = favs.map((song) => {
+    const status = song.meta?.status || 'pending';
+    return `
+      <li class="song-item" data-id="${escapeHtml(song.id)}" tabindex="0">
+        <div class="song-num">★</div>
+        <div class="song-info">
+          <div class="song-title">${escapeHtml(song.title)}</div>
+          <div class="song-artist">${escapeHtml(song.artist)}</div>
+        </div>
+        <div class="song-tags">
+          <div class="song-status status-${escapeHtml(status)}">${escapeHtml(getStatusLabel(status))}</div>
+          <div class="song-key">${escapeHtml(song.key)}</div>
+        </div>
+        <div class="song-arrow">→</div>
+      </li>
+    `;
+  }).join('');
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Favoritos</div>
+      </div>
+      <h1>Favoritas</h1>
+    </header>
+    <div class="count">${favs.length} canci${favs.length === 1 ? 'ón' : 'ones'}</div>
+    <ol class="songs" id="song-list">${items || '<div class="empty">Sin favoritas todavía — marcalas desde la vista de cada canción.</div>'}</ol>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+  view.querySelector('#song-list').addEventListener('click', (e) => {
+    const item = e.target.closest('.song-item');
+    if (item) navigate(`/song/${item.dataset.id}`);
+  });
+  view.querySelector('#song-list').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const item = e.target.closest('.song-item');
+    if (item) {
+      e.preventDefault();
+      navigate(`/song/${item.dataset.id}`);
+    }
+  });
+}
+
+// ─── Vista Sugerencias ────────────────────────────────────────────────────────
+
+async function renderSuggestionsView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  songDetailEdit = null;
+  hideFab();
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Sugerencias</div>
+      </div>
+      <h1>Sugerencias</h1>
+    </header>
+    <button class="suggest-btn" id="suggest-btn" type="button">+ Sugerir canción</button>
+    <div class="count suggestions-loading">Cargando…</div>
+    <div id="suggestions-list"></div>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+  view.querySelector('#suggest-btn').addEventListener('click', openSuggestModal);
+
+  try {
+    const suggestions = await getSuggestions();
+    const listEl = view.querySelector('#suggestions-list');
+    const countEl = view.querySelector('.suggestions-loading');
+    if (countEl) countEl.textContent = `${suggestions.length} sugerencia${suggestions.length === 1 ? '' : 's'}`;
+
+    if (suggestions.length === 0) {
+      listEl.innerHTML = '<div class="empty">Sin sugerencias todavía.</div>';
+      return;
+    }
+
+    let currentSuggestions = suggestions;
+
+    const renderList = () => {
+      listEl.innerHTML = currentSuggestions.map((s) => `
+        <div class="suggestion-card" data-id="${escapeHtml(s.id)}">
+          <div class="suggestion-info">
+            <div class="suggestion-title">${escapeHtml(s.title)}</div>
+            <div class="suggestion-artist">${escapeHtml(s.artist)}</div>
+            ${s.notes ? `<div class="suggestion-notes">${escapeHtml(s.notes)}</div>` : ''}
+          </div>
+          <div class="suggestion-meta">
+            <span class="suggestion-by">${escapeHtml(s.suggestedBy || 'Banda')}</span>
+            <span class="suggestion-status suggestion-status--${escapeHtml(s.status)}">${escapeHtml(s.status)}</span>
+            <button class="item-delete-btn suggestion-delete-btn" data-id="${escapeHtml(s.id)}" aria-label="Eliminar sugerencia" title="Eliminar">✕</button>
+          </div>
+        </div>
+      `).join('') || '<div class="empty">Sin sugerencias todavía.</div>';
+    };
+
+    renderList();
+
+    listEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.suggestion-delete-btn');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      btn.disabled = true;
+      currentSuggestions = currentSuggestions.filter((s) => s.id !== id);
+      const countEl = view.querySelector('.suggestions-loading');
+      if (countEl) countEl.textContent = `${currentSuggestions.length} sugerencia${currentSuggestions.length === 1 ? '' : 's'}`;
+      renderList();
+      try {
+        await deleteSuggestion(id);
+      } catch {
+        // best-effort, ya se eliminó localmente
+      }
+    });
+  } catch {
+    const listEl = view.querySelector('#suggestions-list');
+    if (listEl) listEl.innerHTML = '<div class="empty">No se pudieron cargar las sugerencias.</div>';
+  }
+}
+
+// ─── Vista Chat ───────────────────────────────────────────────────────────────
+
+function renderChatMessages(msgs) {
+  if (msgs.length === 0) return '<div class="chat-empty">Sin mensajes todavía. ¡Rompé el hielo!</div>';
+  const myAuthor = getStoredAuthor();
+  return msgs.map((m) => {
+    const isMe = myAuthor && myAuthor === m.author;
+    return `
+      <div class="chat-msg ${isMe ? 'chat-msg--me' : ''}" data-id="${escapeHtml(m.id)}">
+        <div class="chat-msg-header">
+          <div class="chat-msg-author">${escapeHtml(m.author)}</div>
+          <button class="item-delete-btn chat-delete-btn" data-id="${escapeHtml(m.id)}" aria-label="Eliminar mensaje" title="Eliminar">✕</button>
+        </div>
+        <div class="chat-msg-text">${escapeHtml(m.text)}</div>
+        <div class="chat-msg-time">${escapeHtml(formatDate(m.createdAt))}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function renderChatView() {
+  teardownRealtimeChannels();
+  currentSongId = null;
+  songDetailEdit = null;
+  hideFab();
+  chatState = 'loading';
+  chatMessages = [];
+
+  const author = getStoredAuthor();
+
+  view.innerHTML = `
+    <header>
+      <div class="header-row">
+        <button class="hamburger-btn" id="hamburger-btn" type="button" aria-label="Abrir menú">☰</button>
+        <div class="eyebrow">Chat</div>
+      </div>
+      <h1>Chat de la Banda</h1>
+    </header>
+    <div class="chat-messages" id="chat-messages"><div class="chat-empty">Cargando mensajes…</div></div>
+    <form class="chat-form" id="chat-form">
+      <input class="chat-author" name="author" type="text" placeholder="Tu nombre"
+        autocomplete="name" value="${escapeHtml(author)}" />
+      <div class="chat-input-row">
+        <textarea class="chat-input" name="text" rows="2" placeholder="Escribí algo…" required></textarea>
+        <button class="chat-submit" type="submit">Enviar</button>
+      </div>
+    </form>
+  `;
+
+  view.querySelector('#hamburger-btn').addEventListener('click', openDrawer);
+
+  const messagesEl = view.querySelector('#chat-messages');
+
+  const scrollToBottom = () => {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  try {
+    chatMessages = await getChatMessages();
+    chatState = 'loaded';
+    messagesEl.innerHTML = renderChatMessages(chatMessages);
+    scrollToBottom();
+  } catch {
+    chatState = 'error';
+    messagesEl.innerHTML = '<div class="chat-empty">No se pudieron cargar los mensajes.</div>';
+  }
+
+  // Polling cada 8 segundos — no necesita Realtime de Supabase
+  realtimeChatChannel = setInterval(async () => {
+    if (!view.querySelector('#chat-messages')) return;
+    try {
+      const fresh = await getChatMessages();
+      const prevIds = new Set(chatMessages.map((m) => m.id));
+      const freshIds = new Set(fresh.map((m) => m.id));
+      const hasNew = fresh.some((m) => !prevIds.has(m.id));
+      const hasResolved = chatMessages.some((m) => m.id.startsWith('local-') && !freshIds.has(m.id));
+      if (!hasNew && !hasResolved) return;
+      chatMessages = fresh;
+      const el = view.querySelector('#chat-messages');
+      if (el) {
+        const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+        el.innerHTML = renderChatMessages(chatMessages);
+        if (wasAtBottom) el.scrollTop = el.scrollHeight;
+      }
+    } catch { /* silencioso */ }
+  }, 8000);
+
+  messagesEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.chat-delete-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    btn.disabled = true;
+    chatMessages = chatMessages.filter((m) => m.id !== id);
+    messagesEl.innerHTML = renderChatMessages(chatMessages);
+    try {
+      await deleteChatMessage(id);
+    } catch {
+      // best-effort
+    }
+  });
+
+  view.querySelector('#chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const authorVal = String(fd.get('author') || '').trim();
+    const text = String(fd.get('text') || '').trim();
+    if (!text) return;
+    setStoredAuthor(authorVal);
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    form.querySelector('.chat-input').value = '';
+    try {
+      const msg = await addChatMessage({ author: authorVal, text });
+      chatMessages = [...chatMessages, msg];
+      const el = view.querySelector('#chat-messages');
+      if (el) { el.innerHTML = renderChatMessages(chatMessages); el.scrollTop = el.scrollHeight; }
+    } catch {
+      form.querySelector('.chat-input').value = text;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 route('/', () => {
   teardownRealtimeChannels();
   currentSongId = null;
+  hideFab();
   renderListView();
+  syncFromRemote().then((fresh) => {
+    if (!fresh) return;
+    const currentIds = new Set(songs.map((s) => s.id));
+    const freshIds = new Set(fresh.map((s) => s.id));
+    const changed = fresh.length !== songs.length ||
+      fresh.some((s) => !currentIds.has(s.id)) ||
+      songs.some((s) => !freshIds.has(s.id));
+    if (changed && !currentSongId) {
+      songs = fresh;
+      renderListView(view.querySelector('#search')?.value || '');
+    }
+  }).catch(() => {});
 });
 
 route('/song/:id', ({ id }) => {
   loadSongView(id);
+});
+
+route('/favoritos', () => {
+  renderFavoritesView();
+});
+
+route('/sugerencias', () => {
+  renderSuggestionsView();
+});
+
+route('/chat', () => {
+  renderChatView();
 });
 
 route('/admin', () => {
@@ -843,6 +1850,9 @@ route('/admin', () => {
 async function init() {
   renderListLoading();
 
+  // Poda tombstones vencidos para que el store no crezca sin límite.
+  dbPruneTombstones().catch(() => {});
+
   try {
     [songs, adminMode] = await Promise.all([getSongs(), isAdmin()]);
   } catch (error) {
@@ -852,6 +1862,11 @@ async function init() {
 
   onAuthChange((loggedIn) => { adminMode = loggedIn; });
 
+  // Suscribe la UI al estado del metrónomo
+  onMetronomeChange((bpm) => syncMetronomeUI(bpm, isRunning()));
+
+  initMetronomeFloat();
+  initDrawer();
   startRouter();
 }
 

@@ -1,0 +1,48 @@
+{
+  "status": {
+    "pending": "Pendiente",
+    "rehearsing": "Ensayando",
+    "ready": "Lista"
+  },
+  "filter": {
+    "all": "Todas",
+    "favorites": "Favoritas",
+    "pending": "Pendientes",
+    "rehearsing": "Ensayando",
+    "ready": "Listas"
+  },
+  "section": {
+    "chords": "Acordes",
+    "tabs": "Tabs",
+    "lyrics": "Letra",
+    "notes": "Notas",
+    "progression": "Progresión",
+    "structure": "Estructura"
+  },
+  "placeholder": {
+    "search": "Buscar canción o artista…",
+    "no_results": "Sin resultados.",
+    "no_songs": "Sin canciones todavía.",
+    "no_tabs": "Sin tabs.",
+    "no_lyrics": "Sin letra.",
+    "no_notes": "Sin notas.",
+    "tab_name": "Nombre del tab",
+    "tab_content": "e|---..."
+  },
+  "action": {
+    "add_first": "+ Agregar primera canción",
+    "add_tab": "+ Agregar tab",
+    "title_required": "El título es requerido.",
+    "new_song": "Nueva canción",
+    "delete_confirm": "¿Borrar \"{{title}}\"? Esta acción no se puede deshacer.",
+    "favorite_error": "No pudimos guardar el favorito.",
+    "saved": "Guardado.",
+    "not_found": "Canción no encontrada."
+  },
+  "field": {
+    "title": "Título *",
+    "artist": "Artista",
+    "key": "Key",
+    "tempo": "Tempo"
+  }
+}

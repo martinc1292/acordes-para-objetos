@@ -2,12 +2,20 @@ import { SONGS } from '../data/songs.js';
 import { supabase } from './supabase.js';
 import {
   dbCountPending,
+  dbDeleteChatMessage,
+  dbDeleteComment,
   dbDeletePending,
+  dbDeleteSong,
+  dbDeleteSuggestion,
   dbEnqueue,
+  dbFilterTombstoned,
+  dbGetChatMessages,
   dbGetComments,
   dbGetPending,
   dbGetSongs,
   dbGetSuggestions,
+  dbPutChatMessage,
+  dbPutChatMessages,
   dbPutComment,
   dbPutComments,
   dbPutMeta,
@@ -22,7 +30,16 @@ const DEFAULT_META = {
 };
 const VALID_STATUSES = new Set(['pending', 'rehearsing', 'ready']);
 const VALID_COMMENT_COLORS = new Set(['yellow', 'pink', 'blue', 'green', 'orange']);
-const COMMENT_COLUMNS = 'id,song_id,author,text,color,created_at';
+const COMMENT_COLUMNS = 'id,song_id,user_id,author,text,color,created_at';
+const REMOTE_WRITE_TIMEOUT_MS = 6000;
+
+// Contador monótono para IDs optimistas — evita colisiones de Date.now()
+// cuando dos inserciones ocurren dentro del mismo milisegundo.
+let optimisticSeq = 0;
+function nextOptimisticId(prefix) {
+  optimisticSeq += 1;
+  return `${prefix}-${Date.now()}-${optimisticSeq}`;
+}
 
 // ── Normalizers ───────────────────────────────────────────────────────────────
 
@@ -32,6 +49,49 @@ function optionalText(value) {
 
 function normalizeTabs(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function withTimeout(promise, timeoutMs = REMOTE_WRITE_TIMEOUT_MS) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error('La red tardó demasiado. Guardé el cambio localmente para sincronizarlo luego.');
+      error.isTimeout = true;
+      reject(error);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function isTransientWriteError(error) {
+  if (error?.isTimeout) return true;
+  if (error?.status === 0) return true;
+  return /failed to fetch|networkerror|load failed/i.test(error?.message || '');
+}
+
+function buildSongUpdateRow(data) {
+  const row = {};
+  if (typeof data.title === 'string') row.title = data.title.trim();
+  if (typeof data.artist === 'string') row.artist = data.artist.trim();
+  if (typeof data.key === 'string') row.song_key = data.key.trim();
+  if (typeof data.tempo === 'string') row.tempo = data.tempo.trim();
+  if (typeof data.structure === 'string') row.structure = data.structure.trim();
+  if (typeof data.progression === 'string') row.progression = data.progression.trim();
+  if (Array.isArray(data.tabs)) row.tabs = data.tabs;
+  if (typeof data.lyrics === 'string') row.lyrics = data.lyrics.trim();
+  if (typeof data.notes === 'string') row.notes = data.notes.trim();
+  if (Number.isInteger(data.sortOrder)) row.sort_order = data.sortOrder;
+  return row;
+}
+
+function mapSongUpdateRowToLocal(row) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => {
+      const map = { song_key: 'key', sort_order: 'sortOrder' };
+      return [map[key] ?? key, value];
+    })
+  );
 }
 
 function mapMeta(row) {
@@ -98,6 +158,7 @@ export function mapRemoteComment(row) {
   return {
     id: row.id,
     songId: row.song_id,
+    userId: row.user_id ?? null,
     author: optionalText(row.author),
     text: optionalText(row.text),
     color: VALID_COMMENT_COLORS.has(row.color) ? row.color : 'yellow',
@@ -134,7 +195,7 @@ async function fetchAndCacheSongs() {
 
   if (error) throw new Error(error.message);
 
-  const songs = data.map(mapRemoteSong);
+  const songs = await dbFilterTombstoned('songs', data.map(mapRemoteSong));
   await dbPutSongs(songs);
   return songs;
 }
@@ -205,8 +266,8 @@ async function fetchAndCacheComments(songId, client) {
 
   if (error) throw new Error(error.message);
 
-  const comments = data.map(mapRemoteComment);
-  await dbPutComments(comments);
+  const comments = await dbFilterTombstoned('comments', data.map(mapRemoteComment));
+  await dbPutComments(comments, songId);
   return comments;
 }
 
@@ -217,7 +278,7 @@ export async function addSongComment(songId, comment, client = supabase) {
   if (!input.text) throw new Error('El comentario no puede estar vacío.');
 
   const optimistic = {
-    id: `local-${Date.now()}`,
+    id: nextOptimisticId('local'),
     songId,
     author: input.author,
     text: input.text,
@@ -230,10 +291,13 @@ export async function addSongComment(songId, comment, client = supabase) {
 
   if (!client) return optimistic;
 
+  const { data: { session } } = await client.auth.getSession();
+  const userId = session?.user?.id ?? null;
+
   try {
     const { data, error } = await client
       .from('comments')
-      .insert({ song_id: songId, ...input })
+      .insert({ song_id: songId, user_id: userId, ...input })
       .select(COMMENT_COLUMNS)
       .single();
 
@@ -245,6 +309,93 @@ export async function addSongComment(songId, comment, client = supabase) {
   } catch {
     // Offline → encolar
     await dbEnqueue('insert_comment', { songId, comment: input });
+    return optimistic;
+  }
+}
+
+// ── deleteSongComment ─────────────────────────────────────────────────────────
+
+export async function deleteSongComment(commentId, client = supabase) {
+  await dbDeleteComment(commentId);
+
+  if (!client || commentId.startsWith('local-')) return;
+
+  try {
+    await client.from('comments').delete().eq('id', commentId);
+  } catch {
+    // best-effort
+  }
+}
+
+// ── Chat global ───────────────────────────────────────────────────────────────
+
+const CHAT_COLUMNS = 'id,user_id,author,text,created_at';
+
+export function mapRemoteChatMessage(row) {
+  return {
+    id: row.id,
+    userId: row.user_id ?? null,
+    author: optionalText(row.author),
+    text: optionalText(row.text),
+    createdAt: optionalText(row.created_at)
+  };
+}
+
+export async function getChatMessages(client = supabase) {
+  if (!client) return dbGetChatMessages();
+
+  const cached = await dbGetChatMessages();
+
+  const doFetch = async () => {
+    const { data, error } = await client
+      .from('chat_messages')
+      .select(CHAT_COLUMNS)
+      .order('created_at', { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const msgs = await dbFilterTombstoned('chat_messages', data.map(mapRemoteChatMessage));
+    await dbPutChatMessages(msgs);
+    return msgs;
+  };
+
+  if (cached.length > 0) {
+    doFetch().catch(() => {});
+    return cached;
+  }
+
+  return doFetch();
+}
+
+export async function addChatMessage(data, client = supabase) {
+  const author = optionalText(data.author).trim() || 'Anónimo';
+  const text = optionalText(data.text).trim();
+  if (!text) throw new Error('El mensaje no puede estar vacío.');
+
+  const optimistic = {
+    id: nextOptimisticId('local-chat'),
+    author,
+    text,
+    createdAt: new Date().toISOString()
+  };
+
+  await dbPutChatMessage(optimistic);
+
+  if (!client) return optimistic;
+
+  const { data: { session: chatSession } } = await client.auth.getSession();
+  const chatUserId = chatSession?.user?.id ?? null;
+
+  try {
+    const { data: inserted, error } = await client
+      .from('chat_messages')
+      .insert({ user_id: chatUserId, author, text })
+      .select(CHAT_COLUMNS)
+      .single();
+    if (error) throw new Error(error.message);
+    const persisted = mapRemoteChatMessage(inserted);
+    await dbPutChatMessage(persisted);
+    return persisted;
+  } catch {
     return optimistic;
   }
 }
@@ -264,7 +415,7 @@ export async function addSuggestion(data, client = supabase) {
   }
 
   const optimistic = {
-    id: `local-suggestion-${Date.now()}`,
+    id: nextOptimisticId('local-suggestion'),
     title: suggestion.title,
     artist: suggestion.artist,
     suggestedBy: suggestion.suggested_by,
@@ -306,7 +457,7 @@ export async function getSuggestions(client = supabase) {
 
     if (error) throw new Error(error.message);
 
-    const suggestions = data.map((row) => ({
+    const mapped = data.map((row) => ({
       id: row.id,
       title: optionalText(row.title),
       artist: optionalText(row.artist),
@@ -316,6 +467,7 @@ export async function getSuggestions(client = supabase) {
       createdAt: row.created_at
     }));
 
+    const suggestions = await dbFilterTombstoned('suggestions', mapped);
     await dbPutSuggestions(suggestions);
     return suggestions;
   } catch {
@@ -356,6 +508,12 @@ async function dispatchPending(item, client) {
       .insert({ song_id: songId, ...comment });
   }
 
+  if (type === 'update_song') {
+    const { id, row } = payload;
+    const { error } = await client.from('songs').update(row).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
   if (type === 'insert_suggestion') {
     await client.from('suggestions').insert(payload);
   }
@@ -390,43 +548,66 @@ export async function createSong(data, client = supabase) {
   return inserted.id;
 }
 
-export async function updateSong(id, data, client = supabase) {
+export async function updateSong(id, data, client = supabase, options = {}) {
   if (!client) throw new Error('Supabase no configurado.');
 
-  const row = {};
-  if (typeof data.title === 'string') row.title = data.title.trim();
-  if (typeof data.artist === 'string') row.artist = data.artist.trim();
-  if (typeof data.key === 'string') row.song_key = data.key.trim();
-  if (typeof data.tempo === 'string') row.tempo = data.tempo.trim();
-  if (typeof data.structure === 'string') row.structure = data.structure.trim();
-  if (typeof data.progression === 'string') row.progression = data.progression.trim();
-  if (Array.isArray(data.tabs)) row.tabs = data.tabs;
-  if (typeof data.lyrics === 'string') row.lyrics = data.lyrics.trim();
-  if (typeof data.notes === 'string') row.notes = data.notes.trim();
-  if (Number.isInteger(data.sortOrder)) row.sort_order = data.sortOrder;
-
-  const { error } = await client.from('songs').update(row).eq('id', id);
-  if (error) throw new Error(error.message);
-
-  // Actualizar IDB
+  const row = buildSongUpdateRow(data);
+  const localPatch = mapSongUpdateRowToLocal(row);
   const cached = await dbGetSongs();
   const song = cached.find((s) => s.id === id);
+  const updated = song ? { ...song, ...localPatch } : { id, ...localPatch };
+
   if (song) {
-    const updated = { ...song, ...Object.fromEntries(
-      Object.entries(row).map(([k, v]) => {
-        const map = { song_key: 'key', sort_order: 'sortOrder' };
-        return [map[k] ?? k, v];
-      })
-    )};
     await dbPutSong(updated);
   }
+
+  try {
+    const response = await withTimeout(
+      client.from('songs').update(row).eq('id', id),
+      options.timeoutMs
+    );
+    if (response.error) {
+      const error = new Error(response.error.message);
+      error.status = response.status;
+      error.code = response.error.code;
+      throw error;
+    }
+  } catch (error) {
+    if (!isTransientWriteError(error)) {
+      if (song) await dbPutSong(song);
+      throw error;
+    }
+    await dbEnqueue('update_song', { id, row });
+  }
+
+  return updated;
 }
 
 export async function deleteSong(id, client = supabase) {
-  if (!client) throw new Error('Supabase no configurado.');
-
+  await dbDeleteSong(id);
+  if (!client) return;
   const { error } = await client.from('songs').delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+export async function deleteSuggestion(id, client = supabase) {
+  await dbDeleteSuggestion(id);
+  if (!client || id.startsWith('local-')) return;
+  try {
+    await client.from('suggestions').delete().eq('id', id);
+  } catch {
+    // best-effort
+  }
+}
+
+export async function deleteChatMessage(id, client = supabase) {
+  await dbDeleteChatMessage(id);
+  if (!client || id.startsWith('local-chat-')) return;
+  try {
+    await client.from('chat_messages').delete().eq('id', id);
+  } catch {
+    // best-effort
+  }
 }
 
 // ── Realtime ──────────────────────────────────────────────────────────────────

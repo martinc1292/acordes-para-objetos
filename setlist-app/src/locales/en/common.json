@@ -1,0 +1,32 @@
+{
+  "loading": "Loading…",
+  "saving": "Saving…",
+  "error": {
+    "load_failed": "Failed to load.",
+    "save_failed": "Failed to save.",
+    "delete_failed": "Failed to delete."
+  },
+  "action": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "← Back",
+    "retry": "Retry",
+    "create": "Create",
+    "delete": "Delete",
+    "edit": "Edit",
+    "accept": "Accept",
+    "reject": "Decline"
+  },
+  "nav": {
+    "settings": "Settings"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
+  "lang": {
+    "es": "ES",
+    "en": "EN"
+  }
+}

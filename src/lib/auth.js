@@ -25,15 +25,36 @@ export async function logout() {
 export async function isAdmin() {
   if (!supabase) return false;
 
-  const { data } = await supabase.auth.getSession();
-  return Boolean(data?.session);
+  const check = supabase.auth.getSession()
+    .then(async ({ data }) => {
+      if (!data?.session) return false;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', data.session.user.id)
+        .single();
+      return profile?.is_admin === true;
+    })
+    .catch(() => false);
+
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(false), 4000));
+
+  return Promise.race([check, timeout]);
 }
 
 export function onAuthChange(callback) {
   if (!supabase) return () => {};
 
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(Boolean(session));
+  const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!session) { callback(false); return; }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', session.user.id)
+      .single();
+
+    callback(profile?.is_admin === true);
   });
 
   return () => data.subscription.unsubscribe();

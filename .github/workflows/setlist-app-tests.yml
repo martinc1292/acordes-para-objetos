@@ -1,0 +1,42 @@
+name: setlist-app tests
+
+on:
+  push:
+    paths:
+      - 'setlist-app/**'
+      - '.github/workflows/setlist-app-tests.yml'
+  pull_request:
+    paths:
+      - 'setlist-app/**'
+      - '.github/workflows/setlist-app-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: node --test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: setlist-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: setlist-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

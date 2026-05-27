@@ -9,18 +9,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
         runtimeCaching: [
+          // Las lecturas REST NO se cachean: el SW servía listados viejos que
+          // incluían filas ya borradas, resucitándolas tras un delete. El
+          // soporte offline lo da IndexedDB, no el cache del SW.
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/.*/,
+            urlPattern: /^https:\/\/.*\.supabase\.co\/(rest|auth)\/.*/,
             handler: 'NetworkOnly'
           }
         ]

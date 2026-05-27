@@ -1,0 +1,48 @@
+{
+  "status": {
+    "pending": "Pending",
+    "rehearsing": "Rehearsing",
+    "ready": "Ready"
+  },
+  "filter": {
+    "all": "All",
+    "favorites": "Favorites",
+    "pending": "Pending",
+    "rehearsing": "Rehearsing",
+    "ready": "Ready"
+  },
+  "section": {
+    "chords": "Chords",
+    "tabs": "Tabs",
+    "lyrics": "Lyrics",
+    "notes": "Notes",
+    "progression": "Progression",
+    "structure": "Structure"
+  },
+  "placeholder": {
+    "search": "Search song or artist…",
+    "no_results": "No results.",
+    "no_songs": "No songs yet.",
+    "no_tabs": "No tabs.",
+    "no_lyrics": "No lyrics.",
+    "no_notes": "No notes.",
+    "tab_name": "Tab name",
+    "tab_content": "e|---..."
+  },
+  "action": {
+    "add_first": "+ Add first song",
+    "add_tab": "+ Add tab",
+    "title_required": "Title is required.",
+    "new_song": "New song",
+    "delete_confirm": "Delete \"{{title}}\"? This cannot be undone.",
+    "favorite_error": "Could not save favorite.",
+    "saved": "Saved.",
+    "not_found": "Song not found."
+  },
+  "field": {
+    "title": "Title *",
+    "artist": "Artist",
+    "key": "Key",
+    "tempo": "Tempo"
+  }
+}
