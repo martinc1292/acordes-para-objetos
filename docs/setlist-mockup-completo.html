@@ -1,0 +1,2815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setlist & Acordes — Mockup completo</title>
+<style>
+  :root {
+    --bg: #0e0e0e;
+    --bg-elev: #1a1a1a;
+    --bg-elev-2: #242424;
+    --ink: #f5f1e8;
+    --ink-dim: #8a8580;
+    --ink-dimmer: #5a5550;
+    --accent: #ff5722;
+    --accent-soft: #ff572233;
+    --accent-glow: #ff572220;
+    --border: #2a2a2a;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --mono: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    --serif: 'Georgia', 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #050505;
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 10% 10%, #ff572210 0%, transparent 40%),
+      radial-gradient(circle at 90% 90%, #ff572208 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  /* ============ TOP DOCUMENT HEADER ============ */
+  .doc-header {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 60px 32px 40px;
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .doc-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(48px, 7vw, 88px);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 0.95;
+    margin-bottom: 24px;
+  }
+  .doc-title .amp { color: var(--accent); }
+  .doc-subtitle {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink-dim);
+    max-width: 720px;
+    line-height: 1.7;
+  }
+  .doc-meta {
+    margin-top: 28px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+  }
+  .doc-meta span strong { color: var(--ink); font-weight: 500; }
+
+  /* ============ SECTION ============ */
+  .section-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 80px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.25em;
+  }
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-heading {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .section-desc {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-dim);
+    max-width: 720px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+  }
+
+  /* ============ DEVICE FRAMES ============ */
+  .screens-grid {
+    display: grid;
+    gap: 32px;
+  }
+  .screens-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .screens-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .screens-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+  @media (max-width: 1100px) {
+    .screens-grid.cols-3, .screens-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 700px) {
+    .screens-grid { grid-template-columns: 1fr !important; }
+  }
+
+  .screen-caption {
+    margin-bottom: 14px;
+  }
+  .screen-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 6px;
+  }
+  .screen-title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-style: italic;
+    margin-bottom: 4px;
+  }
+  .screen-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+  }
+
+  /* MOBILE PHONE FRAME */
+  .phone {
+    background: #1a1a1a;
+    border-radius: 32px;
+    padding: 8px;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,0.5),
+      0 0 0 1px var(--border),
+      inset 0 0 0 2px #2a2a2a;
+    position: relative;
+    aspect-ratio: 9 / 19.5;
+    overflow: hidden;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 24px;
+    background: #050505;
+    border-radius: 12px;
+    z-index: 20;
+  }
+  .phone-screen {
+    background: var(--bg);
+    border-radius: 26px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background-image:
+      radial-gradient(circle at 20% 0%, #ff572215 0%, transparent 40%),
+      radial-gradient(circle at 80% 100%, #ff572210 0%, transparent 40%);
+  }
+
+  /* DESKTOP FRAME */
+  .desktop {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.5),
+      0 0 0 1px var(--border);
+    overflow: hidden;
+  }
+  .desktop-bar {
+    background: #0a0a0a;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .desktop-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #3a3a3a;
+  }
+  .desktop-dot.r { background: #ff5f56; }
+  .desktop-dot.y { background: #ffbd2e; }
+  .desktop-dot.g { background: #27c93f; }
+  .desktop-url {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-left: 16px;
+    max-width: 400px;
+  }
+  .desktop-url .lock { color: var(--green); margin-right: 6px; }
+  .desktop-screen {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 0%, #ff572215 0%, transparent 40%),
+      radial-gradient(circle at 80% 100%, #ff572210 0%, transparent 40%);
+    min-height: 580px;
+    padding: 24px 40px;
+  }
+
+  /* ============ COMMON APP STYLES (sized down for mockup) ============ */
+  .app-inner {
+    padding: 18px 14px;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    font-size: 12px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .app-h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .app-h1 .amp { color: var(--accent); }
+  .app-subtitle {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    margin-top: 6px;
+  }
+  .app-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-top: 8px;
+  }
+  .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+  .sync-dot.pending { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .sync-dot.offline { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .icon-btn {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 5px 7px;
+    border-radius: 2px;
+  }
+  .header-icons { display: flex; gap: 4px; }
+  .band-pill {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 8px 4px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .band-avatar {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .band-name {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .band-chevron { color: var(--ink-dim); font-size: 8px; }
+
+  /* SEARCH */
+  .search-bar {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 9px 10px 9px 28px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-dim);
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .search-bar::before {
+    content: '⌕';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-dim);
+    font-size: 11px;
+  }
+
+  /* FILTER TABS */
+  .filter-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-tab {
+    font-family: var(--mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 6px 8px;
+    color: var(--ink-dim);
+    border-bottom: 2px solid transparent;
+  }
+  .filter-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .count-line {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+  }
+
+  /* SONG ITEM */
+  .song-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drag-handle {
+    color: var(--ink-dimmer);
+    font-size: 10px;
+  }
+  .song-num {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    min-width: 18px;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ink-dimmer);
+    flex-shrink: 0;
+  }
+  .status-dot.ready { background: var(--green); }
+  .status-dot.rehearsing { background: var(--yellow); }
+  .song-info { flex: 1; min-width: 0; }
+  .song-title {
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.15;
+    margin-bottom: 2px;
+    font-weight: 500;
+  }
+  .song-meta-line {
+    font-family: var(--mono);
+    font-size: 7.5px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sync-badge {
+    background: var(--yellow);
+    width: 5px; height: 5px;
+    border-radius: 50%;
+  }
+  .fav-btn {
+    color: var(--ink-dim);
+    font-size: 12px;
+  }
+  .fav-btn.active { color: var(--accent); }
+  .song-key {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.05em;
+  }
+  .song-arrow { color: var(--ink-dim); font-size: 10px; }
+
+  /* FAB */
+  .fab {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 20px;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 14px rgba(255,87,34,0.5);
+  }
+
+  /* SONG DETAIL */
+  .back-link {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 10px;
+  }
+  .song-header-d {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+  }
+  .song-h2 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.05;
+    margin-bottom: 6px;
+  }
+  .song-meta-d {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .key-tag {
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .dot {
+    width: 2px; height: 2px;
+    background: var(--ink-dim);
+    border-radius: 50%;
+  }
+  .status-pills {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .status-pill {
+    font-family: var(--mono);
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 6px;
+    border-radius: 2px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--ink-dim);
+  }
+  .status-pill.active.ready { color: var(--green); border-color: var(--green); }
+  .status-pill.active.rehearsing { color: var(--yellow); border-color: var(--yellow); }
+
+  .section-block {
+    margin-bottom: 14px;
+  }
+  .sec-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .structure-box {
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.5;
+    background: var(--bg-elev);
+    padding: 8px;
+    border-left: 2px solid var(--accent);
+  }
+
+  /* METRONOME */
+  .metro-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-elev);
+    padding: 8px 10px;
+    border-radius: 2px;
+    border-left: 2px solid var(--accent);
+  }
+  .metro-bpm {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .metro-bpm-label {
+    font-family: var(--mono);
+    font-size: 6px;
+    color: var(--ink-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .metro-controls {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .metro-btn-mini {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 8px;
+    padding: 0 5px;
+    height: 18px;
+    border-radius: 2px;
+  }
+  .metro-play-mini {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(255,87,34,0.4);
+  }
+  .metro-play-mini.playing { background: var(--green); }
+  .metro-dots {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .metro-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+  .metro-dot.beat-1 { width: 8px; height: 8px; }
+  .metro-dot.active { background: var(--accent); }
+  .metro-dot.beat-1.active { background: var(--yellow); }
+
+  /* TRANSPOSE */
+  .transpose-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-elev);
+    padding: 5px 8px;
+    border-radius: 2px;
+    margin-bottom: 6px;
+  }
+  .transpose-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--ink-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .trans-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    width: 18px; height: 18px;
+    border-radius: 2px;
+  }
+  .trans-value {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .chords-box {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--bg-elev);
+    padding: 8px;
+    border-radius: 2px;
+  }
+  .chord { color: var(--accent); font-weight: 700; }
+
+  .tab-title-line {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .tab-box {
+    font-family: var(--mono);
+    font-size: 8px;
+    line-height: 1.3;
+    background: var(--bg-elev);
+    padding: 8px;
+    border-radius: 2px;
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  .lyrics-box {
+    font-family: var(--serif);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .lyrics-box .verse {
+    margin-bottom: 6px;
+  }
+
+  /* COMMENTS PINBOARD */
+  .pinboard {
+    background:
+      repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.015) 8px, rgba(255,255,255,0.015) 9px),
+      var(--bg-elev);
+    padding: 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+  }
+  .sticky {
+    position: relative;
+    color: #1a1a1a;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-family: var(--sans);
+    font-size: 9px;
+    line-height: 1.4;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .sticky::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: inset 0 -1px 1px rgba(0,0,0,0.3), 0 1px 1px rgba(0,0,0,0.4);
+  }
+  .sticky.yellow { background: #fef3c7; transform: rotate(-0.8deg); }
+  .sticky.pink { background: #fbcfe8; transform: rotate(0.6deg); }
+  .sticky.blue { background: #bfdbfe; transform: rotate(-0.4deg); }
+  .sticky.green { background: #bbf7d0; transform: rotate(0.9deg); }
+  .sticky.orange { background: #fed7aa; transform: rotate(-1.1deg); }
+  .sticky-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    font-family: var(--mono);
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+  .sticky-time { color: rgba(0,0,0,0.5); font-weight: 400; }
+
+  .img-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .img-thumb {
+    aspect-ratio: 1;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-dim);
+    font-size: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .img-thumb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent-glow), transparent);
+  }
+  .img-thumb.add {
+    border-style: dashed;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--ink-dim);
+  }
+
+  /* ============ LANDING (desktop) ============ */
+  .landing-hero {
+    text-align: center;
+    padding: 60px 20px 40px;
+  }
+  .landing-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .landing-h1 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 64px;
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 0.95;
+    margin-bottom: 18px;
+  }
+  .landing-h1 .amp { color: var(--accent); }
+  .landing-sub {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-dim);
+    max-width: 540px;
+    margin: 0 auto 28px;
+    line-height: 1.7;
+  }
+  .landing-cta-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+  .btn-primary-l {
+    background: var(--accent);
+    color: var(--bg);
+    border: 1px solid var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 12px 24px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .btn-ghost-l {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 12px 24px;
+    border-radius: 2px;
+  }
+  .features-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    padding: 32px 0;
+    border-top: 1px solid var(--border);
+  }
+  .feature {
+    text-align: left;
+  }
+  .feature-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 0.2em;
+  }
+  .feature-h {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .feature-t {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+  }
+  .landing-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .landing-logo {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 24px;
+  }
+  .landing-logo .amp { color: var(--accent); }
+  .landing-nav-links {
+    display: flex;
+    gap: 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-dim);
+  }
+
+  /* PRESENTATION MODE */
+  .present-screen {
+    position: relative;
+    background: var(--bg);
+    height: 100%;
+    width: 100%;
+    background-image: radial-gradient(circle at 50% 30%, #ff572220 0%, transparent 60%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .present-eyebrow {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .present-title-m {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 400;
+    text-align: center;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .present-artist-m {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 16px;
+  }
+  .present-key-m {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 5px 14px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+  }
+  .present-prog-m {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg-elev);
+    padding: 10px 14px;
+    border-left: 2px solid var(--accent);
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+  .present-nav-m {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .present-nav-btn-m {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 2px;
+  }
+  .present-counter-m {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    letter-spacing: 0.15em;
+  }
+  .present-close-m {
+    position: absolute;
+    top: 12px; right: 12px;
+    color: var(--ink-dim);
+    font-size: 16px;
+  }
+
+  /* MODAL */
+  .modal-overlay-m {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 30px 12px;
+    overflow: hidden;
+  }
+  .modal-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 100%;
+    padding: 16px;
+    position: relative;
+  }
+  .modal-close-m {
+    position: absolute;
+    top: 8px; right: 10px;
+    color: var(--ink-dim);
+    font-size: 14px;
+  }
+  .modal-h3 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  .form-label-m {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .form-input-m {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 6px 8px;
+    border-radius: 2px;
+    margin-bottom: 8px;
+    width: 100%;
+  }
+  .form-row-m {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn-row-m {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .btn-m {
+    font-family: var(--mono);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 6px 12px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .btn-m.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* OFFLINE BANNER */
+  .offline-banner {
+    background: var(--accent-soft);
+    border-left: 2px solid var(--accent);
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pulse {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* BAND SETTINGS */
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .member-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    color: var(--bg);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .member-info { flex: 1; }
+  .member-name {
+    font-family: var(--serif);
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .member-email {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--ink-dim);
+  }
+  .role-badge {
+    font-family: var(--mono);
+    font-size: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    padding: 2px 6px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+  }
+  .role-badge.admin {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .role-badge.member { color: var(--ink-dim); }
+
+  /* DESKTOP TWO-COL LAYOUT */
+  .desk-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+  .desk-sidebar {
+    border-right: 1px solid var(--border);
+    padding-right: 24px;
+  }
+  .desk-main {
+    overflow: hidden;
+  }
+  .desk-band-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .desk-band-name {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 18px;
+    margin-bottom: 4px;
+  }
+  .desk-band-meta {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .desk-nav-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+    padding: 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .desk-nav-item.active { color: var(--accent); }
+  .desk-nav-count {
+    font-size: 8px;
+    background: var(--bg-elev);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .desk-section-h {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  /* INVITE EMAIL CARD */
+  .email-card {
+    background: var(--ink);
+    color: #1a1a1a;
+    border-radius: 4px;
+    padding: 28px;
+    font-family: var(--sans);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .email-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .email-h {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 28px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+  }
+  .email-body {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #444;
+    margin-bottom: 24px;
+  }
+  .email-body strong { color: #1a1a1a; }
+  .email-btn {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 14px 28px;
+    border-radius: 2px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+  .email-foot {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #888;
+    border-top: 1px solid #ddd;
+    padding-top: 16px;
+  }
+
+  /* USER FLOW DIAGRAM */
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    align-items: center;
+    position: relative;
+  }
+  @media (max-width: 900px) {
+    .flow-grid { grid-template-columns: 1fr; }
+  }
+  .flow-step {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 14px;
+    position: relative;
+  }
+  .flow-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  .flow-title {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .flow-desc {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .flow-arrow {
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-size: 18px;
+    z-index: 1;
+  }
+  @media (max-width: 900px) {
+    .flow-arrow { display: none; }
+  }
+
+  /* COMPONENT GALLERY */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 900px) {
+    .comp-grid { grid-template-columns: 1fr; }
+  }
+  .comp-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .comp-card-h {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 16px;
+  }
+  .comp-card-body {
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* COLOR SWATCHES */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+  .swatch {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .swatch-color {
+    height: 80px;
+  }
+  .swatch-info {
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 9px;
+  }
+  .swatch-name { color: var(--ink); margin-bottom: 2px; }
+  .swatch-hex { color: var(--ink-dim); }
+
+  /* TYPE SPECIMEN */
+  .type-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    margin-bottom: 16px;
+  }
+  .type-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    margin-bottom: 12px;
+  }
+  .type-sample-serif {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 56px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .type-sample-mono {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .type-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-dim);
+    display: flex;
+    gap: 16px;
+  }
+
+  /* INSTALL PROMPT */
+  .install-prompt {
+    position: absolute;
+    bottom: 70px;
+    left: 16px;
+    right: 16px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .install-h {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .install-t {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-dim);
+    margin-bottom: 8px;
+  }
+  .install-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* THEME TOGGLE */
+  .theme-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .light-preview {
+    background: #faf7f2;
+    color: #1a1a1a;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .light-preview .l-h {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 24px;
+  }
+  .light-preview .l-h .amp { color: var(--accent); }
+  .light-preview .l-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #888;
+    margin-top: 4px;
+  }
+
+  /* FOOTER */
+  .doc-footer {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 60px 32px;
+    text-align: center;
+  }
+  .doc-footer-line {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .doc-footer-amp {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 32px;
+    color: var(--accent);
+    margin: 16px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ====================================================== -->
+<!-- DOCUMENT HEADER -->
+<!-- ====================================================== -->
+<div class="doc-header">
+  <div class="doc-eyebrow">Mockup · v1 · PWA Design Spec</div>
+  <h1 class="doc-title">Setlist <span class="amp">&amp;</span> Acordes</h1>
+  <p class="doc-subtitle">
+    Letras, acordes y notas para músicos. Colaborativa por banda, offline-first y 100% gratis.
+    Diseño visual completo de la app — todas las pantallas y estados según PLAN_FUNCIONAL.md
+  </p>
+  <div class="doc-meta">
+    <span>STACK · <strong>Preact + Supabase + IndexedDB</strong></span>
+    <span>IDIOMAS · <strong>ES + EN</strong></span>
+    <span>ROLES · <strong>Admin + Member</strong></span>
+    <span>TEMA · <strong>Dark default · Light opcional</strong></span>
+    <span>OFFLINE · <strong>Read + write con sync</strong></span>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 1 · LANDING & ONBOARDING -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">01 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Landing &amp; onboarding</h2>
+  <p class="section-desc">Primer contacto. Visitor descubre el producto, se registra con magic link, decide entre crear banda o aceptar invitación.</p>
+
+  <!-- LANDING DESKTOP -->
+  <div style="margin-bottom: 48px;">
+    <div class="screen-caption">
+      <div class="screen-tag">01.1 · Landing page</div>
+      <div class="screen-title">Pública, sin login</div>
+    </div>
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="desktop-dot r"></div>
+        <div class="desktop-dot y"></div>
+        <div class="desktop-dot g"></div>
+        <div class="desktop-url"><span class="lock">●</span> setlistapp.com</div>
+      </div>
+      <div class="desktop-screen">
+        <div class="landing-nav">
+          <div class="landing-logo">Setlist <span class="amp">&amp;</span> Acordes</div>
+          <div class="landing-nav-links">
+            <span>Cómo funciona</span>
+            <span>Bandas</span>
+            <span>EN / ES</span>
+            <span style="color:var(--accent)">Entrar →</span>
+          </div>
+        </div>
+        <div class="landing-hero">
+          <div class="landing-eyebrow">PWA · Offline-first · Gratis</div>
+          <h1 class="landing-h1">Tu setlist,<br>donde sea<br>que toques.</h1>
+          <p class="landing-sub">
+            Letras, acordes, riffs y notas de tu banda. Funciona sin internet, se sincroniza solo, sin ads ni planes pagos.
+          </p>
+          <div class="landing-cta-row">
+            <button class="btn-primary-l">Crear cuenta gratis</button>
+            <button class="btn-ghost-l">Ver demo</button>
+          </div>
+        </div>
+        <div class="features-row">
+          <div class="feature">
+            <div class="feature-num">01</div>
+            <div class="feature-h">Offline real</div>
+            <div class="feature-t">Cache local de todo el repertorio. Edita en el subte, sincroniza al volver.</div>
+          </div>
+          <div class="feature">
+            <div class="feature-num">02</div>
+            <div class="feature-h">Por banda</div>
+            <div class="feature-t">Invitá a tu banda, todos ven los mismos cambios. Roles admin y member.</div>
+          </div>
+          <div class="feature">
+            <div class="feature-num">03</div>
+            <div class="feature-h">Pensada para tocar</div>
+            <div class="feature-t">Metrónomo, transposición, modo presentación. Sin distracciones.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONBOARDING FLOW -->
+  <div class="screen-caption">
+    <div class="screen-tag">01.2 · Onboarding flow</div>
+    <div class="screen-title">5 pasos hasta el primer setlist</div>
+  </div>
+  <div class="flow-grid">
+    <div class="flow-step">
+      <div class="flow-num">01</div>
+      <div class="flow-title">Email</div>
+      <div class="flow-desc">Ingresa email para magic link. Sin password.</div>
+      <div class="flow-arrow">→</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">02</div>
+      <div class="flow-title">Verificar</div>
+      <div class="flow-desc">Click en link del correo, vuelve autenticado.</div>
+      <div class="flow-arrow">→</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">03</div>
+      <div class="flow-title">Banda</div>
+      <div class="flow-desc">Crear nueva o aceptar invitación pendiente.</div>
+      <div class="flow-arrow">→</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">04</div>
+      <div class="flow-title">Nombre</div>
+      <div class="flow-desc">"Los del Subte". Opcional: invitar miembros ya.</div>
+      <div class="flow-arrow">→</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">05</div>
+      <div class="flow-title">Primera canción</div>
+      <div class="flow-desc">FAB "+" cargá tu primer tema. Listo.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 2 · MOBILE PRINCIPAL -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">02 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Setlist principal</h2>
+  <p class="section-desc">La vista que ven al abrir la app. Lista de canciones del setlist activo, con buscador, filtros, status visual, favoritos y drag para reordenar.</p>
+
+  <div class="screens-grid cols-3">
+
+    <!-- Pantalla A · Lista sincronizada -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">02.1 · Lista online</div>
+        <div class="screen-title">Estado normal — sincronizado</div>
+        <div class="screen-note">Selector de banda, sync verde, filtros, drag handle visible.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="app-header">
+              <div class="eyebrow">Sala de Ensayo</div>
+              <div class="app-h1">Setlist <span class="amp">&amp;</span> Acordes</div>
+              <div class="header-row">
+                <div class="band-pill">
+                  <div class="band-avatar">LS</div>
+                  <span class="band-name">Los del Subte</span>
+                  <span class="band-chevron">▾</span>
+                </div>
+                <div class="header-icons">
+                  <span class="icon-btn">▶</span>
+                  <span class="icon-btn">⚙</span>
+                </div>
+              </div>
+              <div class="sync-status">
+                <span class="sync-dot"></span>
+                <span>Sincronizado · 4 miembros activos</span>
+              </div>
+            </div>
+            <div class="search-bar">Buscar canción o banda...</div>
+            <div class="filter-tabs">
+              <span class="filter-tab active">Todas</span>
+              <span class="filter-tab">★ Favoritas</span>
+              <span class="filter-tab">● Listas</span>
+              <span class="filter-tab">● Ensayo</span>
+            </div>
+            <div class="count-line">37 canciones · 12 listas</div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">01</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">Careless Whisper</div>
+                <div class="song-meta-line">George Michael · 💬 3</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Dm</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">02</span>
+              <span class="status-dot rehearsing"></span>
+              <div class="song-info">
+                <div class="song-title">Heart of Glass</div>
+                <div class="song-meta-line">Blondie</div>
+              </div>
+              <span class="fav-btn">☆</span>
+              <span class="song-key">E</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">03</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">In Bloom</div>
+                <div class="song-meta-line">Nirvana · 💬 1</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Bb</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">04</span>
+              <span class="status-dot"></span>
+              <div class="song-info">
+                <div class="song-title">Toxic Girl</div>
+                <div class="song-meta-line">Kings of Convenience</div>
+              </div>
+              <span class="fav-btn">☆</span>
+              <span class="song-key">G</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">05</span>
+              <span class="status-dot rehearsing"></span>
+              <div class="song-info">
+                <div class="song-title">Eyes Without a Face</div>
+                <div class="song-meta-line">Billy Idol</div>
+              </div>
+              <span class="fav-btn">☆</span>
+              <span class="song-key">C#m</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="fab">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pantalla B · Modo offline con sync pendiente -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">02.2 · Modo offline</div>
+        <div class="screen-title">Sin conexión — cache local</div>
+        <div class="screen-note">Indicador rojo, banner explicativo, badges de cambios pendientes.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="app-header">
+              <div class="eyebrow">Sala de Ensayo</div>
+              <div class="app-h1">Setlist <span class="amp">&amp;</span> Acordes</div>
+              <div class="header-row">
+                <div class="band-pill">
+                  <div class="band-avatar">LS</div>
+                  <span class="band-name">Los del Subte</span>
+                  <span class="band-chevron">▾</span>
+                </div>
+                <div class="header-icons">
+                  <span class="icon-btn">▶</span>
+                  <span class="icon-btn">⚙</span>
+                </div>
+              </div>
+              <div class="sync-status">
+                <span class="sync-dot offline"></span>
+                <span>Offline · 2 cambios en cola</span>
+              </div>
+            </div>
+            <div class="offline-banner">
+              <span class="pulse"></span>
+              <span>Modo offline — Cambios se sincronizan al volver internet</span>
+            </div>
+            <div class="search-bar">Buscar canción o banda...</div>
+            <div class="filter-tabs">
+              <span class="filter-tab active">Todas</span>
+              <span class="filter-tab">★ Favoritas</span>
+              <span class="filter-tab">● Listas</span>
+              <span class="filter-tab">● Ensayo</span>
+            </div>
+            <div class="count-line">37 canciones · cache local</div>
+            <div class="song-row" style="background: rgba(251,191,36,0.05);">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">01</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">Careless Whisper</div>
+                <div class="song-meta-line">
+                  <span class="sync-badge"></span>
+                  George Michael · 1 edición pendiente
+                </div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Dm</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">02</span>
+              <span class="status-dot rehearsing"></span>
+              <div class="song-info">
+                <div class="song-title">Heart of Glass</div>
+                <div class="song-meta-line">Blondie</div>
+              </div>
+              <span class="fav-btn">☆</span>
+              <span class="song-key">E</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row" style="background: rgba(251,191,36,0.05);">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">03</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">In Bloom</div>
+                <div class="song-meta-line">
+                  <span class="sync-badge"></span>
+                  Nirvana · nota nueva
+                </div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Bb</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">04</span>
+              <span class="status-dot"></span>
+              <div class="song-info">
+                <div class="song-title">Toxic Girl</div>
+                <div class="song-meta-line">Kings of Convenience</div>
+              </div>
+              <span class="fav-btn">☆</span>
+              <span class="song-key">G</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="install-prompt">
+              <div class="install-h">Instalá la app</div>
+              <div class="install-t">Funciona offline, ocupa 2 MB. Sin app store.</div>
+              <div class="install-actions">
+                <span class="btn-m primary" style="font-size:7px;padding:4px 8px;">Instalar</span>
+                <span class="btn-m" style="font-size:7px;padding:4px 8px;">Después</span>
+              </div>
+            </div>
+            <div class="fab">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pantalla C · Filtro favoritas -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">02.3 · Filtro favoritas</div>
+        <div class="screen-title">Lista personal por usuario</div>
+        <div class="screen-note">Los favoritos son per-user, no compartidos con la banda.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="app-header">
+              <div class="eyebrow">Sala de Ensayo</div>
+              <div class="app-h1">Setlist <span class="amp">&amp;</span> Acordes</div>
+              <div class="header-row">
+                <div class="band-pill">
+                  <div class="band-avatar">LS</div>
+                  <span class="band-name">Los del Subte</span>
+                  <span class="band-chevron">▾</span>
+                </div>
+                <div class="header-icons">
+                  <span class="icon-btn">▶</span>
+                  <span class="icon-btn">⚙</span>
+                </div>
+              </div>
+              <div class="sync-status">
+                <span class="sync-dot"></span>
+                <span>Sincronizado · ahora</span>
+              </div>
+            </div>
+            <div class="search-bar">Buscar canción o banda...</div>
+            <div class="filter-tabs">
+              <span class="filter-tab">Todas</span>
+              <span class="filter-tab active">★ Favoritas</span>
+              <span class="filter-tab">● Listas</span>
+              <span class="filter-tab">● Ensayo</span>
+            </div>
+            <div class="count-line">8 canciones · tus favoritas</div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">01</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">Careless Whisper</div>
+                <div class="song-meta-line">George Michael · 💬 3</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Dm</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">02</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">In Bloom</div>
+                <div class="song-meta-line">Nirvana · 💬 1</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Bb</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">03</span>
+              <span class="status-dot rehearsing"></span>
+              <div class="song-info">
+                <div class="song-title">Something</div>
+                <div class="song-meta-line">The Beatles</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">C</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">04</span>
+              <span class="status-dot ready"></span>
+              <div class="song-info">
+                <div class="song-title">L.A. Woman</div>
+                <div class="song-meta-line">The Doors · 💬 5</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">A</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="song-row">
+              <span class="drag-handle">⠿</span>
+              <span class="song-num">05</span>
+              <span class="status-dot"></span>
+              <div class="song-info">
+                <div class="song-title">Chega de Saudade</div>
+                <div class="song-meta-line">A.C. Jobim</div>
+              </div>
+              <span class="fav-btn active">★</span>
+              <span class="song-key">Dm</span>
+              <span class="song-arrow">→</span>
+            </div>
+            <div class="fab">+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 3 · DETALLE DE CANCIÓN -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">03 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Detalle de canción</h2>
+  <p class="section-desc">El corazón de la app. Toda la info de un tema: estructura, metrónomo embebido, progresión con transposición, tabs, letra, notas, imágenes y pizarra de comentarios.</p>
+
+  <div class="screens-grid cols-3">
+
+    <!-- 03.1 · Header + estructura + metrónomo -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">03.1 · Header & estructura</div>
+        <div class="screen-title">Top: meta + estado + metrónomo</div>
+        <div class="screen-note">Status pills cambian estado global de banda. Metrónomo precargado con BPM del tema.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="back-link">← Volver al setlist</div>
+            <div class="song-header-d">
+              <div class="song-h2">Careless Whisper</div>
+              <div class="song-meta-d">
+                <span>George Michael / Wham!</span>
+                <span class="dot"></span>
+                <span class="key-tag">Dm</span>
+                <span class="dot"></span>
+                <span>76 BPM</span>
+              </div>
+              <div class="status-pills">
+                <span class="status-pill">● Pendiente</span>
+                <span class="status-pill rehearsing">● Ensayando</span>
+                <span class="status-pill ready active">● Lista</span>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Estructura</div>
+              <div class="structure-box">Intro sax → Verse → Pre-chorus → Chorus → Verse → Pre-chorus → Chorus → Sax solo → Chorus → Outro</div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Metrónomo</div>
+              <div class="metro-box">
+                <div>
+                  <div class="metro-bpm">76</div>
+                  <div class="metro-bpm-label">BPM</div>
+                </div>
+                <div class="metro-controls">
+                  <span class="metro-btn-mini">−5</span>
+                  <span class="metro-btn-mini">−1</span>
+                  <span class="metro-play-mini playing">■</span>
+                  <span class="metro-btn-mini">+1</span>
+                  <span class="metro-btn-mini">+5</span>
+                </div>
+                <div class="metro-dots">
+                  <span class="metro-dot beat-1 active"></span>
+                  <span class="metro-dot"></span>
+                  <span class="metro-dot"></span>
+                  <span class="metro-dot"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Progresión</div>
+              <div class="transpose-box">
+                <span class="transpose-label">Transponer</span>
+                <span class="trans-btn">−</span>
+                <span class="trans-value">0</span>
+                <span class="trans-btn">+</span>
+                <span class="metro-btn-mini" style="height:18px">RESET</span>
+              </div>
+              <div class="chords-box">
+                <span class="chord">Dm</span>  −  <span class="chord">Bbmaj7</span>  −  <span class="chord">Gm7</span>  −  <span class="chord">A7</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03.2 · Tabs + transposición activa -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">03.2 · Tabs + transposición</div>
+        <div class="screen-title">Tabs ASCII y acordes transpuestos +2</div>
+        <div class="screen-note">Mantiene acordes/tabs originales; transposición visual sobre la progresión.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="back-link">← Volver al setlist</div>
+            <div class="song-h2" style="font-size:18px;">In Bloom</div>
+            <div class="song-meta-d" style="margin-bottom:12px;">
+              <span>Nirvana</span>
+              <span class="dot"></span>
+              <span class="key-tag">Bb → C</span>
+              <span class="dot"></span>
+              <span>78 BPM</span>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Progresión</div>
+              <div class="transpose-box">
+                <span class="transpose-label">Transponer</span>
+                <span class="trans-btn">−</span>
+                <span class="trans-value" style="color:var(--accent)">+2</span>
+                <span class="trans-btn">+</span>
+                <span class="metro-btn-mini" style="height:18px">RESET</span>
+              </div>
+              <div class="chords-box" style="font-size:9px;line-height:1.7;">
+Verse:<br>
+<span class="chord">C</span>  −  <span class="chord">Bb</span>  −  <span class="chord">Eb</span>  −  <span class="chord">Ab</span><br>
+Chorus:<br>
+<span class="chord">F</span>  −  <span class="chord">Bb</span>  −  <span class="chord">Eb</span>  −  <span class="chord">C</span>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Tabs / Riffs</div>
+              <div class="tab-title-line">Riff intro principal</div>
+              <div class="tab-box">e|----------------|
+B|----------------|
+G|----------------|
+D|--8-8-6-6-4-4---|
+A|--8-8-6-6-4-4---|
+E|--6-6-4-4-2-2---|</div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Notas</div>
+              <div class="structure-box" style="border-left-color:var(--ink-dim);color:var(--ink-dim);">
+                Bajar medio tono (Eb tuning) si querés tono original. Sino en standard suena igual de bien.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03.3 · Letra + comentarios pizarra -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">03.3 · Letra & pizarra</div>
+        <div class="screen-title">Letra serif + sticky notes coloreadas</div>
+        <div class="screen-note">Las notas conservan el estilo "pinboard" del diseño actual — alma del producto.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="back-link">← Volver al setlist</div>
+            <div class="song-h2" style="font-size:18px;">L.A. Woman</div>
+            <div class="song-meta-d" style="margin-bottom:14px;">
+              <span>The Doors</span>
+              <span class="dot"></span>
+              <span class="key-tag">A</span>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Letra</div>
+              <div class="lyrics-box">
+                <div class="verse">Well, I just got into town<br>About an hour ago</div>
+                <div class="verse">Took a look around<br>See which way the wind blow</div>
+                <div class="verse" style="color:var(--ink-dim);">L.A. Woman, L.A. Woman<br>L.A. Woman Sunday afternoon...</div>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <div class="sec-label">Pizarra · 3 notas</div>
+              <div class="pinboard">
+                <div class="sticky yellow">
+                  <div class="sticky-header">
+                    <span>Sofía · voz</span>
+                    <span class="sticky-time">hace 2 d</span>
+                  </div>
+                  Subir un tono el "mojo risin'". Probemos el jueves.
+                </div>
+                <div class="sticky pink">
+                  <div class="sticky-header">
+                    <span>Marco · bajo</span>
+                    <span class="sticky-time">ayer</span>
+                  </div>
+                  Que el bajo entre solo el último chorus, queda más épico.
+                </div>
+                <div class="sticky blue">
+                  <div class="sticky-header">
+                    <span>Pablo · bata</span>
+                    <span class="sticky-time">hace 3 h</span>
+                  </div>
+                  Aceleramos en la parte mojo risin. Marca con la mano.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DESKTOP DETAIL -->
+  <div style="margin-top: 48px;">
+    <div class="screen-caption">
+      <div class="screen-tag">03.4 · Detalle desktop</div>
+      <div class="screen-title">Versión escritorio — dos columnas</div>
+      <div class="screen-note">Sidebar con nav lateral, contenido principal aprovecha el ancho disponible.</div>
+    </div>
+    <div class="desktop">
+      <div class="desktop-bar">
+        <div class="desktop-dot r"></div>
+        <div class="desktop-dot y"></div>
+        <div class="desktop-dot g"></div>
+        <div class="desktop-url"><span class="lock">●</span> setlistapp.com/song/careless-whisper</div>
+      </div>
+      <div class="desktop-screen">
+        <div class="desk-layout">
+          <div class="desk-sidebar">
+            <div class="desk-band-header">
+              <div class="desk-band-name">Los del Subte</div>
+              <div class="desk-band-meta">4 miembros · admin</div>
+            </div>
+            <div class="desk-nav-item active">★ Setlist <span class="desk-nav-count">37</span></div>
+            <div class="desk-nav-item">Favoritas <span class="desk-nav-count">8</span></div>
+            <div class="desk-nav-item">Pendientes <span class="desk-nav-count">12</span></div>
+            <div class="desk-section-h">Setlists</div>
+            <div class="desk-nav-item">Show del sábado</div>
+            <div class="desk-nav-item">Repertorio general</div>
+            <div class="desk-nav-item">Ideas nuevas</div>
+            <div class="desk-section-h">Banda</div>
+            <div class="desk-nav-item">Miembros</div>
+            <div class="desk-nav-item">Configuración</div>
+          </div>
+          <div class="desk-main">
+            <div style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px;">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:6px;">← Volver al setlist</div>
+              <h2 style="font-family:var(--serif);font-style:italic;font-size:36px;font-weight:400;line-height:1.05;margin-bottom:8px;">Careless Whisper</h2>
+              <div style="display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.1em;">
+                <span>George Michael / Wham!</span>
+                <span style="width:3px;height:3px;background:var(--ink-dim);border-radius:50%;"></span>
+                <span class="key-tag" style="font-size:11px;padding:3px 8px;">Dm</span>
+                <span style="width:3px;height:3px;background:var(--ink-dim);border-radius:50%;"></span>
+                <span>76 BPM</span>
+                <span style="width:3px;height:3px;background:var(--ink-dim);border-radius:50%;"></span>
+                <span style="color:var(--green);">● Lista</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">Estructura</div>
+                <div style="font-family:var(--mono);font-size:11px;line-height:1.7;background:var(--bg-elev);padding:12px;border-left:2px solid var(--accent);margin-bottom:14px;">Intro sax → Verse → Pre-chorus → Chorus → Verse → Pre-chorus → Chorus → Sax solo → Chorus → Outro</div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">Progresión</div>
+                <div style="font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:12px;margin-bottom:14px;"><span class="chord">Dm</span> − <span class="chord">Bbmaj7</span> − <span class="chord">Gm7</span> − <span class="chord">A7</span></div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">Metrónomo</div>
+                <div class="metro-box" style="padding:12px;">
+                  <div>
+                    <div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--accent);">76</div>
+                    <div style="font-family:var(--mono);font-size:8px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.2em;">BPM</div>
+                  </div>
+                  <div class="metro-controls">
+                    <span class="metro-btn-mini" style="height:24px;font-size:9px;">−5</span>
+                    <span class="metro-btn-mini" style="height:24px;font-size:9px;">−1</span>
+                    <span class="metro-play-mini" style="width:32px;height:32px;font-size:12px;">▶</span>
+                    <span class="metro-btn-mini" style="height:24px;font-size:9px;">+1</span>
+                    <span class="metro-btn-mini" style="height:24px;font-size:9px;">+5</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">Imágenes (NUEVO)</div>
+                <div class="img-grid" style="grid-template-columns:repeat(4,1fr);">
+                  <div class="img-thumb">📷</div>
+                  <div class="img-thumb">📄</div>
+                  <div class="img-thumb">🎼</div>
+                  <div class="img-thumb add">+</div>
+                </div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border);">Pizarra · 3 notas</div>
+                <div class="pinboard" style="padding:14px;">
+                  <div class="sticky yellow" style="font-size:10px;">
+                    <div class="sticky-header"><span>Sofía · voz</span><span class="sticky-time">hace 2 d</span></div>
+                    El sax solo lo hacemos con guitarra slide. Probemos.
+                  </div>
+                  <div class="sticky pink" style="font-size:10px;">
+                    <div class="sticky-header"><span>Marco · bajo</span><span class="sticky-time">ayer</span></div>
+                    Tempo más lento que la original, queda mejor.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 4 · MODO PRESENTACIÓN -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">04 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Modo presentación</h2>
+  <p class="section-desc">Pantalla completa para usar en el ensayo o show. Letra grande, navegación por flechas o swipe, botón "Salir" siempre visible (no solo ESC). No incluye metrónomo según decisión del plan.</p>
+
+  <div class="screens-grid cols-2">
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">04.1 · Presentación mobile</div>
+        <div class="screen-title">Pantalla completa — landscape o portrait</div>
+        <div class="screen-note">Botón salir arriba derecha (X), contador y nav abajo, hint de teclado en desktop.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="present-screen">
+            <span class="present-close-m">×</span>
+            <div class="present-eyebrow">07 / 37</div>
+            <div class="present-title-m">Careless<br>Whisper</div>
+            <div class="present-artist-m">George Michael / Wham!</div>
+            <div class="present-key-m">Dm · 76 BPM</div>
+            <div class="present-prog-m">
+              <span class="chord">Dm</span> − <span class="chord">Bbmaj7</span> − <span class="chord">Gm7</span> − <span class="chord">A7</span>
+            </div>
+            <div class="present-nav-m">
+              <span class="present-nav-btn-m">← Anterior</span>
+              <span class="present-counter-m">07/37 · ● Lista</span>
+              <span class="present-nav-btn-m">Siguiente →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">04.2 · Presentación desktop</div>
+        <div class="screen-title">Letra y progresión gigante</div>
+        <div class="screen-note">Más espacio para letra en pantalla. Misma navegación por flechas.</div>
+      </div>
+      <div class="desktop">
+        <div class="desktop-bar">
+          <div class="desktop-dot r"></div>
+          <div class="desktop-dot y"></div>
+          <div class="desktop-dot g"></div>
+          <div class="desktop-url"><span class="lock">●</span> setlistapp.com/present</div>
+        </div>
+        <div class="desktop-screen" style="padding:0;position:relative;min-height:580px;">
+          <div class="present-screen">
+            <span class="present-close-m" style="font-size:24px;top:20px;right:20px;">×</span>
+            <div class="present-eyebrow" style="font-size:11px;">07 / 37</div>
+            <div class="present-title-m" style="font-size:64px;">In Bloom</div>
+            <div class="present-artist-m" style="font-size:13px;">Nirvana</div>
+            <div class="present-key-m" style="font-size:20px;padding:8px 22px;">Bb · 78 BPM</div>
+            <div class="present-prog-m" style="font-size:18px;padding:18px 28px;max-width:480px;">
+              <span class="chord">Bb</span> − <span class="chord">Ab</span> − <span class="chord">Db</span> − <span class="chord">Gb</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--ink-dim);letter-spacing:0.15em;text-transform:uppercase;margin-top:24px;opacity:0.5;">← → para navegar · ESC para salir</div>
+            <div class="present-nav-m" style="bottom:30px;">
+              <span class="present-nav-btn-m" style="font-size:10px;padding:8px 16px;">← Anterior</span>
+              <span class="present-counter-m" style="font-size:10px;">07/37 · ● Lista</span>
+              <span class="present-nav-btn-m" style="font-size:10px;padding:8px 16px;">Siguiente →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 5 · GESTIÓN DE BANDA -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">05 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Gestión de banda</h2>
+  <p class="section-desc">Solo admins. Crear/borrar banda, invitar miembros por email con token, cambiar roles, expulsar. Modelo WhatsApp: solo admin gestiona.</p>
+
+  <div class="screens-grid cols-3">
+
+    <!-- 05.1 · Lista de miembros -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">05.1 · Miembros de la banda</div>
+        <div class="screen-title">Vista admin</div>
+        <div class="screen-note">Badges de rol, opciones contextuales para cambiar rol o expulsar.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="back-link">← Volver a la banda</div>
+            <div style="font-family:var(--serif);font-style:italic;font-size:22px;margin-bottom:4px;">Miembros</div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:14px;">Los del Subte · 4 miembros</div>
+
+            <div class="member-row">
+              <div class="member-avatar" style="background:var(--accent);">S</div>
+              <div class="member-info">
+                <div class="member-name">Sofía Méndez</div>
+                <div class="member-email">sofi@band.com · voz</div>
+              </div>
+              <span class="role-badge admin">Admin</span>
+            </div>
+            <div class="member-row">
+              <div class="member-avatar" style="background:#4ade80;">M</div>
+              <div class="member-info">
+                <div class="member-name">Marco Pérez</div>
+                <div class="member-email">marco@band.com · bajo</div>
+              </div>
+              <span class="role-badge member">Member</span>
+            </div>
+            <div class="member-row">
+              <div class="member-avatar" style="background:#fbbf24;">P</div>
+              <div class="member-info">
+                <div class="member-name">Pablo Sosa</div>
+                <div class="member-email">pablo@band.com · batería</div>
+              </div>
+              <span class="role-badge member">Member</span>
+            </div>
+            <div class="member-row">
+              <div class="member-avatar" style="background:#a78bfa;">L</div>
+              <div class="member-info">
+                <div class="member-name">Lucía Romero</div>
+                <div class="member-email">lucia@band.com · guitarra</div>
+              </div>
+              <span class="role-badge member">Member</span>
+            </div>
+
+            <div style="margin-top:18px;border:1px dashed var(--border);border-radius:4px;padding:12px;">
+              <div style="font-family:var(--mono);font-size:8px;color:var(--accent);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:8px;">Invitar miembro</div>
+              <div style="background:var(--bg-elev);border:1px solid var(--border);padding:6px 8px;border-radius:2px;font-family:var(--mono);font-size:9px;color:var(--ink-dim);margin-bottom:6px;">email@ejemplo.com</div>
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+                <span style="font-family:var(--mono);font-size:8px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.15em;">Rol:</span>
+                <span class="role-badge member" style="font-size:7px;">Member</span>
+                <span class="role-badge" style="font-size:7px;color:var(--ink-dim);">Admin</span>
+              </div>
+              <span class="btn-m primary" style="width:100%;text-align:center;display:block;">Enviar invitación →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05.2 · Modal nueva canción -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">05.2 · Nueva canción</div>
+        <div class="screen-title">Form de creación (página, no modal)</div>
+        <div class="screen-note">Autoguardado de borrador en localStorage. Submit la agrega al final del setlist.</div>
+      </div>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="app-inner">
+            <div class="back-link">← Volver al setlist</div>
+            <div class="eyebrow">Nueva canción</div>
+            <div style="font-family:var(--serif);font-style:italic;font-size:22px;margin-bottom:14px;">Agregar al setlist</div>
+
+            <label class="form-label-m">Título *</label>
+            <div class="form-input-m" style="color:var(--ink);">Ventura Highway</div>
+
+            <div class="form-row-m">
+              <div>
+                <label class="form-label-m">Artista *</label>
+                <div class="form-input-m" style="color:var(--ink);">America</div>
+              </div>
+              <div>
+                <label class="form-label-m">Tonalidad *</label>
+                <div class="form-input-m" style="color:var(--ink);">B</div>
+              </div>
+            </div>
+
+            <label class="form-label-m">Tempo / BPM</label>
+            <div class="form-input-m" style="color:var(--ink);">92 BPM</div>
+
+            <label class="form-label-m">Estructura</label>
+            <div class="form-input-m" style="color:var(--ink-dim);">Intro → Verse → Chorus...</div>
+
+            <label class="form-label-m">Progresión</label>
+            <div class="form-input-m" style="color:var(--ink);">B − Bsus4 → F#m − Em</div>
+
+            <label class="form-label-m">Letra</label>
+            <div class="form-input-m" style="min-height:40px;color:var(--ink-dim);">Pegá la letra acá...</div>
+
+            <div style="font-family:var(--mono);font-size:8px;color:var(--ink-dim);margin:8px 0;letter-spacing:0.1em;">⌥ Borrador autoguardado · hace 3 s</div>
+
+            <div class="btn-row-m">
+              <span class="btn-m">Cancelar</span>
+              <span class="btn-m primary">Guardar canción</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05.3 · Email de invitación -->
+    <div>
+      <div class="screen-caption">
+        <div class="screen-tag">05.3 · Email de invitación</div>
+        <div class="screen-title">Vía Resend + Supabase Edge Function</div>
+        <div class="screen-note">Token único, expira en 7 días, branded con identidad de la app.</div>
+      </div>
+      <div class="email-card">
+        <div class="email-eyebrow">Invitación a banda</div>
+        <h3 class="email-h">Sofía te invitó a Los del Subte</h3>
+        <p class="email-body">
+          Hola — <strong>Sofía Méndez</strong> te sumó como <strong>member</strong> a la banda
+          <strong>"Los del Subte"</strong> en Setlist &amp; Acordes.
+          <br><br>
+          Vas a poder ver letras, acordes, dejar notas en la pizarra y agregar canciones nuevas.
+        </p>
+        <div style="text-align:center;">
+          <span class="email-btn">Aceptar invitación →</span>
+        </div>
+        <p class="email-foot">
+          El link expira el 02 / 06 / 2026.<br>
+          Si no esperabas esta invitación, podés ignorar el mail.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 6 · OFFLINE & SYNC -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">06 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Offline &amp; sync visual</h2>
+  <p class="section-desc">Estados del sync visibles en todo momento. Resolución last-write-wins por timestamp, con avisos al usuario cuando se descarta un cambio local.</p>
+
+  <div class="screens-grid cols-4">
+    <div>
+      <div class="screen-tag">06.1 · Online estable</div>
+      <div class="comp-card">
+        <div class="comp-card-body">
+          <div class="sync-status" style="font-size:11px;">
+            <span class="sync-dot"></span>
+            <span>Sincronizado</span>
+          </div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--ink-dim);line-height:1.6;">Verde fijo. Todo al día. Cero badges.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="screen-tag">06.2 · Sincronizando</div>
+      <div class="comp-card">
+        <div class="comp-card-body">
+          <div class="sync-status" style="font-size:11px;">
+            <span class="sync-dot pending"></span>
+            <span>Sincronizando 3 cambios...</span>
+          </div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--ink-dim);line-height:1.6;">Amarillo. Cola activa subiendo cambios.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="screen-tag">06.3 · Offline</div>
+      <div class="comp-card">
+        <div class="comp-card-body">
+          <div class="sync-status" style="font-size:11px;">
+            <span class="sync-dot offline"></span>
+            <span>Offline · 2 en cola</span>
+          </div>
+          <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--ink-dim);line-height:1.6;">Rojo. App funciona, sin red.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="screen-tag">06.4 · Conflicto resuelto</div>
+      <div class="comp-card" style="border-color:var(--accent);">
+        <div class="comp-card-body">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:6px;">⚠ Cambio sobreescrito</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--ink-dim);line-height:1.6;">Otro miembro editó la letra después. Tu cambio quedó desactualizado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow de sync -->
+  <div style="margin-top:48px;">
+    <div class="screen-tag">06.5 · Flujo de sync</div>
+    <div style="font-family:var(--serif);font-style:italic;font-size:20px;margin-bottom:24px;">Cómo viaja un cambio offline</div>
+    <div class="flow-grid">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-title">Edit local</div>
+        <div class="flow-desc">UI optimista. Cambio visible al instante.</div>
+        <div class="flow-arrow">→</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-title">IndexedDB</div>
+        <div class="flow-desc">Persistido con flag pending_sync: true.</div>
+        <div class="flow-arrow">→</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-title">Cola</div>
+        <div class="flow-desc">Esperando red. Visible badge amarillo.</div>
+        <div class="flow-arrow">→</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-title">Supabase</div>
+        <div class="flow-desc">Vuelve internet → POST + check timestamp.</div>
+        <div class="flow-arrow">→</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">05</div>
+        <div class="flow-title">Toast OK</div>
+        <div class="flow-desc">"3 cambios sincronizados" · flag se limpia.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 7 · DESIGN SYSTEM -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">07 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Sistema de diseño</h2>
+  <p class="section-desc">Identidad visual basada en el HTML actual — serif itálico para títulos, mono para datos y meta, paleta oscura con un solo acento naranja eléctrico.</p>
+
+  <!-- TIPO -->
+  <div class="type-card">
+    <div class="type-label">Display · Georgia italic</div>
+    <div class="type-sample-serif">Setlist <span style="color:var(--accent);">&amp;</span> Acordes</div>
+    <div class="type-meta">
+      <span>STACK · Georgia → Times New Roman → serif</span>
+      <span>USOS · Títulos, song names, hero text</span>
+    </div>
+  </div>
+  <div class="type-card">
+    <div class="type-label">Mono · JetBrains Mono</div>
+    <div class="type-sample-mono">Dm − Bbmaj7 − Gm7 − A7 · 76 BPM</div>
+    <div class="type-meta">
+      <span>STACK · JetBrains Mono → Menlo → Consolas</span>
+      <span>USOS · Acordes, tabs, datos, labels, eyebrows</span>
+    </div>
+  </div>
+
+  <!-- COLORES -->
+  <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin:32px 0 16px;">Paleta</div>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--bg);"></div>
+      <div class="swatch-info"><div class="swatch-name">BG</div><div class="swatch-hex">#0e0e0e</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--bg-elev);"></div>
+      <div class="swatch-info"><div class="swatch-name">BG Elev</div><div class="swatch-hex">#1a1a1a</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--ink);"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink</div><div class="swatch-hex">#f5f1e8</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--ink-dim);"></div>
+      <div class="swatch-info"><div class="swatch-name">Ink dim</div><div class="swatch-hex">#8a8580</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--accent);"></div>
+      <div class="swatch-info"><div class="swatch-name">Accent</div><div class="swatch-hex">#ff5722</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--green);"></div>
+      <div class="swatch-info"><div class="swatch-name">Ready</div><div class="swatch-hex">#4ade80</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:var(--yellow);"></div>
+      <div class="swatch-info"><div class="swatch-name">Rehearsing</div><div class="swatch-hex">#fbbf24</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#fef3c7;"></div>
+      <div class="swatch-info"><div class="swatch-name">Sticky yellow</div><div class="swatch-hex">#fef3c7</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#fbcfe8;"></div>
+      <div class="swatch-info"><div class="swatch-name">Sticky pink</div><div class="swatch-hex">#fbcfe8</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#bfdbfe;"></div>
+      <div class="swatch-info"><div class="swatch-name">Sticky blue</div><div class="swatch-hex">#bfdbfe</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#bbf7d0;"></div>
+      <div class="swatch-info"><div class="swatch-name">Sticky green</div><div class="swatch-hex">#bbf7d0</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#fed7aa;"></div>
+      <div class="swatch-info"><div class="swatch-name">Sticky orange</div><div class="swatch-hex">#fed7aa</div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin:40px 0 16px;">Componentes clave</div>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <div class="comp-card-h">Buttons</div>
+      <div class="comp-card-body" style="gap:8px;">
+        <span class="btn-m primary" style="font-size:10px;padding:10px 18px;">Primary</span>
+        <span class="btn-m" style="font-size:10px;padding:10px 18px;">Secondary</span>
+        <span style="background:none;border:none;color:var(--ink-dim);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.2em;">← Ghost</span>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-card-h">Status dots</div>
+      <div class="comp-card-body" style="gap:8px;flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;"><span class="status-dot ready" style="width:10px;height:10px;"></span> Lista</div>
+        <div style="display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;"><span class="status-dot rehearsing" style="width:10px;height:10px;"></span> Ensayando</div>
+        <div style="display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11px;"><span class="status-dot" style="width:10px;height:10px;"></span> Pendiente</div>
+      </div>
+    </div>
+    <div class="comp-card">
+      <div class="comp-card-h">Tags & keys</div>
+      <div class="comp-card-body" style="gap:8px;flex-direction:row;flex-wrap:wrap;">
+        <span class="key-tag" style="font-size:11px;padding:4px 10px;">Dm</span>
+        <span class="key-tag" style="font-size:11px;padding:4px 10px;">F#m7</span>
+        <span class="key-tag" style="font-size:11px;padding:4px 10px;">Bb</span>
+        <span class="role-badge admin" style="font-size:10px;padding:4px 10px;">Admin</span>
+        <span class="role-badge member" style="font-size:10px;padding:4px 10px;">Member</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHT MODE PREVIEW -->
+  <div style="font-family:var(--mono);font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:0.25em;margin:40px 0 16px;">Tema claro (v1.5)</div>
+  <div class="theme-row">
+    <div class="light-preview">
+      <div class="l-h">Setlist <span class="amp">&amp;</span> Acordes</div>
+      <div class="l-sub">Sala de Ensayo · Light mode preview</div>
+      <div style="margin-top:14px;padding:8px 0;border-top:1px solid #ddd;border-bottom:1px solid #ddd;display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:10px;color:#888;">01</span>
+        <span class="status-dot ready"></span>
+        <span style="flex:1;font-family:var(--serif);font-size:14px;">Careless Whisper</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--accent);background:#ff572210;padding:2px 6px;border-radius:2px;">Dm</span>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:8px;padding:16px;">
+      <div style="font-family:var(--serif);font-style:italic;font-size:24px;">Setlist <span style="color:var(--accent)">&amp;</span> Acordes</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--ink-dim);margin-top:4px;">Sala de Ensayo · Dark mode (default)</div>
+      <div style="margin-top:14px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--ink-dim);">01</span>
+        <span class="status-dot ready"></span>
+        <span style="flex:1;font-family:var(--serif);font-size:14px;">Careless Whisper</span>
+        <span class="key-tag" style="font-size:10px;padding:2px 6px;">Dm</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 8 · ROADMAP -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">08 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Roadmap visual</h2>
+  <p class="section-desc">Qué entra al MVP, qué queda para v1 post-lanzamiento y qué para v2. Foco en lo que es valor para una banda real en su primer ensayo con la app.</p>
+
+  <div class="screens-grid cols-3">
+    <div class="comp-card" style="border-left:3px solid var(--accent);">
+      <div class="comp-card-h">MVP · Bloque crítico</div>
+      <div style="font-family:var(--serif);font-style:italic;font-size:22px;margin-bottom:12px;">Lanzable</div>
+      <ul style="list-style:none;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--ink);">
+        <li>○ Auth magic link</li>
+        <li>○ Crear &amp; unirse a banda</li>
+        <li>○ Invitar miembros email</li>
+        <li>○ CRUD canciones + autoguardado</li>
+        <li>○ Drag &amp; drop reorder</li>
+        <li>○ Búsqueda + filtros</li>
+        <li>○ Subir imágenes (Storage)</li>
+        <li>○ Metrónomo</li>
+        <li>○ Modo presentación</li>
+        <li>○ Pizarra de comentarios</li>
+        <li>○ Favoritos personales</li>
+        <li>○ Offline + IndexedDB sync</li>
+        <li>○ PWA instalable</li>
+        <li>○ ES + EN</li>
+      </ul>
+    </div>
+    <div class="comp-card" style="border-left:3px solid var(--ink-dim);">
+      <div class="comp-card-h">V1 · post-lanzamiento</div>
+      <div style="font-family:var(--serif);font-style:italic;font-size:22px;margin-bottom:12px;">Cuando haya señal</div>
+      <ul style="list-style:none;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--ink-dim);">
+        <li>○ Transposición acordes</li>
+        <li>○ Editar comentarios</li>
+        <li>○ Múltiples setlists/banda</li>
+        <li>○ Compartir setlist público</li>
+        <li>○ Light mode toggle</li>
+        <li>○ Notificaciones</li>
+        <li>○ Adjuntar YT / Spotify</li>
+        <li>○ Chord diagrams visuales</li>
+      </ul>
+    </div>
+    <div class="comp-card" style="border-left:3px solid var(--ink-dimmer);">
+      <div class="comp-card-h">V2 · futuro</div>
+      <div style="font-family:var(--serif);font-style:italic;font-size:22px;margin-bottom:12px;">Si crece</div>
+      <ul style="list-style:none;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--ink-dimmer);">
+        <li>○ Threading en comentarios</li>
+        <li>○ Historial de cambios</li>
+        <li>○ Merge offline por campo</li>
+        <li>○ Auto-detect BPM audio</li>
+        <li>○ App nativa Capacitor</li>
+        <li>○ Modo show en vivo</li>
+        <li>○ Realtime tipo Notion</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- SECCIÓN 9 · ARCHITECTURE -->
+<!-- ====================================================== -->
+<div class="section-wrap">
+  <div class="section-label">
+    <span class="section-num">09 / 09</span>
+    <div class="section-line"></div>
+  </div>
+  <h2 class="section-heading">Stack visual</h2>
+  <p class="section-desc">Frontend → Store + Cola → IndexedDB ↔ Supabase. Cero PowerSync, máxima simplicidad para los pocos usuarios del MVP.</p>
+
+  <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:6px;padding:32px;font-family:var(--mono);font-size:12px;color:var(--ink);line-height:1.8;overflow-x:auto;">
+<pre style="margin:0;font-family:inherit;">
+┌─────────────────────────────────────────────────────────┐
+│   UI · <span style="color:var(--accent);">Preact + htm</span>                                  │
+│   ─────────────────────────────────────────────────     │
+│   Views · Components · Style.css (CSS vars)            │
+└─────────────────────────┬───────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────┐
+│   Store · <span style="color:var(--accent);">nanostores</span> (1 kb)                          │
+│   ─────────────────────────────────────────────────     │
+│   auth · bands · songs · ui · <span style="color:var(--yellow);">sync queue</span>             │
+└──────────┬──────────────────────────────────────┬───────┘
+           │ (offline)                            │ (online)
+           ▼                                      ▼
+┌──────────────────────┐              ┌─────────────────────┐
+│  <span style="color:var(--accent);">IndexedDB</span>           │              │  <span style="color:var(--accent);">Supabase</span>            │
+│  (idb wrapper)       │ ◄──sync──►   │  Auth + Postgres    │
+│  pending_sync flag   │              │  Storage + Edge fns │
+└──────────────────────┘              └──────────┬──────────┘
+                                                 │
+                                                 ▼
+                                       ┌─────────────────────┐
+                                       │  <span style="color:var(--accent);">Resend</span>  (emails)  │
+                                       └─────────────────────┘
+
+Deploy:  <span style="color:var(--accent);">Vercel</span>   ·   Build:  <span style="color:var(--accent);">Vite</span>   ·   PWA:  <span style="color:var(--accent);">vite-plugin-pwa</span>
+</pre>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- FOOTER -->
+<!-- ====================================================== -->
+<div class="doc-footer">
+  <div class="doc-footer-line">— Fin del mockup —</div>
+  <div class="doc-footer-amp">&amp;</div>
+  <div class="doc-footer-line">9 secciones · 24 pantallas · 0 features de más</div>
+</div>
+
+</body>
+</html>

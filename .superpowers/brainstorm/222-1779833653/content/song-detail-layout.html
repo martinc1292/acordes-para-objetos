@@ -1,0 +1,74 @@
+<h2>Layout de detalle de canción</h2>
+<p class="subtitle">La canción tiene: progresión, estructura, letra, tabs y notas. ¿Cómo organizarlo?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Scroll vertical con secciones</h3>
+      <p>Todo en una columna. Header con info básica y status. Secciones colapsables: Progresión, Estructura, Tabs, Letra, Notas. Simple, funciona bien en mobile.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa</div>
+        <div class="mockup-body" style="padding:0;font-size:13px">
+          <div style="padding:12px 14px;border-bottom:1px solid #333">
+            <div style="font-size:16px;font-weight:700">Careless Whisper</div>
+            <div style="color:#888;margin-top:2px">George Michael</div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <span style="background:#333;padding:3px 8px;border-radius:4px">Dm → [+/-]</span>
+              <span style="background:#333;padding:3px 8px;border-radius:4px">76 BPM</span>
+              <span style="background:#22c55e22;color:#22c55e;padding:3px 8px;border-radius:4px">Lista ▾</span>
+            </div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #222">
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Progresión</div>
+            <div style="font-family:monospace">Dm — Bbmaj7 — Gm7 — A7</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #222">
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Tabs (1) ▾</div>
+            <div style="font-family:monospace;font-size:11px;line-height:1.6;background:#111;padding:8px;border-radius:4px">e|----10-7-5-3---5-3-2-0---|<br>B|------------------------|<br>G|------------------------|</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #222;color:#555">
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">Letra ▸ (sin letra)</div>
+          </div>
+          <div style="padding:10px 14px">
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Notas</div>
+            <div style="color:#bbb">Saxo en Dm. Si lo tocás en guitarra...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tabs de navegación por sección</h3>
+      <p>Header fijo con info + status + transposición. Abajo, pestañas: Acordes | Tabs | Letra | Notas. Solo se muestra una sección a la vez. Más limpio en mobile.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa</div>
+        <div class="mockup-body" style="padding:0;font-size:13px">
+          <div style="padding:12px 14px;border-bottom:1px solid #333">
+            <div style="font-size:16px;font-weight:700">Careless Whisper</div>
+            <div style="color:#888;margin-top:2px">George Michael · Dm · 76 BPM</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <span style="background:#333;padding:3px 8px;border-radius:4px;font-size:12px">◀ − Dm + ▶</span>
+              <span style="background:#22c55e22;color:#22c55e;padding:3px 8px;border-radius:4px;font-size:12px">Lista ▾</span>
+            </div>
+          </div>
+          <div style="display:flex;border-bottom:1px solid #333">
+            <div style="padding:8px 12px;border-bottom:2px solid #ff5722;color:#ff5722;font-size:12px;font-weight:600">Acordes</div>
+            <div style="padding:8px 12px;color:#666;font-size:12px">Tabs</div>
+            <div style="padding:8px 12px;color:#666;font-size:12px">Letra</div>
+            <div style="padding:8px 12px;color:#666;font-size:12px">Notas</div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Progresión</div>
+            <div style="font-family:monospace;margin-bottom:12px">Dm — Bbmaj7 — Gm7 — A7</div>
+            <div style="color:#aaa;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Estructura</div>
+            <div style="color:#bbb;font-size:12px">Intro sax → Verse → Pre-chorus → Chorus...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

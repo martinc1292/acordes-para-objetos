@@ -1,0 +1,71 @@
+<h2>Admin CRUD — ¿dónde vive la edición?</h2>
+<p class="subtitle">Vos sos el único admin. ¿Cómo preferís editar y crear canciones?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Edición inline desde el detalle</h3>
+      <p>En la vista de detalle, el admin ve un botón "Editar". Al tocarlo, los campos se vuelven editables en el mismo lugar. Para crear: botón "+" flotante en la lista. Sin pantallas separadas.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa — detalle (modo edición)</div>
+        <div class="mockup-body" style="padding:0;font-size:13px">
+          <div style="padding:10px 14px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:15px;font-weight:700;border-bottom:1px solid #555;padding-bottom:2px">Careless Whisper</div>
+              <div style="color:#888;font-size:12px;margin-top:4px;border-bottom:1px solid #555;padding-bottom:2px">George Michael</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button style="background:#333;border:none;color:#fff;padding:4px 10px;border-radius:4px;font-size:11px">Guardar</button>
+              <button style="background:transparent;border:1px solid #555;color:#888;padding:4px 10px;border-radius:4px;font-size:11px">Cancelar</button>
+            </div>
+          </div>
+          <div style="padding:8px 14px;border-bottom:1px solid #222;font-size:12px">
+            <div style="color:#888;margin-bottom:4px">Progresión</div>
+            <div style="background:#111;border:1px solid #444;border-radius:4px;padding:5px 8px;font-family:monospace">Dm — Bbmaj7 — Gm7 — A7</div>
+          </div>
+          <div style="padding:8px 14px;font-size:12px">
+            <div style="color:#888;margin-bottom:4px">Notas</div>
+            <div style="background:#111;border:1px solid #444;border-radius:4px;padding:5px 8px;min-height:50px">Saxo en Dm...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ruta /admin separada (Recomendado)</h3>
+      <p>Una pantalla de admin en <code>/band/:id/admin</code> con tabla de canciones, botón "Nueva canción", y formulario completo para editar. Más claro, más fácil de testear, no mezcla lectura con edición.</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">Vista previa — ruta /admin</div>
+        <div class="mockup-body" style="padding:0;font-size:13px">
+          <div style="padding:8px 14px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600">Admin · canciones (37)</span>
+            <button style="background:#ff5722;border:none;color:#fff;padding:4px 12px;border-radius:4px;font-size:11px">+ Nueva</button>
+          </div>
+          <div style="font-size:12px">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px 14px;border-bottom:1px solid #222;color:#888;font-size:11px;text-transform:uppercase">
+              <span>Título</span><span>Key</span><span>Acciones</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px 14px;border-bottom:1px solid #1a1a1a;align-items:center">
+              <span>Careless Whisper</span><span style="color:#888">Dm</span>
+              <span style="display:flex;gap:6px">
+                <button style="background:#333;border:none;color:#ccc;padding:2px 8px;border-radius:3px;font-size:11px">Editar</button>
+                <button style="background:transparent;border:1px solid #444;color:#888;padding:2px 8px;border-radius:3px;font-size:11px">✕</button>
+              </span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px 14px;border-bottom:1px solid #1a1a1a;align-items:center">
+              <span>Heart of Glass</span><span style="color:#888">E</span>
+              <span style="display:flex;gap:6px">
+                <button style="background:#333;border:none;color:#ccc;padding:2px 8px;border-radius:3px;font-size:11px">Editar</button>
+                <button style="background:transparent;border:1px solid #444;color:#888;padding:2px 8px;border-radius:3px;font-size:11px">✕</button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
