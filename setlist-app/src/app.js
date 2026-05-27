@@ -11,6 +11,7 @@ import { InviteAccept } from '@/views/InviteAccept.js';
 import { BandSettings } from '@/views/BandSettings.js';
 import { SongList } from '@/views/SongList.js';
 import { SongDetail } from '@/views/SongDetail.js';
+import { UpdateBanner } from '@/views/UpdateBanner.js';
 
 function getSearch() {
   return typeof window === 'undefined' ? '' : window.location.search;
@@ -78,25 +79,32 @@ export function App({ router }) {
 
   if (redirect) return null;
 
-  switch (route.name) {
-    case 'login':
-      return html`<${Login} next=${getNext(getSearch())} />`;
-    case 'auth-callback':
-      return html`<${AuthCallback} navigate=${navigate} />`;
-    case 'onboarding':
-      return html`<${Onboarding} navigate=${navigate} />`;
-    case 'invite-accept':
-      return html`<${InviteAccept} token=${route.params.token} navigate=${navigate} />`;
-    case 'band-settings':
-      return html`<${BandSettings} bandId=${route.params.bandId} navigate=${navigate} />`;
-    case 'band-home':
-      return html`<${SongList} bandId=${route.params.bandId} navigate=${navigate} />`;
-    case 'song-detail':
-      return html`<${SongDetail} bandId=${route.params.bandId} songId=${route.params.songId} navigate=${navigate} />`;
-    case 'song-new':
-      return html`<${SongDetail} bandId=${route.params.bandId} songId=${null} navigate=${navigate} />`;
-    case 'home':
-    default:
-      return html`<main style="padding:24px"><p>Redirigiendo...</p></main>`;
-  }
+  return html`
+    <>
+      ${(() => {
+        switch (route.name) {
+          case 'login':
+            return html`<${Login} next=${getNext(getSearch())} />`;
+          case 'auth-callback':
+            return html`<${AuthCallback} navigate=${navigate} />`;
+          case 'onboarding':
+            return html`<${Onboarding} navigate=${navigate} />`;
+          case 'invite-accept':
+            return html`<${InviteAccept} token=${route.params.token} navigate=${navigate} />`;
+          case 'band-settings':
+            return html`<${BandSettings} bandId=${route.params.bandId} navigate=${navigate} />`;
+          case 'band-home':
+            return html`<${SongList} bandId=${route.params.bandId} navigate=${navigate} />`;
+          case 'song-detail':
+            return html`<${SongDetail} bandId=${route.params.bandId} songId=${route.params.songId} navigate=${navigate} />`;
+          case 'song-new':
+            return html`<${SongDetail} bandId=${route.params.bandId} songId=${null} navigate=${navigate} />`;
+          case 'home':
+          default:
+            return html`<main style="padding:24px"><p>Redirigiendo...</p></main>`;
+        }
+      })()}
+      <${UpdateBanner} />
+    </>
+  `;
 }
