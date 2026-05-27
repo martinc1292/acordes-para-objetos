@@ -233,3 +233,10 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}

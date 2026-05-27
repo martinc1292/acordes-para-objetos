@@ -1,4 +1,5 @@
 {
+  "count": "{{count}} songs",
   "status": {
     "pending": "Pending",
     "rehearsing": "Rehearsing",
@@ -17,7 +18,8 @@
     "lyrics": "Lyrics",
     "notes": "Notes",
     "progression": "Progression",
-    "structure": "Structure"
+    "structure": "Structure",
+    "metronome": "Metronome"
   },
   "placeholder": {
     "search": "Search song or artist…",
