@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSupabase } from '@/db/supabase.js';
 import { acceptInvitation } from '@/db/bands.js';
 import { refreshBands } from '@/stores/auth.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 function isInviteToken(value) {
   return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value ?? '');
@@ -13,6 +14,7 @@ function shouldHandleLinkClick(event) {
 }
 
 export function InviteAccept({ token, navigate }) {
+  const t = useTranslation('auth');
   const [invite, setInvite] = useState(null);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
@@ -36,7 +38,7 @@ export function InviteAccept({ token, navigate }) {
       }
       if (!isInviteToken(token)) {
         if (active) {
-          setError('Token de invitacion invalido.');
+          setError(t('invite.error.invalid_token'));
           setStatus('ready');
         }
         return;
@@ -46,7 +48,7 @@ export function InviteAccept({ token, navigate }) {
         if (!supabase) {
           if (active) {
             setConfigMissing(true);
-            setError('Supabase no esta configurado.');
+            setError(t('invite.error.load_failed'));
           }
           return;
         }
@@ -60,7 +62,8 @@ export function InviteAccept({ token, navigate }) {
         if (queryError) console.warn('invite preload failed', queryError);
         if (active) setInvite(data);
       } catch (err) {
-        if (active) setError(err.message || 'No pudimos cargar la invitacion.');
+        console.error('invite load failed', err);
+        if (active) setError(t('invite.error.load_failed'));
       } finally {
         if (active) setStatus('ready');
       }
@@ -78,7 +81,7 @@ export function InviteAccept({ token, navigate }) {
     setError('');
     try {
       const supabase = getSupabase();
-      if (!supabase) throw new Error('Supabase no esta configurado.');
+      if (!supabase) throw new Error(t('invite.error.load_failed'));
       const bandId = await acceptInvitation(supabase, { token });
       try {
         await refreshBands(supabase);
@@ -87,6 +90,7 @@ export function InviteAccept({ token, navigate }) {
       }
       if (mountedRef.current) navigate(`/band/${bandId}`, { replace: true });
     } catch (err) {
+      console.error('acceptInvitation failed', err);
       if (mountedRef.current) {
         setError(err.message);
         setStatus('ready');
@@ -95,7 +99,7 @@ export function InviteAccept({ token, navigate }) {
   }
 
   if (status === 'loading') {
-    return html`<main class="auth-shell"><p aria-live="polite">Cargando invitacion...</p></main>`;
+    return html`<main class="auth-shell"><p aria-live="polite">${t('invite.loading')}</p></main>`;
   }
 
   return html`
@@ -103,11 +107,11 @@ export function InviteAccept({ token, navigate }) {
       <h1>Invitacion</h1>
       ${invite
         ? html`<p>Te invitaron a unirte a <strong>${invite.bands?.name ?? 'una banda'}</strong> como ${invite.role}.</p>`
-        : html`<p>No tenemos datos previos de esta invitacion. Si el token es valido, podes intentar aceptarla igualmente.</p>`}
+        : html`<p>${t('invite.no_data')}</p>`}
       ${error && html`<p class="auth-error" role="alert">${error}</p>`}
       <div class="auth-actions">
         <button type="button" onClick=${onAccept} disabled=${status === 'accepting' || configMissing || !isInviteToken(token)}>
-          ${status === 'accepting' ? 'Aceptando...' : 'Aceptar'}
+          ${status === 'accepting' ? t('invite.accepting') : t('common:action.accept')}
         </button>
         <a
           href="/"
@@ -121,7 +125,7 @@ export function InviteAccept({ token, navigate }) {
             navigate('/', { replace: true });
           }}
           aria-disabled=${status === 'accepting'}
-        >Rechazar</a>
+        >${t('common:action.reject')}</a>
       </div>
     </main>
   `;
