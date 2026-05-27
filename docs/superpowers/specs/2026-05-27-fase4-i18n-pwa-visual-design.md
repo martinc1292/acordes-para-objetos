@@ -69,6 +69,7 @@ src/locales/
 ### F4-2 — Extracción de strings
 
 - Todos los strings visibles al usuario en SongList, SongDetail, BandSettings, Login, Onboarding, InviteAccept se extraen a las claves correspondientes.
+- El eyebrow "SALA DE ENSAYO" en SongList se pasa por i18n (`t('band.eyebrow')`), con traducción al inglés como "REHEARSAL ROOM".
 - Mensajes de error de Supabase se wrappean en claves genéricas: `error.load_failed`, `error.save_failed`, `error.delete_failed`. El mensaje técnico va solo a `console.error`.
 - AC: búsqueda de strings en español hardcodeados en `src/` no encuentra nada visible al usuario (excluidos comentarios y consola).
 
@@ -78,7 +79,7 @@ src/locales/
 
 ### F4-3 — Tokens de color
 
-Se mantienen los nombres existentes (`--bg`, `--panel`, etc.) y se actualizan los valores para coincidir con el mockup. Se agrega un set de tokens derivados del accent.
+Se mantienen los nombres existentes (`--bg`, `--panel`, etc.) y se actualizan los valores para coincidir con el mockup. Se agrega un set de tokens derivados del accent y se define `--serif`.
 
 **Dark mode (default):**
 
@@ -92,10 +93,12 @@ Se mantienen los nombres existentes (`--bg`, `--panel`, etc.) y se actualizan lo
 | `--accent` | `#ff5722` |
 | `--accent-text` | `#ff5722` (ratio ~4.8:1 sobre `#0f0f0f` — pasa WCAG AA) |
 | `--accent-soft` | `#ff572220` |
-| `--accent-contrast` | `#ffffff` |
+| `--accent-contrast` | `#1a0f0a` (texto oscuro sobre naranja — mejor contraste que blanco) |
 | `--line` | `#2a2a2a` |
 | `--green` | `#4ade80` |
 | `--yellow` | `#fbbf24` |
+| `--serif` | `'Georgia', 'Times New Roman', serif` |
+| `--mono` | `'JetBrains Mono', ui-monospace, Consolas, monospace` |
 
 **Light mode:**
 
@@ -107,37 +110,39 @@ Se mantienen los nombres existentes (`--bg`, `--panel`, etc.) y se actualizan lo
 | `--text` | `#1a1a1a` |
 | `--muted` | `#6f675f` |
 | `--accent` | `#ff5722` |
-| `--accent-text` | `#c94300` (contraste WCAG AA sobre fondo claro) |
+| `--accent-text` | `#a33500` (más oscuro que `#c94300` — mejor contraste sobre claro) |
 | `--accent-soft` | `#ff572215` |
-| `--accent-contrast` | `#ffffff` |
+| `--accent-contrast` | `#1a0f0a` |
 | `--line` | `#d6cfc5` |
-| `--green` | `#16a34a` |
-| `--yellow` | `#d97706` |
+| `--green` | `#15803d` (oscurecido para contraste en light) |
+| `--yellow` | `#b45309` (oscurecido para contraste en light) |
+| `--serif` | `'Georgia', 'Times New Roman', serif` |
+| `--mono` | `'JetBrains Mono', ui-monospace, Consolas, monospace` |
 
-Regla: nunca usar `--accent` directamente para texto pequeño sobre fondo claro — usar `--accent-text`.
-
-El verde de accent en light mode (`#1f7a64`) queda eliminado.
+Reglas:
+- Nunca usar `--accent` directamente para texto pequeño sobre fondo claro — usar `--accent-text`.
+- Texto sobre fondo `--accent` siempre usa `--accent-contrast` (oscuro en ambos temas).
+- El verde de accent en light mode (`#1f7a64`) queda eliminado.
 
 ### F4-4 — Tipografía y componentes clave
 
 **Fuente:**
 - Self-host de JetBrains Mono en `.woff2` (un peso: 400; un peso: 500 si se necesita bold).
 - `@font-face` en el CSS global con `font-display: swap`.
-- `--mono` pasa a `'JetBrains Mono', ui-monospace, Consolas, monospace`.
-- Los archivos van en `public/fonts/`.
+- `--mono` definido como token CSS (ver F4-3). Los archivos van en `public/fonts/`.
 
 **SongList — header:**
-- Eyebrow: `SALA DE ENSAYO` en mono uppercase, `font-size: 0.7rem`, `letter-spacing: 0.25em`, color `--accent`.
-- Título de banda: serif italic (`font-family: var(--serif)`), `font-weight: 400`, `letter-spacing: -0.02em`.
+- Eyebrow: `t('band.eyebrow')` en mono uppercase, `font-size: 0.7rem`, `letter-spacing: 0.25em`, color `var(--accent)`.
+- Título de banda: `font-family: var(--serif)`, italic, `font-weight: 400`, `letter-spacing: -0.02em`.
 
 **SongDetail — header:**
-- Título de canción: serif italic, grande.
-- Artista: mono, `color: var(--muted)`.
+- Título de canción: `font-family: var(--serif)`, italic, grande.
+- Artista: `font-family: var(--mono)`, `color: var(--muted)`.
 
 **Cards de canciones:**
 - Border-left de 3px con color del status.
 - Hover: `background: var(--panel-strong)`, transición 120ms.
-- Título en serif, artista en mono.
+- Título en `var(--serif)`, artista en `var(--mono)`.
 - Status pill con `border: 1px solid <color-status>`, texto en el mismo color, sin fondo sólido.
 
 **Botones primarios:**
@@ -169,16 +174,24 @@ El verde de accent en light mode (`#1f7a64`) queda eliminado.
 
 **Dependencias:**
 ```
-vite-plugin-pwa   (devDep)
+vite-plugin-pwa          (devDep)
 @vite-pwa/assets-generator   (devDep)
+workbox-window           (dep)
 ```
 
 **Script de generación de assets:**
 ```
-"generate:pwa-assets": "pwa-assets-generator --preset minimal public/icon.svg"
+"generate:pwa-assets": "pwa-assets-generator --preset minimal-2023 public/icon.svg"
 ```
 
-Genera `icon-192.png`, `icon-512.png`, `icon-maskable-192.png`, `icon-maskable-512.png` en `public/`.
+El preset `minimal-2023` genera en `public/`:
+- `pwa-64x64.png`
+- `pwa-192x192.png`
+- `pwa-512x512.png`
+- `maskable-icon-512x512.png`
+- `apple-touch-icon-180x180.png`
+
+Los nombres en el manifest deben coincidir exactamente con lo que produce el generador. Verificar tras correr el script.
 
 **Manifest** (en `vite.config.js` dentro del plugin):
 
@@ -193,10 +206,9 @@ manifest: {
   start_url: '/',
   scope: '/',
   icons: [
-    { src: 'icon-192.png',           sizes: '192x192', type: 'image/png' },
-    { src: 'icon-512.png',           sizes: '512x512', type: 'image/png' },
-    { src: 'icon-maskable-192.png',  sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-    { src: 'icon-maskable-512.png',  sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    { src: 'pwa-192x192.png',         sizes: '192x192', type: 'image/png' },
+    { src: 'pwa-512x512.png',         sizes: '512x512', type: 'image/png' },
+    { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
   ]
 }
 ```
@@ -205,9 +217,9 @@ manifest: {
 
 ```js
 VitePWA({
-  registerType: 'prompt',           // no recarga automática
+  registerType: 'prompt',           // no recarga automática; el usuario decide
   injectRegister: 'auto',
-  includeAssets: ['fonts/**', 'icon*.png'],
+  includeAssets: ['fonts/**', 'pwa-*.png', 'maskable-*.png', 'apple-touch-icon-*.png'],
   manifest: { /* ver arriba */ },
   workbox: {
     cleanupOutdatedCaches: true,
@@ -236,8 +248,8 @@ El app shell, JS y CSS quedan en precache automático de Workbox. El fallback SP
 - Usa `useRegisterSW` de `virtual:pwa-register/preact`.
 - Cuando `needRefresh` es `true`, muestra barra fija abajo con:
   - "Hay una nueva versión disponible"
-  - Botón **Recargar** → `updateServiceWorker()` (recarga con nuevo SW)
-  - Botón **Después** → oculta el banner en la sesión (`offlineReady` o estado local)
+  - Botón **Recargar** → `updateServiceWorker(true)` (fuerza recarga inmediata con nuevo SW)
+  - Botón **Después** → setea estado local `dismissed = true` para ocultar el banner en la sesión (no usa `offlineReady`, que es para otro caso de uso)
 - No autoUpdate — el usuario decide cuándo recargar para no perder datos de formularios.
 
 ---
@@ -253,20 +265,24 @@ Se carga con `import()` dinámico en `app.js`:
 | Vista | Condición de carga |
 |---|---|
 | `SongDetail` | Route `song-detail` o `song-new` |
+| `SongForm` | Route `song-edit` (cuando se implemente en F3-3) |
 | `BandSettings` | Route `band-settings` |
 | `InviteAccept` | Route `invite-accept` |
+| `PresentationMode` | Route `presentation` (cuando se implemente en F3-10) |
 
 Cada ruta lazy muestra un skeleton/spinner simple mientras carga (componente `RouteLoader.js` reutilizable). Sin Suspense — usa estado local `loading` con `useEffect`, consistente con el resto de la app.
 
 ### Bundle analysis
 
+**Dependencias:**
 ```
 rollup-plugin-visualizer   (devDep)
+cross-env                  (devDep)   ← necesario para Windows/PowerShell
 ```
 
 Script:
 ```
-"build:analyze": "ANALYZE=true vite build"
+"build:analyze": "cross-env ANALYZE=true vite build"
 ```
 
 Activado con variable de entorno en `vite.config.js` para no afectar el build normal. Genera `dist/stats.html` con tamaños gzip y brotli. No bloquea CI.
@@ -281,12 +297,13 @@ Los archivos `.woff2` de `public/fonts/` quedan cubiertos por la regla `CacheFir
 
 | Feature | AC |
 |---|---|
-| i18n | Cambiar a EN traduce todos los strings visibles; ES es el default |
+| i18n | Cambiar a EN traduce todos los strings visibles incluyendo el eyebrow; ES es el default |
 | i18n | `localStorage` persiste el idioma entre sesiones |
 | i18n | Sin strings en español hardcodeados en `src/` (visibles al usuario) |
-| Visual | Lighthouse: colores actualizados visibles en ambos temas |
+| Visual | Colores actualizados visibles en ambos temas |
 | Visual | No hay flash de tema incorrecto al cargar |
 | Visual | Contraste WCAG AA en text/muted/accent-text sobre sus fondos respectivos |
+| Visual | Texto sobre botones primarios usa `--accent-contrast` (oscuro) |
 | PWA | Lighthouse PWA score ≥ 90 |
 | PWA | App instalable en Chrome mobile y desktop |
 | PWA | SW registrado, manifest sin errores en DevTools |
@@ -295,7 +312,7 @@ Los archivos `.woff2` de `public/fonts/` quedan cubiertos por la regla `CacheFir
 | PWA | Banner de actualización aparece después de un nuevo deploy |
 | PWA | `npm run generate:pwa-assets` regenera íconos desde `icon.svg` |
 | Opt | Lazy routes no incluidas en el bundle inicial (verificar en DevTools Network) |
-| Opt | `npm run build:analyze` genera `dist/stats.html` |
+| Opt | `npm run build:analyze` genera `dist/stats.html` (funciona en Windows) |
 
 ---
 
@@ -307,12 +324,12 @@ Los archivos `.woff2` de `public/fonts/` quedan cubiertos por la regla `CacheFir
 | `setlist-app/src/stores/useTranslation.js` | Crear |
 | `setlist-app/src/locales/{es,en}/{common,songs,bands,auth}.json` | Crear |
 | `setlist-app/src/views/*.js` | Modificar (extraer strings) |
-| `setlist-app/src/index.css` | Modificar (tokens + @font-face) |
-| `setlist-app/index.html` | Modificar (script inline de tema) |
-| `setlist-app/public/fonts/` | Crear (archivos .woff2) |
+| `setlist-app/src/index.css` | Modificar (tokens + @font-face + --serif/--mono como tokens) |
+| `setlist-app/index.html` | Modificar (script inline de tema, anti-flash) |
+| `setlist-app/public/fonts/` | Crear (archivos .woff2 de JetBrains Mono) |
 | `setlist-app/public/icon.svg` | Crear |
-| `setlist-app/public/icon-*.png` | Generar via script |
-| `setlist-app/vite.config.js` | Modificar (vite-plugin-pwa, visualizer) |
+| `setlist-app/public/pwa-*.png` | Generar via `npm run generate:pwa-assets` |
+| `setlist-app/vite.config.js` | Modificar (vite-plugin-pwa, visualizer, cross-env) |
 | `setlist-app/src/app.js` | Modificar (lazy imports, UpdateBanner) |
 | `setlist-app/src/views/UpdateBanner.js` | Crear |
 | `setlist-app/src/views/RouteLoader.js` | Crear |
