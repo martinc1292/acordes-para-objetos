@@ -269,7 +269,7 @@ export function SongDetail({ bandId, songId, navigate }) {
       const saved = await saveSongWithTabs(supabase, {
         bandId,
         songId: isCreate ? null : songId,
-        fields: fieldsFromForm(form, isCreate && songsLoaded ? songs.length : undefined),
+        fields: fieldsFromForm(form),
         tabs: normalizeTabEdits(tabEdits)
       });
       if (isCreate) {
