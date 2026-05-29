@@ -1,6 +1,13 @@
 // Vercel Cron Job — ejecuta semanalmente para evitar que el proyecto Supabase
 // entre en pausa por inactividad (free tier pausa tras 7 días sin requests).
 export default async function handler(req, res) {
+  // When CRON_SECRET is set (Vercel injects it as a Bearer token on cron calls),
+  // reject anyone who doesn't present it. Without the env var the endpoint stays open.
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const url = process.env.VITE_SUPABASE_URL;
   const key = process.env.VITE_SUPABASE_ANON_KEY;
 
