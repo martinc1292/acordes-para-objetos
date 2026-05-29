@@ -1,11 +1,4 @@
-function unwrap({ data, error }) {
-  if (error) {
-    const wrapped = error instanceof Error ? error : new Error(error.message || String(error));
-    Object.assign(wrapped, error);
-    throw wrapped;
-  }
-  return data;
-}
+import { unwrap } from './_unwrap.js';
 
 export async function createBand(client, { name, description = null }) {
   return unwrap(await client.rpc('create_band', { p_name: name, p_description: description }));

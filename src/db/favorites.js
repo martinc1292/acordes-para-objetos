@@ -1,11 +1,4 @@
-function unwrap({ data, error }) {
-  if (error) {
-    const wrapped = error instanceof Error ? error : new Error(error.message || String(error));
-    Object.assign(wrapped, error);
-    throw wrapped;
-  }
-  return data;
-}
+import { unwrap } from './_unwrap.js';
 
 export async function getFavoriteSongIds(client, { bandId, userId }) {
   const rows = unwrap(await client

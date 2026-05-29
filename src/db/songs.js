@@ -1,11 +1,4 @@
-function unwrap({ data, error }) {
-  if (error) {
-    const wrapped = error instanceof Error ? error : new Error(error.message || String(error));
-    Object.assign(wrapped, error);
-    throw wrapped;
-  }
-  return data;
-}
+import { unwrap } from './_unwrap.js';
 
 function mapSong(row) {
   return {
@@ -135,7 +128,7 @@ export async function updateSong(client, { songId, bandId, fields }) {
   const allowed = ['title', 'artist', 'key', 'tempo', 'structure', 'progression', 'lyrics', 'notes'];
   const payload = {};
   for (const k of allowed) {
-    if (k in fields) payload[k] = fields[k];
+    if (k in fields && fields[k] !== undefined) payload[k] = fields[k];
   }
   const row = unwrap(await client
     .from('songs')
@@ -179,7 +172,7 @@ export async function updateTab(client, { tabId, songId, fields }) {
   const allowed = ['title', 'content', 'position'];
   const payload = {};
   for (const k of allowed) {
-    if (k in fields) payload[k] = fields[k];
+    if (k in fields && fields[k] !== undefined) payload[k] = fields[k];
   }
   const row = unwrap(await client
     .from('tabs')
