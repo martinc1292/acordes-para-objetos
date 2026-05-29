@@ -150,7 +150,8 @@ export function SongDetail({ bandId, songId, navigate }) {
   const bands = useStoreValue($bands);
   const currentUser = useStoreValue($currentUser);
   const band = bands.find((b) => b.id === bandId);
-  const isAdmin = Boolean(currentUser?.id && band?.role === 'admin');
+  // Any band member can edit songs; admin is only required to manage the band.
+  const canEdit = Boolean(currentUser?.id && band);
 
   const storeSong = songs.find((s) => s.id === songId) ?? null;
   const [song, setSong] = useState(isCreate ? null : storeSong);
@@ -232,7 +233,7 @@ export function SongDetail({ bandId, songId, navigate }) {
   }
 
   async function onStatusClick(nextStatus) {
-    if (!song || !isAdmin) return;
+    if (!song || !canEdit) return;
     const prev = song.status;
     setSong((s) => ({ ...s, status: nextStatus }));
     patchSongInStore(songId, { status: nextStatus });
@@ -260,13 +261,14 @@ export function SongDetail({ bandId, songId, navigate }) {
   async function onSave(e) {
     e.preventDefault();
     if (saving) return;
-    if (!isAdmin) { setSaveError(t('action.admin_required')); return; }
+    if (!canEdit) { setSaveError(t('action.admin_required')); return; }
     if (!form.title.trim()) { setSaveError(t('action.title_required')); return; }
     setSaving(true);
     setSaveError('');
     setSaveMsg('');
     try {
       const supabase = getSupabase();
+      if (!supabase) throw new Error('Supabase no está configurado.');
       const saved = await saveSongWithTabs(supabase, {
         bandId,
         songId: isCreate ? null : songId,
@@ -290,14 +292,15 @@ export function SongDetail({ bandId, songId, navigate }) {
       setEditMode(false);
     } catch (err) {
       console.error('saveSongWithTabs failed', err);
-      setSaveError(t('common:error.save_failed'));
+      const detail = err?.message;
+      setSaveError(detail ? `${t('common:error.save_failed')} (${detail})` : t('common:error.save_failed'));
     } finally {
       setSaving(false);
     }
   }
 
   async function onDelete() {
-    if (!isAdmin) { setSaveError(t('action.admin_required')); return; }
+    if (!canEdit) { setSaveError(t('action.admin_required')); return; }
     if (!confirm(t('action.delete_confirm', { title: song?.title }))) return;
     setSaving(true);
     setSaveError('');
@@ -336,7 +339,7 @@ export function SongDetail({ bandId, songId, navigate }) {
     `;
   }
 
-  if (isCreate && !isAdmin) {
+  if (isCreate && !canEdit) {
     return html`
       <main style="padding:16px;max-width:700px;margin:0 auto">
         <p role="alert" style="color:#f87171;font-family:var(--mono)">${t('action.admin_required')}</p>
@@ -486,7 +489,7 @@ export function SongDetail({ bandId, songId, navigate }) {
           onClick=${(e) => { if (!shouldHandleLinkClick(e)) return; e.preventDefault(); navigate(`/band/${bandId}`); }}
           style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.15em;text-decoration:none"
         >← ${t('common:action.back')}</a>
-        ${isAdmin && !isCreate && html`
+        ${canEdit && !isCreate && html`
           <button
             type="button"
             onClick=${enterEdit}
@@ -507,13 +510,13 @@ export function SongDetail({ bandId, songId, navigate }) {
           ${song?.tempo && html`<span>·</span><span>${song.tempo}</span>`}
           ${!isCreate && song && html`
             <span
-              onClick=${() => isAdmin && onStatusClick(STATUS_NEXT[song.status] ?? 'pending')}
-              onKeyDown=${(e) => { if (isAdmin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onStatusClick(STATUS_NEXT[song.status] ?? 'pending'); } }}
-              role=${isAdmin ? 'button' : undefined}
-              tabIndex=${isAdmin ? '0' : undefined}
-              aria-label=${isAdmin ? `Estado: ${t(`status.${song.status ?? 'pending'}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status ?? 'pending'}`)}`}
-              style="margin-left:auto;font-size:0.72rem;color:${STATUS_COLOR[song.status] ?? 'var(--muted)'};cursor:${isAdmin ? 'pointer' : 'default'};white-space:nowrap"
-            >● ${t(`status.${song.status ?? 'pending'}`)}${isAdmin ? ' ▸' : ''}</span>
+              onClick=${() => canEdit && onStatusClick(STATUS_NEXT[song.status] ?? 'pending')}
+              onKeyDown=${(e) => { if (canEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onStatusClick(STATUS_NEXT[song.status] ?? 'pending'); } }}
+              role=${canEdit ? 'button' : undefined}
+              tabIndex=${canEdit ? '0' : undefined}
+              aria-label=${canEdit ? `Estado: ${t(`status.${song.status ?? 'pending'}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status ?? 'pending'}`)}`}
+              style="margin-left:auto;font-size:0.72rem;color:${STATUS_COLOR[song.status] ?? 'var(--muted)'};cursor:${canEdit ? 'pointer' : 'default'};white-space:nowrap"
+            >● ${t(`status.${song.status ?? 'pending'}`)}${canEdit ? ' ▸' : ''}</span>
           `}
         </div>
       </div>

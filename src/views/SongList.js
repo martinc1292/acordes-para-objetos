@@ -37,7 +37,8 @@ export function SongList({ bandId, navigate }) {
   const favoriteSongIds = useStoreValue($favoriteSongIds);
   const favoritesError = useStoreValue($favoritesError);
   const band = bands.find((b) => b.id === bandId);
-  const isAdmin = Boolean(user?.id && band?.role === 'admin');
+  // Any band member can edit songs; admin is only required to manage the band.
+  const canEdit = Boolean(user?.id && band);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [statusBusy, setStatusBusy] = useState(null);
@@ -66,7 +67,7 @@ export function SongList({ bandId, navigate }) {
   async function onStatusClick(event, song) {
     event.preventDefault();
     event.stopPropagation();
-    if (statusBusy || !isAdmin) return;
+    if (statusBusy || !canEdit) return;
     const next = STATUS_NEXT[song.status] ?? 'pending';
     const prev = song.status;
     setStatusBusy(song.id);
@@ -230,7 +231,7 @@ export function SongList({ bandId, navigate }) {
       ${loaded && filtered.length === 0 && html`
         <p style="color:var(--muted);text-align:center;padding:40px 0;font-family:var(--mono);font-size:0.85rem">
           ${search ? t('placeholder.no_results') : t('placeholder.no_songs')}
-          ${isAdmin && !search && filter === 'all' && html`
+          ${canEdit && !search && filter === 'all' && html`
             <a href=${`/band/${bandId}/song/new`} onClick=${onNewSong} style="display:block;margin-top:12px;color:var(--accent)">${t('action.add_first')}</a>
           `}
         </p>
@@ -245,12 +246,12 @@ export function SongList({ bandId, navigate }) {
               style="display:flex;align-items:stretch;margin-bottom:2px"
             >
               <div
-                style="width:16px;flex-shrink:0;display:flex;align-items:stretch;cursor:${isAdmin ? 'pointer' : 'default'}"
+                style="width:16px;flex-shrink:0;display:flex;align-items:stretch;cursor:${canEdit ? 'pointer' : 'default'}"
                 onClick=${(e) => onStatusClick(e, song)}
                 onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStatusClick(e, song); } }}
-                role=${isAdmin ? 'button' : undefined}
-                tabIndex=${isAdmin ? '0' : undefined}
-                aria-label=${isAdmin ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
+                role=${canEdit ? 'button' : undefined}
+                tabIndex=${canEdit ? '0' : undefined}
+                aria-label=${canEdit ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
               >
                 <div style="width:3px;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};border-radius:1px;align-self:stretch"></div>
               </div>
@@ -293,7 +294,7 @@ export function SongList({ bandId, navigate }) {
       `}
 
       <!-- FAB -->
-      ${isAdmin && html`
+      ${canEdit && html`
         <a
           href=${`/band/${bandId}/song/new`}
           onClick=${onNewSong}
