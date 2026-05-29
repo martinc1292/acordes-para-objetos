@@ -36,7 +36,7 @@ export function patchSongInStore(songId, fields) {
 }
 
 export function addSongToStore(song) {
-  $songs.set([...$songs.get(), song]);
+  $songs.set([song, ...$songs.get()]);
 }
 
 export function removeSongFromStore(songId) {
