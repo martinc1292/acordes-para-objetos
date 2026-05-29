@@ -14,13 +14,10 @@ import { getSupabase } from '@/db/supabase.js';
 import { updateSongStatus } from '@/db/songs.js';
 import { addFavorite, removeFavorite } from '@/db/favorites.js';
 import { useTranslation } from '@/stores/useTranslation.js';
+import { shouldHandleLinkClick } from '@/lib/dom.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
 const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
-
-function shouldHandleLinkClick(e) {
-  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
-}
 
 function bandInitials(name) {
   if (!name) return '?';

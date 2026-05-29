@@ -4,13 +4,10 @@ import { getSupabase } from '@/db/supabase.js';
 import { acceptInvitation } from '@/db/bands.js';
 import { refreshBands } from '@/stores/auth.js';
 import { useTranslation } from '@/stores/useTranslation.js';
+import { shouldHandleLinkClick } from '@/lib/dom.js';
 
 function isInviteToken(value) {
   return /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value ?? '');
-}
-
-function shouldHandleLinkClick(event) {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 export function InviteAccept({ token, navigate }) {

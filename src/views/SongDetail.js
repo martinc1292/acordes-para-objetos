@@ -8,6 +8,7 @@ import { getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus } from 
 import { transposeText, transposeNote } from '@/lib/transpose.js';
 import { createMetronome, parseBPM } from '@/lib/metronome.js';
 import { useTranslation } from '@/stores/useTranslation.js';
+import { shouldHandleLinkClick } from '@/lib/dom.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
 const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
@@ -19,10 +20,6 @@ const EMPTY_FORM = {
 
 function emptyForm() {
   return { ...EMPTY_FORM };
-}
-
-function shouldHandleLinkClick(e) {
-  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }
 
 function formFromSong(song) {

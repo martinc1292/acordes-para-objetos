@@ -2,14 +2,11 @@ import { html } from 'htm/preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSupabase } from '@/db/supabase.js';
 import { useTranslation } from '@/stores/useTranslation.js';
+import { shouldHandleLinkClick } from '@/lib/dom.js';
 
 function safeNextPath(value) {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/';
   return value;
-}
-
-function shouldHandleLinkClick(event) {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 export function AuthCallback({ navigate }) {
