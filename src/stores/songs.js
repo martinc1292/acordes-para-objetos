@@ -26,6 +26,7 @@ export async function loadSongs(client, bandId) {
     $songsLoaded.set(true);
   } catch (err) {
     if (_loadedBandId !== bandId) return;
+    _loadedBandId = null; // let a retry re-run cleanly after a failure
     $songsError.set(err?.message || String(err) || 'Error al cargar canciones');
   }
 }

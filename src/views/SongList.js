@@ -87,6 +87,8 @@ export function SongList({ bandId, navigate }) {
     event.stopPropagation();
     if (!user?.id || favoriteBusy) return;
     const wasFavorite = favoriteSet.has(song.id);
+    // Snapshot the full list so a concurrent reload can't corrupt the rollback.
+    const prevIds = $favoriteSongIds.get();
     setFavoriteToggleError('');
     setFavoriteBusy(song.id);
     if (wasFavorite) removeFavoriteFromStore(song.id);
@@ -98,8 +100,7 @@ export function SongList({ bandId, navigate }) {
         await addFavorite(getSupabase(), { bandId, songId: song.id, userId: user.id });
       }
     } catch (err) {
-      if (wasFavorite) addFavoriteToStore(song.id);
-      else removeFavoriteFromStore(song.id);
+      $favoriteSongIds.set(prevIds);
       setFavoriteToggleError(t('action.favorite_error'));
       console.error('toggle favorite failed', err);
     } finally {
