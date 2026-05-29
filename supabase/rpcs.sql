@@ -216,6 +216,7 @@ security definer set search_path = ''
 as $$
 declare
   v_user_id uuid := auth.uid();
+  v_admin_count int;
 begin
   if v_user_id is null then
     raise exception 'authentication required' using errcode = '42501';
@@ -238,6 +239,19 @@ begin
     for update;
   if not found then
     raise exception 'admin required' using errcode = '42501';
+  end if;
+
+  -- Block demoting the only remaining admin to keep every band manageable.
+  if p_role = 'member' then
+    select count(*) into v_admin_count
+      from public.band_members
+      where band_id = p_band_id and role = 'admin';
+    if v_admin_count <= 1 and exists (
+      select 1 from public.band_members
+      where band_id = p_band_id and user_id = p_user_id and role = 'admin'
+    ) then
+      raise exception 'cannot demote the last admin' using errcode = '42501';
+    end if;
   end if;
 
   update public.band_members
@@ -407,10 +421,10 @@ begin
 
   perform 1
     from public.band_members
-    where band_id = p_band_id and user_id = v_user_id and role = 'admin'
+    where band_id = p_band_id and user_id = v_user_id
     for update;
   if not found then
-    raise exception 'admin required' using errcode = '42501';
+    raise exception 'band membership required' using errcode = '42501';
   end if;
 
   if v_song_id is null then

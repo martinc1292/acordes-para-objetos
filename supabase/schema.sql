@@ -240,16 +240,16 @@ create policy band_members_select on band_members for select using (is_band_memb
 create policy invitations_select on invitations for select using (is_band_admin(band_id));
 create policy invitations_delete on invitations for delete using (is_band_admin(band_id));
 
--- songs / tabs: members read; admins write
+-- songs / tabs: any band member can read and write (admins manage the band only)
 create policy songs_select on songs for select using (is_band_member(band_id));
-create policy songs_insert on songs for insert with check (is_band_admin(band_id));
-create policy songs_update on songs for update using (is_band_admin(band_id)) with check (is_band_admin(band_id));
-create policy songs_delete on songs for delete using (is_band_admin(band_id));
+create policy songs_insert on songs for insert with check (is_band_member(band_id));
+create policy songs_update on songs for update using (is_band_member(band_id)) with check (is_band_member(band_id));
+create policy songs_delete on songs for delete using (is_band_member(band_id));
 
 create policy tabs_select on tabs for select using (is_band_member(band_id));
-create policy tabs_insert on tabs for insert with check (is_band_admin(band_id));
-create policy tabs_update on tabs for update using (is_band_admin(band_id)) with check (is_band_admin(band_id));
-create policy tabs_delete on tabs for delete using (is_band_admin(band_id));
+create policy tabs_insert on tabs for insert with check (is_band_member(band_id));
+create policy tabs_update on tabs for update using (is_band_member(band_id)) with check (is_band_member(band_id));
+create policy tabs_delete on tabs for delete using (is_band_member(band_id));
 
 -- song_images: members read/write; only uploader or admin can delete
 create policy song_images_select on song_images for select using (is_band_member(band_id));
