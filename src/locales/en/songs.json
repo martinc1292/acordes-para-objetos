@@ -40,12 +40,19 @@
     "favorite_error": "Could not save favorite.",
     "saved": "Saved.",
     "not_found": "Song not found.",
-    "admin_required": "You need to sign in with an admin user to edit songs."
+    "admin_required": "You need to be a band member to edit songs."
   },
   "field": {
     "title": "Title *",
     "artist": "Artist",
     "key": "Key",
     "tempo": "Tempo"
+  },
+  "aria": {
+    "settings": "Band settings",
+    "favorite_add": "Add to favorites",
+    "favorite_remove": "Remove from favorites",
+    "status": "Status: {{status}}",
+    "status_change": "Status: {{status}}. Click to change."
   }
 }

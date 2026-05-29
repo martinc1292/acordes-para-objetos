@@ -28,5 +28,14 @@
   "lang": {
     "es": "ES",
     "en": "EN"
+  },
+  "app": {
+    "loading": "Loading…",
+    "redirecting": "Redirecting…"
+  },
+  "update": {
+    "available": "A new version is available.",
+    "reload": "Reload",
+    "later": "Later"
   }
 }

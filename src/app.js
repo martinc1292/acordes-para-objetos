@@ -12,6 +12,7 @@ import { Onboarding } from '@/views/Onboarding.js';
 import { SongList } from '@/views/SongList.js';
 import { UpdateBanner } from '@/views/UpdateBanner.js';
 import { RouteLoader } from '@/views/RouteLoader.js';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 function getSearch() {
   return typeof window === 'undefined' ? '' : window.location.search;
@@ -58,6 +59,7 @@ export function App({ router }) {
   const activeBandId = useStoreValue($activeBandId);
   const ready = useStoreValue($authReady);
   const theme = useStoreValue($theme);
+  const t = useTranslation('common');
   const navigate = useCallback((path, opts) => router.navigate(path, opts), [router]);
   const redirect = useMemo(() => {
     if (!ready || !route?.name) return null;
@@ -83,7 +85,7 @@ export function App({ router }) {
   }, [activeBandId]);
 
   if (!ready) {
-    return html`<main style="padding:24px"><p>Cargando...</p></main>`;
+    return html`<main style="padding:24px"><p>${t('app.loading')}</p></main>`;
   }
 
   if (!route?.name) {
@@ -117,7 +119,7 @@ export function App({ router }) {
             return html`<${RouteLoader} load=${loadSongDetail} props=${{ bandId: route.params.bandId, songId: null, navigate }} />`;
           case 'home':
           default:
-            return html`<main style="padding:24px"><p>Redirigiendo...</p></main>`;
+            return html`<main style="padding:24px"><p>${t('app.redirecting')}</p></main>`;
         }
       })()}
       <${UpdateBanner} />

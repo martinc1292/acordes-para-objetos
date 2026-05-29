@@ -40,12 +40,19 @@
     "favorite_error": "No pudimos guardar el favorito.",
     "saved": "Guardado.",
     "not_found": "Canción no encontrada.",
-    "admin_required": "Necesitás ingresar con un usuario administrador para editar canciones."
+    "admin_required": "Necesitás ser miembro de la banda para editar canciones."
   },
   "field": {
     "title": "Título *",
     "artist": "Artista",
     "key": "Key",
     "tempo": "Tempo"
+  },
+  "aria": {
+    "settings": "Ajustes de banda",
+    "favorite_add": "Marcar como favorita",
+    "favorite_remove": "Quitar de favoritas",
+    "status": "Estado: {{status}}",
+    "status_change": "Estado: {{status}}. Click para cambiar."
   }
 }

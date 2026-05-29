@@ -158,7 +158,7 @@ export function SongList({ bandId, navigate }) {
             href=${`/band/${bandId}/settings`}
             onClick=${onSettingsClick}
             style="display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 4px;text-decoration:none;color:inherit"
-            aria-label="Ajustes de banda"
+            aria-label=${t('aria.settings')}
           >
             <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);font-family:var(--mono);font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
               ${initials}
@@ -249,7 +249,7 @@ export function SongList({ bandId, navigate }) {
                 onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStatusClick(e, song); } }}
                 role=${canEdit ? 'button' : undefined}
                 tabIndex=${canEdit ? '0' : undefined}
-                aria-label=${canEdit ? `Estado: ${t(`status.${song.status}`)}. Click para cambiar.` : `Estado: ${t(`status.${song.status}`)}`}
+                aria-label=${canEdit ? t('aria.status_change', { status: t(`status.${song.status}`) }) : t('aria.status', { status: t(`status.${song.status}`) })}
               >
                 <div style="width:3px;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};border-radius:1px;align-self:stretch"></div>
               </div>
@@ -270,7 +270,7 @@ export function SongList({ bandId, navigate }) {
                       onClick=${(e) => onFavoriteClick(e, song)}
                       disabled=${!user?.id || favoriteBusy === song.id}
                       style="border:none;background:none;color:${favoriteSet.has(song.id) ? 'var(--yellow)' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0;line-height:1;flex-shrink:0"
-                      aria-label=${favoriteSet.has(song.id) ? 'Quitar de favoritas' : 'Marcar como favorita'}
+                      aria-label=${favoriteSet.has(song.id) ? t('aria.favorite_remove') : t('aria.favorite_add')}
                       aria-pressed=${favoriteSet.has(song.id)}
                     >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
                     ${song.key && html`

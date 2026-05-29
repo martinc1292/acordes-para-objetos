@@ -1,8 +1,10 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { useRegisterSW } from 'virtual:pwa-register/preact';
+import { useTranslation } from '@/stores/useTranslation.js';
 
 export function UpdateBanner() {
+  const t = useTranslation('common');
   const [dismissed, setDismissed] = useState(false);
 
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
@@ -28,7 +30,7 @@ export function UpdateBanner() {
       "
     >
       <span style="color:var(--text)">
-        Hay una nueva versión disponible.
+        ${t('update.available')}
       </span>
       <div style="display:flex;gap:8px">
         <button
@@ -39,9 +41,7 @@ export function UpdateBanner() {
             border:none;border-radius:4px;padding:6px 14px;
             cursor:pointer;font:inherit;font-weight:600;
           "
-        >
-          Recargar
-        </button>
+        >${t('update.reload')}</button>
         <button
           type="button"
           onClick=${() => setDismissed(true)}
@@ -50,9 +50,7 @@ export function UpdateBanner() {
             border:1px solid var(--line);border-radius:4px;
             padding:6px 14px;cursor:pointer;font:inherit;
           "
-        >
-          Después
-        </button>
+        >${t('update.later')}</button>
       </div>
     </div>
   `;
