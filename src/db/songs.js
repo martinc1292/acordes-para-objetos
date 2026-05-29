@@ -77,7 +77,8 @@ export async function getSongs(client, { bandId }) {
     .from('songs')
     .select('*')
     .eq('band_id', bandId)
-    .order('sort_order', { ascending: true })) ?? [];
+    .order('created_at', { ascending: false })) ?? [];
+
   return rows.map(mapSong);
 }
 
