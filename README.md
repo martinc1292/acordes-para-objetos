@@ -24,6 +24,11 @@ Copia `.env.example` a `.env.local` y completa las variables de Supabase.
 - `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` se usan en el navegador.
 - `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` son solo para scripts locales/admin.
 
+## Acceso de usuarios
+
+Para explicar a una persona invitada como registrarse, ingresar o aceptar una
+invitacion, ver [`docs/GUIA_ACCESO.md`](docs/GUIA_ACCESO.md).
+
 ## Estructura
 
 - `src/`: app Preact, vistas, stores y librerias puras.
