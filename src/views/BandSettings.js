@@ -21,6 +21,11 @@ function shouldHandleLinkClick(event) {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
+function bandInitials(name) {
+  if (!name) return '?';
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+}
+
 export function BandSettings({ bandId, navigate }) {
   const t = useTranslation('bands');
   const [tab, setTab] = useState('general');
@@ -45,10 +50,12 @@ export function BandSettings({ bandId, navigate }) {
     }, 0);
   }
 
+  const initials = bandInitials(band?.name);
+
   return html`
-    <main class="settings-shell">
-      <header class="settings-header">
-        <h1>${band?.name ?? t('settings.band_fallback')}</h1>
+    <main style="padding:16px;max-width:680px;margin:0 auto">
+
+      <header style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px">
         <a
           href=${`/band/${bandId}`}
           onClick=${(event) => {
@@ -56,9 +63,25 @@ export function BandSettings({ bandId, navigate }) {
             event.preventDefault();
             navigate(`/band/${bandId}`);
           }}
+          style="display:inline-block;font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);text-decoration:none;margin-bottom:12px"
         >${t('common:action.back')}</a>
+        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">
+          ${t('settings.title')}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);font-family:var(--mono);font-size:0.85rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${initials}
+          </div>
+          <h1 style="margin:0;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.5rem,4.5vw,2.2rem);letter-spacing:-0.025em;line-height:1">
+            ${band?.name ?? t('settings.band_fallback')}
+          </h1>
+        </div>
       </header>
-      <nav class="settings-tabs" role="tablist">
+
+      <nav
+        role="tablist"
+        style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:20px;overflow-x:auto"
+      >
         ${TABS.map((id) => html`
           <button
             type="button"
@@ -72,10 +95,11 @@ export function BandSettings({ bandId, navigate }) {
             tabIndex=${tab === id ? 0 : -1}
             onClick=${() => setTab(id)}
             onKeyDown=${onTabKeyDown}
-            class=${tab === id ? 'tab tab-active' : 'tab'}
+            style="font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;padding:10px 14px;border:none;background:none;border-bottom:2px solid ${tab === id ? 'var(--accent)' : 'transparent'};color:${tab === id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;white-space:nowrap;margin-bottom:-1px"
           >${t(`settings.tab.${id}`)}</button>
         `)}
       </nav>
+
       <section
         id=${`settings-panel-${tab}`}
         role="tabpanel"
@@ -133,20 +157,24 @@ function GeneralTab({ bandId, band, isAdmin }) {
     }
   }
 
+  const isSuccess = message === t('settings.saved');
+
   return html`
-    <form onSubmit=${onSave}>
-      <label>
-        ${t('settings.field.name')}
+    <form onSubmit=${onSave} class="auth-form">
+      <label class="auth-field">
+        <span>${t('settings.field.name')}</span>
         <input
+          class="auth-input"
           name="band-name"
           value=${name}
           onInput=${(event) => setName(event.currentTarget.value)}
           disabled=${!isAdmin}
         />
       </label>
-      <label>
-        ${t('settings.field.description')}
+      <label class="auth-field">
+        <span>${t('settings.field.description')}</span>
         <input
+          class="auth-input"
           name="band-description"
           value=${description}
           onInput=${(event) => setDescription(event.currentTarget.value)}
@@ -154,12 +182,18 @@ function GeneralTab({ bandId, band, isAdmin }) {
         />
       </label>
       ${isAdmin && html`
-        <button type="submit" disabled=${saving}>${saving ? t('common:saving') : t('common:action.save')}</button>
+        <button class="auth-submit" type="submit" disabled=${saving}>${saving ? t('common:saving') : t('common:action.save')}</button>
       `}
-      ${message && html`<p aria-live="polite">${message}</p>`}
+      ${message && html`
+        <p
+          aria-live="polite"
+          class=${isSuccess ? 'auth-success' : 'auth-error'}
+          style="margin:4px 0 0;font-family:var(--mono);font-size:0.8rem"
+        >${message}</p>
+      `}
     </form>
-    <div style="margin-top:24px">
-      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:8px">
+    <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--line)">
+      <div style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">
         ES / EN
       </div>
       <${LanguageToggle} />
@@ -275,38 +309,50 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
     }
   }
 
-  if (loading) return html`<p aria-live="polite">${t('settings.member.loading')}</p>`;
+  if (loading) {
+    return html`<p aria-live="polite" style="font-family:var(--mono);font-size:0.85rem;color:var(--muted)">${t('settings.member.loading')}</p>`;
+  }
+
+  const selectStyle = 'font-family:var(--mono);font-size:0.75rem;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:6px 8px';
+  const ghostBtnStyle = 'font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);padding:6px 10px;cursor:pointer';
 
   return html`
     <div>
-      <h2>${t('settings.member.title')}</h2>
-      <ul class="members-list">
+      <h2 style="margin:0 0 12px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.3rem">${t('settings.member.title')}</h2>
+      <ul style="list-style:none;margin:0;padding:0">
         ${members.map((member) => html`
-          <li key=${member.userId}>
-            <span>${member.email ?? member.userId}</span>
+          <li
+            key=${member.userId}
+            style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)"
+          >
+            <span style="font-family:var(--mono);font-size:0.85rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${member.email ?? member.userId}</span>
             ${isAdmin && member.userId !== currentUserId ? html`
-              <select
-                value=${member.role}
-                aria-label=${t('settings.member.role_aria', { name: member.email ?? member.userId })}
-                onChange=${(event) => onRoleChange(member, event.currentTarget.value)}
-                disabled=${busy}
-              >
-                <option value="admin">${t('role.admin')}</option>
-                <option value="member">${t('role.member')}</option>
-              </select>
-              <button type="button" onClick=${() => onRemove(member)} disabled=${busy}>${t('settings.member.remove')}</button>
-            ` : html`<span>(${t(`role.${member.role}`)})</span>`}
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                <select
+                  value=${member.role}
+                  aria-label=${t('settings.member.role_aria', { name: member.email ?? member.userId })}
+                  onChange=${(event) => onRoleChange(member, event.currentTarget.value)}
+                  disabled=${busy}
+                  style=${selectStyle}
+                >
+                  <option value="admin">${t('role.admin')}</option>
+                  <option value="member">${t('role.member')}</option>
+                </select>
+                <button type="button" onClick=${() => onRemove(member)} disabled=${busy} style=${ghostBtnStyle}>${t('settings.member.remove')}</button>
+              </div>
+            ` : html`<span style="font-family:var(--mono);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:2px;flex-shrink:0">${t(`role.${member.role}`)}</span>`}
           </li>
         `)}
       </ul>
 
       ${isAdmin && html`
-        <section>
-          <h3>${t('settings.invitation.title')}</h3>
-          <form onSubmit=${onGenerate}>
-            <label>
-              ${t('settings.member.email_label')}
+        <section style="margin-top:28px;padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--panel)">
+          <h3 style="margin:0 0 14px;font-family:var(--mono);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">${t('settings.invitation.title')}</h3>
+          <form onSubmit=${onGenerate} class="auth-form">
+            <label class="auth-field">
+              <span>${t('settings.member.email_label')}</span>
               <input
+                class="auth-input"
                 type="email"
                 name="invite-email"
                 autocomplete="email"
@@ -315,9 +361,10 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
                 onInput=${(event) => setInviteEmail(event.currentTarget.value)}
               />
             </label>
-            <label>
-              ${t('settings.invitation.role_label')}
+            <label class="auth-field">
+              <span>${t('settings.invitation.role_label')}</span>
               <select
+                class="auth-input"
                 name="invite-role"
                 value=${inviteRole}
                 onChange=${(event) => setInviteRole(event.currentTarget.value)}
@@ -326,12 +373,13 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
                 <option value="admin">${t('role.admin')}</option>
               </select>
             </label>
-            <button type="submit" disabled=${busy}>${t('settings.invitation.generate')}</button>
+            <button class="auth-submit" type="submit" disabled=${busy}>${t('settings.invitation.generate')}</button>
           </form>
           ${generatedLink && html`
-            <label>
-              ${t('settings.invitation.generated_link')}
+            <label class="auth-field" style="margin-top:14px">
+              <span>${t('settings.invitation.generated_link')}</span>
               <input
+                class="auth-input"
                 readonly
                 aria-label=${t('settings.invitation.generated_link_aria')}
                 value=${generatedLink}
@@ -339,15 +387,19 @@ function MembersTab({ bandId, currentUserId, isAdmin }) {
               />
             </label>
           `}
-          <ul>
-            ${invites.map((invite) => html`
-              <li key=${invite.id}>${invite.email} (${invite.role}) - ${t('settings.invitation.expires')} ${invite.expiresAt}</li>
-            `)}
-          </ul>
+          ${invites.length > 0 && html`
+            <ul style="list-style:none;margin:16px 0 0;padding:0">
+              ${invites.map((invite) => html`
+                <li key=${invite.id} style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);padding:6px 0;border-top:1px solid var(--line)">
+                  ${invite.email} (${invite.role}) — ${t('settings.invitation.expires')} ${invite.expiresAt}
+                </li>
+              `)}
+            </ul>
+          `}
         </section>
       `}
 
-      ${error && html`<p class="auth-error" role="alert">${error}</p>`}
+      ${error && html`<p class="auth-error" role="alert" style="margin-top:14px;font-family:var(--mono);font-size:0.8rem">${error}</p>`}
     </div>
   `;
 }
@@ -407,30 +459,33 @@ function AdvancedTab({ bandId, band, isAdmin, navigate }) {
     }
   }
 
+  const dangerBtnStyle = 'font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;background:none;border:1px solid #7f1d1d;border-radius:6px;color:#f87171;padding:10px 16px;cursor:pointer';
+
   return html`
-    <div>
+    <div style="display:grid;gap:24px">
       <section>
-        <h2>${t('settings.leave_section')}</h2>
-        <button type="button" onClick=${onLeave} disabled=${busy}>${t('settings.leave_action')}</button>
+        <h2 style="margin:0 0 6px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.3rem">${t('settings.leave_section')}</h2>
+        <button type="button" onClick=${onLeave} disabled=${busy} style=${dangerBtnStyle}>${t('settings.leave_action')}</button>
       </section>
       ${isAdmin && html`
-        <section>
-          <h2>${t('settings.delete_section')}</h2>
-          <p>${t('settings.delete_confirm_prompt', { name: band?.name })}</p>
-          <form onSubmit=${onDelete}>
-            <label>
-              ${t('settings.delete_confirm_label')}
+        <section style="padding:18px;border:1px solid #7f1d1d;border-radius:8px;background:#7f1d1d10">
+          <h2 style="margin:0 0 8px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.3rem;color:#f87171">${t('settings.delete_section')}</h2>
+          <p style="margin:0 0 14px;font-family:var(--mono);font-size:0.8rem;color:var(--muted)">${t('settings.delete_confirm_prompt', { name: band?.name })}</p>
+          <form onSubmit=${onDelete} class="auth-form">
+            <label class="auth-field">
+              <span>${t('settings.delete_confirm_label')}</span>
               <input
+                class="auth-input"
                 name="delete-confirmation"
                 value=${confirmName}
                 onInput=${(event) => setConfirmName(event.currentTarget.value)}
               />
             </label>
-            <button type="submit" disabled=${busy}>${t('common:action.delete')}</button>
+            <button type="submit" disabled=${busy} style=${dangerBtnStyle}>${t('common:action.delete')}</button>
           </form>
         </section>
       `}
-      ${error && html`<p class="auth-error" role="alert">${error}</p>`}
+      ${error && html`<p class="auth-error" role="alert" style="font-family:var(--mono);font-size:0.8rem">${error}</p>`}
     </div>
   `;
 }

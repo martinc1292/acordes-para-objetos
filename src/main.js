@@ -6,6 +6,7 @@ import { exposeDevtools } from './devtools.js';
 import { createRouter } from '@/lib/router.js';
 import { clearCurrentUser, initAuthStore } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
+import '@/lib/image-slot.js';
 import './style.css';
 
 const root = document.querySelector('#app');

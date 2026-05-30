@@ -14,14 +14,127 @@ import { getSupabase } from '@/db/supabase.js';
 import { updateSongStatus } from '@/db/songs.js';
 import { addFavorite, removeFavorite } from '@/db/favorites.js';
 import { useTranslation } from '@/stores/useTranslation.js';
-import { shouldHandleLinkClick } from '@/lib/dom.js';
+import { AtrilHeader } from '@/views/AtrilHeader.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
 const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
 
-function bandInitials(name) {
-  if (!name) return '?';
-  return name.split(/\s+/).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+const SORT_OPTIONS = [
+  ['recent', 'Recientes'],
+  ['title', 'Titulo'],
+  ['artist', 'Artista'],
+  ['key', 'Tono']
+];
+
+function compareText(a, b) {
+  return String(a ?? '').localeCompare(String(b ?? ''), undefined, { sensitivity: 'base' });
+}
+
+function sortSongs(songs, sort) {
+  const list = [...songs];
+  if (sort === 'title') return list.sort((a, b) => compareText(a.title, b.title));
+  if (sort === 'artist') return list.sort((a, b) => compareText(a.artist, b.artist) || compareText(a.title, b.title));
+  if (sort === 'key') return list.sort((a, b) => compareText(a.key, b.key) || compareText(a.title, b.title));
+  return list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || compareText(a.title, b.title));
+}
+
+function SongCard({
+  song,
+  favorite,
+  favoriteBusy,
+  statusBusy,
+  canEdit,
+  canFavorite,
+  onOpen,
+  onFavoriteClick,
+  onStatusClick,
+  t
+}) {
+  const status = song.status ?? 'pending';
+  const statusLabel = t(`status.${status}`);
+  const structure = song.structure || song.progression || t('placeholder.no_notes');
+
+  function onCardKeyDown(event) {
+    if (event.currentTarget !== event.target) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onOpen(song.id);
+  }
+
+  return html`
+    <article
+      class="sc"
+      role="link"
+      tabIndex="0"
+      aria-label=${song.artist ? `${song.title}, ${song.artist}` : song.title}
+      onClick=${() => onOpen(song.id)}
+      onKeyDown=${onCardKeyDown}
+    >
+      <div class="sc-top">
+        <div class="sc-chips">
+          ${canEdit ? html`
+            <button
+              class="sc-status sc-status-button"
+              type="button"
+              disabled=${statusBusy === song.id}
+              title=${statusLabel}
+              aria-label=${t('aria.status_change', { status: statusLabel })}
+              onClick=${(event) => onStatusClick(event, song)}
+            >
+              <span class="sc-status-dot" style=${`background:${STATUS_COLOR[status] ?? 'var(--muted)'}`}></span>
+              <span>${statusLabel}</span>
+            </button>
+          ` : html`
+            <span class="sc-status" title=${statusLabel}>
+              <span class="sc-status-dot" style=${`background:${STATUS_COLOR[status] ?? 'var(--muted)'}`}></span>
+              <span>${statusLabel}</span>
+            </span>
+          `}
+          ${song.key && html`<span class="sc-chip sc-chip-key">${song.key}</span>`}
+          ${song.tempo && html`<span class="sc-chip sc-chip-bpm">${song.tempo}</span>`}
+        </div>
+        <button
+          class=${favorite ? 'sc-fav is-on' : 'sc-fav'}
+          type="button"
+          disabled=${!canFavorite || favoriteBusy === song.id}
+          aria-label=${favorite ? t('aria.favorite_remove') : t('aria.favorite_add')}
+          aria-pressed=${favorite}
+          onClick=${(event) => onFavoriteClick(event, song)}
+        >${favorite ? '★' : '☆'}</button>
+      </div>
+
+      <h2 class="sc-title">${song.title}</h2>
+      <p class="sc-artist">${song.artist || 'Sin artista'}</p>
+
+      <div class="sc-foot">
+        <span class="sc-foot-label">EST.</span>
+        <span class="sc-foot-text">${structure}</span>
+      </div>
+    </article>
+  `;
+}
+
+function LoadingGrid() {
+  return html`
+    <div class="sl-grid" aria-hidden="true">
+      ${[1, 2, 3, 4].map((item) => html`
+        <article key=${item} class="sc sc-skeleton">
+          <div class="sc-top">
+            <div class="sc-chips">
+              <span class="sc-skeleton-line" style="width:96px"></span>
+              <span class="sc-skeleton-line" style="width:46px"></span>
+            </div>
+          </div>
+          <span class="sc-skeleton-line" style="width:70%;height:22px"></span>
+          <span class="sc-skeleton-line" style="width:42%"></span>
+          <div class="sc-foot">
+            <span class="sc-skeleton-line" style="width:36px"></span>
+            <span class="sc-skeleton-line" style="width:62%"></span>
+          </div>
+        </article>
+      `)}
+    </div>
+  `;
 }
 
 export function SongList({ bandId, navigate }) {
@@ -34,23 +147,23 @@ export function SongList({ bandId, navigate }) {
   const favoriteSongIds = useStoreValue($favoriteSongIds);
   const favoritesError = useStoreValue($favoritesError);
   const band = bands.find((b) => b.id === bandId);
-  // Any band member can edit songs; admin is only required to manage the band.
   const canEdit = Boolean(user?.id && band);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [sort, setSort] = useState('recent');
   const [statusBusy, setStatusBusy] = useState(null);
   const [favoriteBusy, setFavoriteBusy] = useState(null);
   const [favoriteToggleError, setFavoriteToggleError] = useState('');
   const [retryKey, setRetryKey] = useState(0);
   const favoriteSet = useMemo(() => new Set(favoriteSongIds), [favoriteSongIds]);
 
-  const FILTERS = [
-    { id: 'all',        label: t('filter.all') },
-    { id: 'favorites',  label: `★ ${t('filter.favorites')}` },
-    { id: 'ready',      label: `● ${t('filter.ready')}` },
-    { id: 'rehearsing', label: `● ${t('filter.rehearsing')}` },
-    { id: 'pending',    label: t('filter.pending') }
-  ];
+  const filters = useMemo(() => [
+    { id: 'all', label: t('filter.all') },
+    { id: 'favorites', label: t('filter.favorites') },
+    { id: 'ready', label: t('filter.ready') },
+    { id: 'rehearsing', label: t('filter.rehearsing') },
+    { id: 'pending', label: t('filter.pending') }
+  ], [t]);
 
   useEffect(() => {
     loadSongs(getSupabase(), bandId).catch((err) => console.error('loadSongs failed', err));
@@ -84,7 +197,6 @@ export function SongList({ bandId, navigate }) {
     event.stopPropagation();
     if (!user?.id || favoriteBusy) return;
     const wasFavorite = favoriteSet.has(song.id);
-    // Snapshot the full list so a concurrent reload can't corrupt the rollback.
     const prevIds = $favoriteSongIds.get();
     setFavoriteToggleError('');
     setFavoriteBusy(song.id);
@@ -105,22 +217,8 @@ export function SongList({ bandId, navigate }) {
     }
   }
 
-  function onRowClick(event, songId) {
-    if (!shouldHandleLinkClick(event)) return;
-    event.preventDefault();
+  function openSong(songId) {
     navigate(`/band/${bandId}/song/${songId}`);
-  }
-
-  function onNewSong(event) {
-    if (!shouldHandleLinkClick(event)) return;
-    event.preventDefault();
-    navigate(`/band/${bandId}/song/new`);
-  }
-
-  function onSettingsClick(event) {
-    if (!shouldHandleLinkClick(event)) return;
-    event.preventDefault();
-    navigate(`/band/${bandId}/settings`);
   }
 
   const counts = useMemo(() => songs.reduce((acc, song) => {
@@ -130,176 +228,134 @@ export function SongList({ bandId, navigate }) {
     return acc;
   }, { all: 0, favorites: 0, pending: 0, rehearsing: 0, ready: 0 }), [favoriteSet, songs]);
 
-  const filtered = useMemo(() => songs.filter((song) => {
-    const q = search.trim().toLowerCase();
-    const matchesSearch = !q
-      || song.title?.toLowerCase().includes(q)
-      || song.artist?.toLowerCase().includes(q);
-    const matchesFilter = filter === 'all'
-      || (filter === 'favorites' ? favoriteSet.has(song.id) : song.status === filter);
-    return matchesSearch && matchesFilter;
-  }), [favoriteSet, filter, search, songs]);
-
-  const initials = bandInitials(band?.name);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const matches = songs.filter((song) => {
+      const matchesSearch = !query
+        || song.title?.toLowerCase().includes(query)
+        || song.artist?.toLowerCase().includes(query)
+        || song.key?.toLowerCase().includes(query);
+      const matchesFilter = filter === 'all'
+        || (filter === 'favorites' ? favoriteSet.has(song.id) : song.status === filter);
+      return matchesSearch && matchesFilter;
+    });
+    return sortSongs(matches, sort);
+  }, [favoriteSet, filter, search, songs, sort]);
 
   return html`
-    <main style="padding:16px;max-width:680px;margin:0 auto">
-
-      <!-- Header -->
-      <header style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px">
-        <div style="font-family:var(--mono);font-size:0.65rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--accent);margin-bottom:4px">
-          ${t('bands:eyebrow')}
-        </div>
-        <h1 style="margin:0 0 10px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(1.6rem,5vw,2.5rem);letter-spacing:-0.025em;line-height:0.95">
-          Setlist <span style="color:var(--accent)">&amp;</span> Acordes
-        </h1>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <a
-            href=${`/band/${bandId}/settings`}
-            onClick=${onSettingsClick}
-            style="display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 4px;text-decoration:none;color:inherit"
-            aria-label=${t('aria.settings')}
-          >
-            <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);font-family:var(--mono);font-size:0.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              ${initials}
-            </div>
-            <span style="font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em">${band?.name ?? ''}</span>
-            <span style="color:var(--muted);font-size:0.7rem">▾</span>
-          </a>
-        </div>
-      </header>
-
-      <!-- Search -->
-      <input
-        type="search"
-        placeholder=${t('placeholder.search')}
-        value=${search}
-        onInput=${(e) => setSearch(e.currentTarget.value)}
-        style="width:100%;padding:9px 14px;background:var(--panel);border:1px solid var(--line);border-radius:2px;color:var(--text);font:inherit;font-family:var(--mono);font-size:0.85rem;margin-bottom:10px"
+    <div class="app-root">
+      <${AtrilHeader}
+        band=${band}
+        bandId=${bandId}
+        navigate=${navigate}
+        view="list"
+        canEdit=${canEdit}
       />
 
-      <!-- Filter tabs (underline style) -->
-      <div style="display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:10px;overflow-x:auto">
-        ${FILTERS.map((item) => html`
-          <button
-            key=${item.id}
-            type="button"
-            onClick=${() => setFilter(item.id)}
-            aria-pressed=${filter === item.id}
-            style="font-family:var(--mono);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;padding:8px 10px;border:none;background:none;border-bottom:2px solid ${filter === item.id ? 'var(--accent)' : 'transparent'};color:${filter === item.id ? 'var(--accent)' : 'var(--muted)'};cursor:pointer;white-space:nowrap;margin-bottom:-1px"
-          >${item.label}${html`<span style="margin-left:4px;font-size:0.6rem;opacity:0.7">${counts[item.id]}</span>`}</button>
-        `)}
-      </div>
-
-      ${(favoritesError || favoriteToggleError) && html`
-        <p role="alert" style="color:#f87171;margin:0 0 12px;font-family:var(--mono);font-size:0.8rem">${favoriteToggleError || favoritesError}</p>
-      `}
-
-      <!-- Count line -->
-      ${loaded && filtered.length > 0 && html`
-        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">
-          ${t('count', { count: filtered.length })}
-        </div>
-      `}
-
-      <!-- Loading skeleton -->
-      ${!loaded && !error && [1, 2, 3].map((i) => html`
-        <div key=${i} style="display:flex;align-items:stretch;margin-bottom:2px;opacity:0.35">
-          <div style="width:3px;background:var(--line);border-radius:1px;align-self:stretch;min-height:52px"></div>
-          <div style="flex:1;padding:12px 12px 10px">
-            <div style="height:14px;background:var(--line);border-radius:2px;margin-bottom:6px;width:60%"></div>
-            <div style="height:11px;background:var(--line);border-radius:2px;width:35%"></div>
-          </div>
-        </div>
-      `)}
-
-      <!-- Error -->
-      ${error && html`
-        <div role="alert" style="color:#f87171;padding:16px;border:1px solid #7f1d1d;border-radius:4px;margin-bottom:16px;font-family:var(--mono);font-size:0.85rem">
-          <p style="margin:0 0 8px">${error}</p>
-          <button
-            type="button"
-            onClick=${() => setRetryKey((k) => k + 1)}
-            style="background:var(--panel);border:1px solid var(--line);color:var(--text);padding:6px 12px;border-radius:2px;cursor:pointer;font:inherit"
-          >${t('common:action.retry')}</button>
-        </div>
-      `}
-
-      <!-- Empty state -->
-      ${loaded && filtered.length === 0 && html`
-        <p style="color:var(--muted);text-align:center;padding:40px 0;font-family:var(--mono);font-size:0.85rem">
-          ${search ? t('placeholder.no_results') : t('placeholder.no_songs')}
-          ${canEdit && !search && filter === 'all' && html`
-            <a href=${`/band/${bandId}/song/new`} onClick=${onNewSong} style="display:block;margin-top:12px;color:var(--accent)">${t('action.add_first')}</a>
-          `}
-        </p>
-      `}
-
-      <!-- Song rows -->
-      ${loaded && filtered.length > 0 && html`
-        <div>
-          ${filtered.map((song) => html`
-            <div
-              key=${song.id}
-              style="display:flex;align-items:stretch;margin-bottom:2px"
-            >
-              <div
-                style="width:16px;flex-shrink:0;display:flex;align-items:stretch;cursor:${canEdit ? 'pointer' : 'default'}"
-                onClick=${(e) => onStatusClick(e, song)}
-                onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStatusClick(e, song); } }}
-                role=${canEdit ? 'button' : undefined}
-                tabIndex=${canEdit ? '0' : undefined}
-                aria-label=${canEdit ? t('aria.status_change', { status: t(`status.${song.status}`) }) : t('aria.status', { status: t(`status.${song.status}`) })}
-              >
-                <div style="width:3px;background:${STATUS_COLOR[song.status] ?? 'var(--muted)'};border-radius:1px;align-self:stretch"></div>
-              </div>
-              <a
-                href=${`/band/${bandId}/song/${song.id}`}
-                onClick=${(e) => onRowClick(e, song.id)}
-                style="flex:1;padding:12px 12px 10px;text-decoration:none;color:inherit;min-width:0;transition:background 0.1s"
-                onMouseEnter=${(e) => { e.currentTarget.style.background = 'var(--panel)'; }}
-                onMouseLeave=${(e) => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-                  <div style="font-family:var(--serif);font-style:italic;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    ${song.title}
-                  </div>
-                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                    <button
-                      type="button"
-                      onClick=${(e) => onFavoriteClick(e, song)}
-                      disabled=${!user?.id || favoriteBusy === song.id}
-                      style="border:none;background:none;color:${favoriteSet.has(song.id) ? 'var(--yellow)' : 'var(--muted)'};cursor:pointer;font-size:1rem;padding:0;line-height:1;flex-shrink:0"
-                      aria-label=${favoriteSet.has(song.id) ? t('aria.favorite_remove') : t('aria.favorite_add')}
-                      aria-pressed=${favoriteSet.has(song.id)}
-                    >${favoriteSet.has(song.id) ? '★' : '☆'}</button>
-                    ${song.key && html`
-                      <span style="font-family:var(--mono);font-size:0.72rem;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:2px;flex-shrink:0">
-                        ${song.key}
-                      </span>
-                    `}
-                  </div>
-                </div>
-                ${song.artist && html`
-                  <div style="font-family:var(--mono);font-size:0.75rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    ${song.artist}
-                  </div>
-                `}
-              </a>
+      <main class="app-main">
+        <section class="sl" aria-labelledby="song-list-title">
+          <div class="sl-head">
+            <div>
+              <div class="sl-eyebrow">REPERTORIO · TEMPORADA 26</div>
+              <h1 id="song-list-title" class="sl-title">Setlist <em>de banda</em></h1>
             </div>
-          `)}
-        </div>
-      `}
+            <div class="sl-count" aria-live="polite">
+              <span class="sl-count-num">${loaded ? filtered.length : '...'}</span>
+              <span class="sl-count-label">canciones<br />visibles</span>
+            </div>
+          </div>
 
-      <!-- FAB -->
-      ${canEdit && html`
-        <a
-          href=${`/band/${bandId}/song/new`}
-          onClick=${onNewSong}
-          aria-label=${t('action.new_song')}
-          style="position:fixed;bottom:24px;right:24px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-contrast);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:300;text-decoration:none;box-shadow:0 3px 14px rgba(255,87,34,0.5)"
-        >+</a>
-      `}
-    </main>
+          <div class="sl-toolbar">
+            <label class="sl-search">
+              <span class="sl-search-icon" aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                placeholder=${t('placeholder.search')}
+                value=${search}
+                onInput=${(event) => setSearch(event.currentTarget.value)}
+              />
+            </label>
+
+            <div class="sl-filters" role="tablist" aria-label="Filtros">
+              ${filters.map((item) => html`
+                <button
+                  key=${item.id}
+                  class=${filter === item.id ? 'sl-filter is-active' : 'sl-filter'}
+                  type="button"
+                  role="tab"
+                  aria-selected=${filter === item.id}
+                  onClick=${() => setFilter(item.id)}
+                >
+                  <span>${item.label}</span>
+                  <span class="sl-filter-n">${counts[item.id]}</span>
+                </button>
+              `)}
+            </div>
+
+            <label class="sl-sort">
+              <span class="sl-sort-label">Ordenar</span>
+              <select value=${sort} onChange=${(event) => setSort(event.currentTarget.value)}>
+                ${SORT_OPTIONS.map(([value, label]) => html`<option key=${value} value=${value}>${label}</option>`)}
+              </select>
+            </label>
+          </div>
+
+          ${(favoritesError || favoriteToggleError) && html`
+            <p role="alert" class="ap-alert">${favoriteToggleError || favoritesError}</p>
+          `}
+
+          ${!loaded && !error && html`<${LoadingGrid} />`}
+
+          ${error && html`
+            <div role="alert" class="ap-alert">
+              <p style="margin:0 0 10px">${error}</p>
+              <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${() => setRetryKey((key) => key + 1)}>
+                ${t('common:action.retry')}
+              </button>
+            </div>
+          `}
+
+          ${loaded && filtered.length === 0 && html`
+            <div class="sl-empty">
+              <div class="sl-empty-mark" aria-hidden="true">∅</div>
+              <p>${search ? t('placeholder.no_results') : t('placeholder.no_songs')}</p>
+              ${canEdit && !search && filter === 'all' && html`
+                <button
+                  type="button"
+                  class="ap-btn ap-btn-accent"
+                  onClick=${() => navigate(`/band/${bandId}/song/new`)}
+                >${t('action.add_first')}</button>
+              `}
+            </div>
+          `}
+
+          ${loaded && filtered.length > 0 && html`
+            <div class="sl-grid">
+              ${filtered.map((song) => html`
+                <${SongCard}
+                  key=${song.id}
+                  song=${song}
+                  favorite=${favoriteSet.has(song.id)}
+                  favoriteBusy=${favoriteBusy}
+                  statusBusy=${statusBusy}
+                  canEdit=${canEdit}
+                  canFavorite=${Boolean(user?.id)}
+                  onOpen=${openSong}
+                  onFavoriteClick=${onFavoriteClick}
+                  onStatusClick=${onStatusClick}
+                  t=${t}
+                />
+              `)}
+            </div>
+          `}
+        </section>
+      </main>
+
+      <footer class="app-foot">
+        <span>Atril</span>
+        <span class="app-foot-dot">•</span>
+        <span>Sala de ensayo</span>
+      </footer>
+    </div>
   `;
 }
