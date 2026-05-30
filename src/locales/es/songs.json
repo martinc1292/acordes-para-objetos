@@ -53,6 +53,57 @@
     "favorite_add": "Marcar como favorita",
     "favorite_remove": "Quitar de favoritas",
     "status": "Estado: {{status}}",
-    "status_change": "Estado: {{status}}. Click para cambiar."
+    "status_change": "Estado: {{status}}. Click para cambiar.",
+    "metronome_start": "Iniciar metronomo",
+    "metronome_stop": "Detener metronomo",
+    "sections_list": "Apartados"
+  },
+  "apartado": {
+    "new_eyebrow": "NUEVO APARTADO",
+    "add": "Nuevo apartado",
+    "name_label": "Nombre",
+    "name_placeholder": "p.ej. Bajo, Bateria, Saxo, Galeria",
+    "type_label": "Tipo",
+    "presets_label": "Sugerencias",
+    "create": "Crear apartado",
+    "empty": "Sin apartados.",
+    "no_active": "Sin apartado",
+    "section_owned_by": "Apartado de {{owner}}",
+    "section_base": "base de la cancion",
+    "section_custom": "creado en esta sesion",
+    "notes_placeholder": "Escribi tus notas para este apartado"
+  },
+  "type": {
+    "text_label": "Notas",
+    "text_hint": "Texto libre, letra u observaciones",
+    "code_label": "Cifrado",
+    "code_hint": "Tabs, riffs o acordes monoespaciados",
+    "gallery_label": "Galeria",
+    "gallery_hint": "Partituras, fotos y referencias"
+  },
+  "gallery": {
+    "add_image": "Agregar imagen",
+    "add_image_inline": "+ Imagen",
+    "new_image": "Nueva imagen"
+  },
+  "form": {
+    "create_eyebrow": "NUEVA CANCION",
+    "edit_eyebrow": "EDITAR CANCION",
+    "extra_tabs_label": "Cifrados extra",
+    "song_number": "CANCION · #{{number}}"
+  },
+  "danger": {
+    "title": "Zona peligrosa",
+    "delete_warning": "Borrar esta cancion tambien borra sus tabs."
+  },
+  "panel": {
+    "no_artist": "Sin artista",
+    "key_stat": "Tono",
+    "hide_metronome": "Ocultar",
+    "show_metronome": "▶ Metronomo",
+    "export_pdf": "Exportar PDF",
+    "transpose": "Transponer",
+    "reset_transpose": "Reset",
+    "footer_band": "Sala de ensayo"
   }
 }

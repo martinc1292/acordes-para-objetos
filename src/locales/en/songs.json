@@ -53,6 +53,57 @@
     "favorite_add": "Add to favorites",
     "favorite_remove": "Remove from favorites",
     "status": "Status: {{status}}",
-    "status_change": "Status: {{status}}. Click to change."
+    "status_change": "Status: {{status}}. Click to change.",
+    "metronome_start": "Start metronome",
+    "metronome_stop": "Stop metronome",
+    "sections_list": "Sections"
+  },
+  "apartado": {
+    "new_eyebrow": "NEW SECTION",
+    "add": "New section",
+    "name_label": "Name",
+    "name_placeholder": "e.g. Bass, Drums, Sax, Gallery",
+    "type_label": "Type",
+    "presets_label": "Suggestions",
+    "create": "Create section",
+    "empty": "No sections.",
+    "no_active": "No section",
+    "section_owned_by": "Section by {{owner}}",
+    "section_base": "song base",
+    "section_custom": "created this session",
+    "notes_placeholder": "Write your notes for this section"
+  },
+  "type": {
+    "text_label": "Notes",
+    "text_hint": "Free text, lyrics or observations",
+    "code_label": "Tab",
+    "code_hint": "Tabs, riffs or chord charts",
+    "gallery_label": "Gallery",
+    "gallery_hint": "Scores, photos and references"
+  },
+  "gallery": {
+    "add_image": "Add image",
+    "add_image_inline": "+ Image",
+    "new_image": "New image"
+  },
+  "form": {
+    "create_eyebrow": "NEW SONG",
+    "edit_eyebrow": "EDIT SONG",
+    "extra_tabs_label": "Extra tabs",
+    "song_number": "SONG · #{{number}}"
+  },
+  "danger": {
+    "title": "Danger zone",
+    "delete_warning": "Deleting this song also deletes its tabs."
+  },
+  "panel": {
+    "no_artist": "No artist",
+    "key_stat": "Key",
+    "hide_metronome": "Hide",
+    "show_metronome": "▶ Metronome",
+    "export_pdf": "Export PDF",
+    "transpose": "Transpose",
+    "reset_transpose": "Reset",
+    "footer_band": "Rehearsal room"
   }
 }

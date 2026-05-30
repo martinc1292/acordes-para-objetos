@@ -15,10 +15,12 @@
     "delete": "Borrar",
     "edit": "Editar",
     "accept": "Aceptar",
-    "reject": "Rechazar"
+    "reject": "Rechazar",
+    "close": "Cerrar"
   },
   "nav": {
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "back_to_setlist": "Volver al setlist"
   },
   "theme": {
     "dark": "Oscuro",

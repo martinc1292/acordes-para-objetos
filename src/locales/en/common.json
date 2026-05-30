@@ -15,10 +15,12 @@
     "delete": "Delete",
     "edit": "Edit",
     "accept": "Accept",
-    "reject": "Decline"
+    "reject": "Decline",
+    "close": "Close"
   },
   "nav": {
-    "settings": "Settings"
+    "settings": "Settings",
+    "back_to_setlist": "Back to setlist"
   },
   "theme": {
     "dark": "Dark",
