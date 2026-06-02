@@ -14,6 +14,7 @@ import { refreshBands, removeLocalBand, $currentUser, $bands } from '@/stores/au
 import { useStoreValue } from '@/stores/useStoreValue.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 import { LanguageToggle } from '@/views/LanguageToggle.js';
+import { ThemeToggle } from '@/views/ThemeToggle.js';
 
 const TABS = ['general', 'members', 'advanced'];
 
@@ -194,6 +195,10 @@ function GeneralTab({ bandId, band, isAdmin }) {
     </form>
     <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--line)">
       <div style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">
+        ${t('common:theme.label')}
+      </div>
+      <${ThemeToggle} />
+      <div style="font-family:var(--mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin:18px 0 10px">
         ES / EN
       </div>
       <${LanguageToggle} />

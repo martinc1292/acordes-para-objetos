@@ -23,6 +23,7 @@
     "back_to_setlist": "Back to setlist"
   },
   "theme": {
+    "label": "Theme",
     "dark": "Dark",
     "light": "Light",
     "system": "System"
