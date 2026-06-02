@@ -11,9 +11,9 @@ import { useTranslation } from '@/stores/useTranslation.js';
 import { AtrilHeader } from '@/views/AtrilHeader.js';
 
 const STATUS_OPTIONS = [
-  { id: 'pending', color: 'var(--muted)' },
-  { id: 'rehearsing', color: 'var(--yellow)' },
-  { id: 'ready', color: 'var(--green)' }
+  { id: 'pending', color: 'var(--status-suggestion)' },
+  { id: 'rehearsing', color: 'var(--status-rehearsing)' },
+  { id: 'ready', color: 'var(--status-ready)' }
 ];
 
 const APARTADO_TYPE_IDS = ['text', 'code', 'gallery'];

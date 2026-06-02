@@ -17,7 +17,11 @@ import { useTranslation } from '@/stores/useTranslation.js';
 import { AtrilHeader } from '@/views/AtrilHeader.js';
 
 const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
+const STATUS_COLOR = {
+  pending: 'var(--status-suggestion)',
+  rehearsing: 'var(--status-rehearsing)',
+  ready: 'var(--status-ready)'
+};
 
 const SORT_OPTIONS = [
   ['recent', 'Recientes'],
@@ -62,6 +66,7 @@ function SongCard({
 }) {
   const status = song.status ?? 'pending';
   const statusLabel = t(`status.${status}`);
+  const statusStyle = `--status-color:${STATUS_COLOR[status] ?? 'var(--muted)'}`;
   const structure = song.structure || song.progression || t('placeholder.no_notes');
 
   function onCardKeyDown(event) {
@@ -87,16 +92,17 @@ function SongCard({
               class="sc-status sc-status-button"
               type="button"
               disabled=${statusBusy === song.id}
+              style=${statusStyle}
               title=${statusLabel}
               aria-label=${t('aria.status_change', { status: statusLabel })}
               onClick=${(event) => onStatusClick(event, song)}
             >
-              <span class="sc-status-dot" style=${`background:${STATUS_COLOR[status] ?? 'var(--muted)'}`}></span>
+              <span class="sc-status-dot"></span>
               <span>${statusLabel}</span>
             </button>
           ` : html`
-            <span class="sc-status" title=${statusLabel}>
-              <span class="sc-status-dot" style=${`background:${STATUS_COLOR[status] ?? 'var(--muted)'}`}></span>
+            <span class="sc-status" style=${statusStyle} title=${statusLabel}>
+              <span class="sc-status-dot"></span>
               <span>${statusLabel}</span>
             </span>
           `}

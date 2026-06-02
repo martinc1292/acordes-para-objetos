@@ -29,6 +29,9 @@
   --line: #2a2a2a;
   --green: #4ade80;
   --yellow: #fbbf24;
+  --status-suggestion: #38bdf8;
+  --status-rehearsing: #fb923c;
+  --status-ready: #4ade80;
   --serif: 'Georgia', 'Times New Roman', serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
   font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
@@ -81,6 +84,9 @@ html[data-theme='light'] {
   --line: #d6cfc5;
   --green: #15803d;
   --yellow: #b45309;
+  --status-suggestion: #0369a1;
+  --status-rehearsing: #c2410c;
+  --status-ready: #15803d;
   color-scheme: light;
   background: var(--bg);
   color: var(--text);
@@ -101,6 +107,9 @@ html[data-theme='light'] {
     --line: #d6cfc5;
     --green: #15803d;
     --yellow: #b45309;
+    --status-suggestion: #0369a1;
+    --status-rehearsing: #c2410c;
+    --status-ready: #15803d;
     color-scheme: light;
   }
 }
@@ -985,23 +994,26 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 0;
-  background: var(--bg);
-  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--status-color, var(--muted)), transparent 72%);
+  background: color-mix(in srgb, var(--status-color, var(--muted)), transparent 88%);
+  color: var(--status-color, var(--muted));
   font-size: 0.6rem;
   letter-spacing: 0.18em;
-  padding: 4px 8px;
+  padding: 3px 8px;
   text-transform: uppercase;
 }
 
 .sc-status-button:hover {
-  color: var(--text);
+  background: color-mix(in srgb, var(--status-color, var(--muted)), transparent 82%);
+  color: var(--status-color, var(--text));
 }
 
 .sc-status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  background: var(--status-color, var(--muted));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color, var(--muted)), transparent 84%);
   flex: 0 0 auto;
 }
 
