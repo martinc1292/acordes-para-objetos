@@ -36,6 +36,7 @@
     "add_tab": "+ Add tab",
     "title_required": "Title is required.",
     "new_song": "New song",
+    "delete_song": "Delete song",
     "delete_confirm": "Delete \"{{title}}\"? This cannot be undone.",
     "favorite_error": "Could not save favorite.",
     "saved": "Saved.",
@@ -61,6 +62,9 @@
   "apartado": {
     "new_eyebrow": "NEW SECTION",
     "add": "New section",
+    "all": "All",
+    "delete": "Delete section",
+    "empty_section": "No content",
     "name_label": "Name",
     "name_placeholder": "e.g. Bass, Drums, Sax, Gallery",
     "type_label": "Type",
@@ -74,6 +78,7 @@
     "notes_placeholder": "Write your notes for this section"
   },
   "type": {
+    "mega_label": "All sections",
     "text_label": "Notes",
     "text_hint": "Free text, lyrics or observations",
     "code_label": "Tab",
@@ -89,6 +94,7 @@
   "form": {
     "create_eyebrow": "NEW SONG",
     "edit_eyebrow": "EDIT SONG",
+    "edit_badge": "Edit mode",
     "extra_tabs_label": "Extra tabs",
     "song_number": "SONG · #{{number}}"
   },

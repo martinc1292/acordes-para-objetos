@@ -36,6 +36,7 @@
     "add_tab": "+ Agregar tab",
     "title_required": "El título es requerido.",
     "new_song": "Nueva canción",
+    "delete_song": "Eliminar canción",
     "delete_confirm": "¿Borrar \"{{title}}\"? Esta acción no se puede deshacer.",
     "favorite_error": "No pudimos guardar el favorito.",
     "saved": "Guardado.",
@@ -61,6 +62,9 @@
   "apartado": {
     "new_eyebrow": "NUEVO APARTADO",
     "add": "Nuevo apartado",
+    "all": "Todos",
+    "delete": "Eliminar apartado",
+    "empty_section": "Sin contenido",
     "name_label": "Nombre",
     "name_placeholder": "p.ej. Bajo, Bateria, Saxo, Galeria",
     "type_label": "Tipo",
@@ -74,6 +78,7 @@
     "notes_placeholder": "Escribi tus notas para este apartado"
   },
   "type": {
+    "mega_label": "Todos los apartados",
     "text_label": "Notas",
     "text_hint": "Texto libre, letra u observaciones",
     "code_label": "Cifrado",
@@ -89,6 +94,7 @@
   "form": {
     "create_eyebrow": "NUEVA CANCION",
     "edit_eyebrow": "EDITAR CANCION",
+    "edit_badge": "Modo edición",
     "extra_tabs_label": "Cifrados extra",
     "song_number": "CANCION · #{{number}}"
   },
