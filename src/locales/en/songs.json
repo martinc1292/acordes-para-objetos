@@ -1,15 +1,16 @@
 {
   "count": "{{count}} songs",
   "status": {
-    "pending": "Pending",
-    "rehearsing": "Rehearsing",
+    "pending": "Suggestion",
+    "rehearsing": "To rehearse",
     "ready": "Ready"
   },
   "filter": {
     "all": "All",
+    "ours": "Ours",
     "favorites": "Favorites",
-    "pending": "Pending",
-    "rehearsing": "Rehearsing",
+    "pending": "Suggestions",
+    "rehearsing": "To rehearse",
     "ready": "Ready"
   },
   "section": {

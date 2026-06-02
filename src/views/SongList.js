@@ -38,6 +38,16 @@ function sortSongs(songs, sort) {
   return list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || compareText(a.title, b.title));
 }
 
+function normalizeOwnerName(value) {
+  return String(value ?? '').trim().toLocaleLowerCase();
+}
+
+function isOwnSong(song, band) {
+  const artist = normalizeOwnerName(song.artist);
+  const bandName = normalizeOwnerName(band?.name);
+  return !artist || Boolean(bandName && artist === bandName);
+}
+
 function SongCard({
   song,
   favorite,
@@ -159,6 +169,7 @@ export function SongList({ bandId, navigate }) {
 
   const filters = useMemo(() => [
     { id: 'all', label: t('filter.all') },
+    { id: 'ours', label: t('filter.ours') },
     { id: 'favorites', label: t('filter.favorites') },
     { id: 'ready', label: t('filter.ready') },
     { id: 'rehearsing', label: t('filter.rehearsing') },
@@ -223,10 +234,11 @@ export function SongList({ bandId, navigate }) {
 
   const counts = useMemo(() => songs.reduce((acc, song) => {
     acc.all += 1;
+    if (isOwnSong(song, band)) acc.ours += 1;
     if (favoriteSet.has(song.id)) acc.favorites += 1;
     if (song.status in acc) acc[song.status] += 1;
     return acc;
-  }, { all: 0, favorites: 0, pending: 0, rehearsing: 0, ready: 0 }), [favoriteSet, songs]);
+  }, { all: 0, ours: 0, favorites: 0, pending: 0, rehearsing: 0, ready: 0 }), [band, favoriteSet, songs]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -236,11 +248,12 @@ export function SongList({ bandId, navigate }) {
         || song.artist?.toLowerCase().includes(query)
         || song.key?.toLowerCase().includes(query);
       const matchesFilter = filter === 'all'
+        || (filter === 'ours' && isOwnSong(song, band))
         || (filter === 'favorites' ? favoriteSet.has(song.id) : song.status === filter);
       return matchesSearch && matchesFilter;
     });
     return sortSongs(matches, sort);
-  }, [favoriteSet, filter, search, songs, sort]);
+  }, [band, favoriteSet, filter, search, songs, sort]);
 
   return html`
     <div class="app-root">
@@ -282,7 +295,7 @@ export function SongList({ bandId, navigate }) {
                   onClick=${() => setFilter(item.id)}
                 >
                   <span>${item.label}</span>
-                  <span class="sl-filter-n">${counts[item.id]}</span>
+                  <span class="sl-filter-n">${counts[item.id] ?? 0}</span>
                 </button>
               `)}
             </div>

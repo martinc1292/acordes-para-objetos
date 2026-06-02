@@ -1,15 +1,16 @@
 {
   "count": "{{count}} canciones",
   "status": {
-    "pending": "Pendiente",
-    "rehearsing": "Ensayando",
+    "pending": "Sugerencia",
+    "rehearsing": "Por ensayar",
     "ready": "Lista"
   },
   "filter": {
     "all": "Todas",
+    "ours": "Nuestras",
     "favorites": "Favoritas",
-    "pending": "Pendientes",
-    "rehearsing": "Ensayando",
+    "pending": "Sugerencias",
+    "rehearsing": "Por ensayar",
     "ready": "Listas"
   },
   "section": {
