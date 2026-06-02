@@ -12,6 +12,7 @@ import { AtrilHeader } from '@/views/AtrilHeader.js';
 
 const STATUS_OPTIONS = [
   { id: 'pending', color: 'var(--status-suggestion)' },
+  { id: 'to_rehearse', color: 'var(--status-to-rehearse)' },
   { id: 'rehearsing', color: 'var(--status-rehearsing)' },
   { id: 'ready', color: 'var(--status-ready)' }
 ];

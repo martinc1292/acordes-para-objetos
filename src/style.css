@@ -30,8 +30,10 @@
   --green: #4ade80;
   --yellow: #fbbf24;
   --status-suggestion: #38bdf8;
+  --status-to-rehearse: #fbbf24;
   --status-rehearsing: #fb923c;
   --status-ready: #4ade80;
+  --chip-ours: #a78bfa;
   --serif: 'Georgia', 'Times New Roman', serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
   font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
@@ -85,8 +87,10 @@ html[data-theme='light'] {
   --green: #15803d;
   --yellow: #b45309;
   --status-suggestion: #0369a1;
+  --status-to-rehearse: #b45309;
   --status-rehearsing: #c2410c;
   --status-ready: #15803d;
+  --chip-ours: #7c3aed;
   color-scheme: light;
   background: var(--bg);
   color: var(--text);
@@ -108,8 +112,10 @@ html[data-theme='light'] {
     --green: #15803d;
     --yellow: #b45309;
     --status-suggestion: #0369a1;
+    --status-to-rehearse: #b45309;
     --status-rehearsing: #c2410c;
     --status-ready: #15803d;
+    --chip-ours: #7c3aed;
     color-scheme: light;
   }
 }
@@ -1021,6 +1027,15 @@ select:focus-visible {
   font-size: 0.65rem;
   letter-spacing: 0.04em;
   padding: 4px 8px;
+}
+
+.sc-chip-ours {
+  border: 1px solid color-mix(in srgb, var(--chip-ours), transparent 72%);
+  background: color-mix(in srgb, var(--chip-ours), transparent 88%);
+  color: var(--chip-ours);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .sc-chip-key {

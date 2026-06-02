@@ -70,7 +70,7 @@ create table songs (
   progression text,
   lyrics text,
   notes text,
-  status text not null default 'pending' check (status in ('pending','rehearsing','ready')),
+  status text not null default 'pending' check (status in ('pending','to_rehearse','rehearsing','ready')),
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -2,16 +2,20 @@
   "count": "{{count}} songs",
   "status": {
     "pending": "Suggestion",
-    "rehearsing": "To rehearse",
+    "to_rehearse": "To rehearse",
+    "rehearsing": "Rehearsing",
     "ready": "Ready"
   },
   "filter": {
     "all": "All",
     "ours": "Ours",
-    "favorites": "Favorites",
     "pending": "Suggestions",
-    "rehearsing": "To rehearse",
+    "to_rehearse": "To rehearse",
+    "rehearsing": "Rehearsing",
     "ready": "Ready"
+  },
+  "chip": {
+    "ours": "Ours"
   },
   "section": {
     "chords": "Chords",

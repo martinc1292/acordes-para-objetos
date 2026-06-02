@@ -16,9 +16,10 @@ import { addFavorite, removeFavorite } from '@/db/favorites.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 import { AtrilHeader } from '@/views/AtrilHeader.js';
 
-const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
+const STATUS_NEXT = { pending: 'to_rehearse', to_rehearse: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
 const STATUS_COLOR = {
   pending: 'var(--status-suggestion)',
+  to_rehearse: 'var(--status-to-rehearse)',
   rehearsing: 'var(--status-rehearsing)',
   ready: 'var(--status-ready)'
 };
@@ -54,6 +55,7 @@ function isOwnSong(song, band) {
 
 function SongCard({
   song,
+  isOwn,
   favorite,
   favoriteBusy,
   statusBusy,
@@ -106,6 +108,7 @@ function SongCard({
               <span>${statusLabel}</span>
             </span>
           `}
+          ${isOwn && html`<span class="sc-chip sc-chip-ours">${t('chip.ours')}</span>`}
           ${song.key && html`<span class="sc-chip sc-chip-key">${song.key}</span>`}
           ${song.tempo && html`<span class="sc-chip sc-chip-bpm">${song.tempo}</span>`}
         </div>
@@ -176,10 +179,10 @@ export function SongList({ bandId, navigate }) {
   const filters = useMemo(() => [
     { id: 'all', label: t('filter.all') },
     { id: 'ours', label: t('filter.ours') },
-    { id: 'favorites', label: t('filter.favorites') },
-    { id: 'ready', label: t('filter.ready') },
+    { id: 'pending', label: t('filter.pending') },
+    { id: 'to_rehearse', label: t('filter.to_rehearse') },
     { id: 'rehearsing', label: t('filter.rehearsing') },
-    { id: 'pending', label: t('filter.pending') }
+    { id: 'ready', label: t('filter.ready') }
   ], [t]);
 
   useEffect(() => {
@@ -241,10 +244,9 @@ export function SongList({ bandId, navigate }) {
   const counts = useMemo(() => songs.reduce((acc, song) => {
     acc.all += 1;
     if (isOwnSong(song, band)) acc.ours += 1;
-    if (favoriteSet.has(song.id)) acc.favorites += 1;
     if (song.status in acc) acc[song.status] += 1;
     return acc;
-  }, { all: 0, ours: 0, favorites: 0, pending: 0, rehearsing: 0, ready: 0 }), [band, favoriteSet, songs]);
+  }, { all: 0, ours: 0, pending: 0, to_rehearse: 0, rehearsing: 0, ready: 0 }), [band, songs]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -254,12 +256,11 @@ export function SongList({ bandId, navigate }) {
         || song.artist?.toLowerCase().includes(query)
         || song.key?.toLowerCase().includes(query);
       const matchesFilter = filter === 'all'
-        || (filter === 'ours' && isOwnSong(song, band))
-        || (filter === 'favorites' ? favoriteSet.has(song.id) : song.status === filter);
+        || (filter === 'ours' ? isOwnSong(song, band) : song.status === filter);
       return matchesSearch && matchesFilter;
     });
     return sortSongs(matches, sort);
-  }, [band, favoriteSet, filter, search, songs, sort]);
+  }, [band, filter, search, songs, sort]);
 
   return html`
     <div class="app-root">
@@ -349,6 +350,7 @@ export function SongList({ bandId, navigate }) {
                 <${SongCard}
                   key=${song.id}
                   song=${song}
+                  isOwn=${isOwnSong(song, band)}
                   favorite=${favoriteSet.has(song.id)}
                   favoriteBusy=${favoriteBusy}
                   statusBusy=${statusBusy}

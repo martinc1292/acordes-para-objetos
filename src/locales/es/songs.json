@@ -2,16 +2,20 @@
   "count": "{{count}} canciones",
   "status": {
     "pending": "Sugerencia",
-    "rehearsing": "Por ensayar",
+    "to_rehearse": "Por ensayar",
+    "rehearsing": "Ensayando",
     "ready": "Lista"
   },
   "filter": {
     "all": "Todas",
     "ours": "Nuestras",
-    "favorites": "Favoritas",
     "pending": "Sugerencias",
-    "rehearsing": "Por ensayar",
+    "to_rehearse": "Por ensayar",
+    "rehearsing": "Ensayando",
     "ready": "Listas"
+  },
+  "chip": {
+    "ours": "Nuestra"
   },
   "section": {
     "chords": "Acordes",
