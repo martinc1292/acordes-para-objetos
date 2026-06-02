@@ -256,12 +256,7 @@ export function SongList({ bandId, navigate }) {
         <section class="sl" aria-labelledby="song-list-title">
           <div class="sl-head">
             <div>
-              <div class="sl-eyebrow">REPERTORIO · TEMPORADA 26</div>
-              <h1 id="song-list-title" class="sl-title">Setlist <em>de banda</em></h1>
-            </div>
-            <div class="sl-count" aria-live="polite">
-              <span class="sl-count-num">${loaded ? filtered.length : '...'}</span>
-              <span class="sl-count-label">canciones<br />visibles</span>
+              <h1 id="song-list-title" class="sl-title">Setlist de <em>${band?.name ?? ''}</em></h1>
             </div>
           </div>
 
@@ -352,7 +347,7 @@ export function SongList({ bandId, navigate }) {
       </main>
 
       <footer class="app-foot">
-        <span>Atril</span>
+        <span>Pulso</span>
         <span class="app-foot-dot">•</span>
         <span>Sala de ensayo</span>
       </footer>

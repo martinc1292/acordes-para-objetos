@@ -1122,10 +1122,29 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 32px;
-  align-items: end;
+  align-items: start;
   margin-bottom: 28px;
   border-bottom: 1px solid var(--line);
   padding: 12px 0 24px;
+}
+
+.sd-hero-meta {
+  min-width: 0;
+}
+
+.sd-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.sd-hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .sd-title {
@@ -1190,6 +1209,159 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Edit affordances */
+.ap-btn-edit {
+  border: 1px solid var(--accent);
+  background: var(--panel);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+.ap-btn-edit:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.sd-edit-badge {
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.3em;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
+
+.sd-panel.is-editing {
+  border-color: color-mix(in srgb, var(--accent), transparent 60%);
+}
+
+/* Status segmented toggle */
+.sd-status-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 3px;
+}
+
+.sd-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  padding: 7px 12px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+
+.sd-status-btn:hover {
+  color: var(--text);
+}
+
+.sd-status-btn.is-active {
+  background: var(--panel-strong);
+  color: var(--s-color, var(--text));
+}
+
+.sd-status-btn:disabled {
+  cursor: default;
+}
+
+.sd-status-btn .sd-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--s-color, var(--muted));
+  opacity: 0.45;
+  transition: opacity 120ms;
+}
+
+.sd-status-btn.is-active .sd-status-dot {
+  opacity: 1;
+}
+
+/* Inline editable metadata */
+.sd-meta-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.sd-meta-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--accent);
+  background: transparent;
+  color: var(--text);
+  padding: 4px 0;
+  outline: 0;
+}
+
+.sd-meta-input::placeholder {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.sd-meta-input:focus {
+  border-bottom-color: var(--text);
+}
+
+.sd-meta-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 0.96;
+  letter-spacing: -0.02em;
+}
+
+.sd-meta-artist {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+
+.sd-stat-input {
+  width: 120px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  padding: 6px 12px;
+  outline: 0;
+  transition: border-color 120ms;
+}
+
+.sd-stat-input:focus {
+  border-color: var(--text);
+}
+
+.sd-stat-input-key {
+  color: var(--accent-text);
+}
+
+.sd-stat-input::placeholder {
+  color: var(--muted);
+  opacity: 0.4;
 }
 
 .sd-inline-tool {
@@ -1514,6 +1686,86 @@ select:focus-visible {
   border-color: var(--accent);
 }
 
+/* Mega "Todos" stacked sections */
+.sd-mega {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.sd-mega-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 24px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.sd-mega-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.sd-mega-section-title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.3rem;
+  line-height: 1.1;
+}
+
+/* Read-only renderers */
+.sd-read-code,
+.sd-read-text {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.sd-read-code {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 18px 20px;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.sd-read-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sd-empty-hint {
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* Delete-song zone (edit mode) */
+.sd-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--red, #f87171), transparent 70%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--red, #f87171), transparent 94%);
+}
+
+.sd-danger-label {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
 .sd-transpose {
   display: flex;
   align-items: center;
@@ -1678,6 +1930,14 @@ select:focus-visible {
   .sd-hero-stats {
     align-items: stretch;
     flex-wrap: wrap;
+  }
+
+  .sd-hero-right {
+    align-items: flex-start;
+  }
+
+  .sd-hero-actions {
+    justify-content: flex-start;
   }
 }
 

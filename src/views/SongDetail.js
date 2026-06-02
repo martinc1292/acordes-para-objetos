@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useStoreValue } from '@/stores/useStoreValue.js';
-import { $songs, $songsLoaded, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
+import { $songs, patchSongInStore, addSongToStore, removeSongFromStore } from '@/stores/songs.js';
 import { $bands, $currentUser } from '@/stores/auth.js';
 import { getSupabase } from '@/db/supabase.js';
 import { getSongWithTabs, saveSongWithTabs, deleteSong, updateSongStatus } from '@/db/songs.js';
@@ -10,66 +10,37 @@ import { createMetronome, parseBPM } from '@/lib/metronome.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 import { AtrilHeader } from '@/views/AtrilHeader.js';
 
-const STATUS_NEXT = { pending: 'rehearsing', rehearsing: 'ready', ready: 'pending' };
-const STATUS_COLOR = { pending: 'var(--muted)', rehearsing: 'var(--yellow)', ready: 'var(--green)' };
-
-const EMPTY_FORM = {
-  title: '', artist: '', key: '', tempo: '',
-  structure: '', progression: '', lyrics: '', notes: ''
-};
+const STATUS_OPTIONS = [
+  { id: 'pending', color: 'var(--muted)' },
+  { id: 'rehearsing', color: 'var(--yellow)' },
+  { id: 'ready', color: 'var(--green)' }
+];
 
 const APARTADO_TYPE_IDS = ['text', 'code', 'gallery'];
 
+// Mega "Todos" sections map 1:1 to persisted song columns.
+const MEGA_SECTIONS = [
+  { id: 'sec-estructura', field: 'structure', type: 'text', titleKey: 'section.structure' },
+  { id: 'sec-acordes', field: 'progression', type: 'code', titleKey: 'section.chords' },
+  { id: 'sec-letra', field: 'lyrics', type: 'text', titleKey: 'section.lyrics' },
+  { id: 'sec-notas', field: 'notes', type: 'text', titleKey: 'section.notes' }
+];
+
 const PRESETS = [
   { name: 'Bajo', type: 'code', owner: 'Banda' },
-  { name: 'Bateria', type: 'text', owner: 'Banda' },
+  { name: 'Bateria', type: 'code', owner: 'Banda' },
   { name: 'Teclado', type: 'code', owner: 'Banda' },
   { name: 'Voces', type: 'text', owner: 'Banda' },
-  { name: 'Galeria', type: 'gallery', owner: 'Banda' },
   { name: 'Arreglo', type: 'text', owner: 'Banda' }
 ];
 
-function emptyForm() {
-  return { ...EMPTY_FORM };
-}
-
-function formFromSong(song) {
+function metaFromSong(song) {
   return {
     title: song?.title ?? '',
     artist: song?.artist ?? '',
     key: song?.key ?? '',
-    tempo: song?.tempo ?? '',
-    structure: song?.structure ?? '',
-    progression: song?.progression ?? '',
-    lyrics: song?.lyrics ?? '',
-    notes: song?.notes ?? ''
+    tempo: song?.tempo ?? ''
   };
-}
-
-function fieldsFromForm(form, sortOrder) {
-  const fields = {
-    title: form.title.trim(),
-    artist: form.artist.trim() || null,
-    key: form.key.trim() || null,
-    tempo: form.tempo.trim() || null,
-    structure: form.structure.trim() || null,
-    progression: form.progression.trim() || null,
-    lyrics: form.lyrics.trim() || null,
-    notes: form.notes.trim() || null
-  };
-  if (sortOrder !== undefined) fields.sortOrder = sortOrder;
-  return fields;
-}
-
-function normalizeTabEdits(tabEdits) {
-  return tabEdits
-    .map((tab, index) => {
-      const title = (tab.title ?? '').trim();
-      const content = tab.content ?? '';
-      if (!title && !content.trim()) return null;
-      return { id: tab.id, title: title || 'Tab', content, position: index };
-    })
-    .filter(Boolean);
 }
 
 function ownerFromUser(user) {
@@ -77,75 +48,114 @@ function ownerFromUser(user) {
   return email.includes('@') ? email.split('@')[0] : 'Tu';
 }
 
-function buildDefaultApartados(song, tabs = []) {
+// Build the apartado list: a "Todos" mega tab (stacked song fields), a gallery,
+// then any extra tabs persisted on the song. Custom apartados added in-session
+// are appended and persisted as tabs on save.
+function buildApartados(song, tabs = []) {
   const safeSongId = song?.id ?? 'new';
-  const items = [
-    {
-      id: 'a-estructura',
-      name: 'Estructura',
-      type: 'text',
-      owner: 'Banda',
-      locked: true,
-      content: song?.structure ?? ''
-    },
-    {
-      id: 'a-acordes',
-      name: 'Acordes',
-      type: 'code',
-      owner: 'Banda',
-      locked: true,
-      content: song?.progression ?? ''
-    },
-    ...tabs.map((tab, index) => ({
-      id: `a-tab-${tab.id ?? index}`,
-      name: tab.title || `Tab ${index + 1}`,
-      type: 'code',
-      owner: 'Banda',
-      locked: true,
-      content: tab.content ?? ''
+  const mega = {
+    id: 'a-todos',
+    type: 'mega',
+    owner: 'Banda',
+    locked: true,
+    sections: MEGA_SECTIONS.map((section) => ({
+      ...section,
+      content: song?.[section.field] ?? ''
     }))
-  ];
+  };
+  const gallery = {
+    id: 'a-galeria',
+    type: 'gallery',
+    owner: 'Banda',
+    locked: false,
+    content: [
+      { id: `${safeSongId}-score`, placeholder: 'Partitura o cifrado' },
+      { id: `${safeSongId}-setup`, placeholder: 'Foto de setup' }
+    ]
+  };
+  const customTabs = tabs.map((tab, index) => ({
+    id: `a-tab-${tab.id ?? `new-${index}`}`,
+    tabId: tab.id ?? null,
+    name: tab.title || `Tab ${index + 1}`,
+    type: 'code',
+    owner: 'Banda',
+    locked: false,
+    content: tab.content ?? ''
+  }));
+  return [mega, gallery, ...customTabs];
+}
 
-  if (song?.lyrics) {
-    items.push({
-      id: 'a-letra',
-      name: 'Letra',
-      type: 'text',
-      owner: 'Banda',
-      locked: true,
-      content: song.lyrics
-    });
-  }
+// Collect the persistable song fields + tabs from the live apartado state.
+// Note: ordering is handled by created_at on the backend, so no sort_order here.
+function collectPayload(meta, apartados) {
+  const mega = apartados.find((item) => item.type === 'mega');
+  const sectionContent = (field) =>
+    (mega?.sections.find((section) => section.field === field)?.content ?? '').trim() || null;
 
-  items.push(
-    {
-      id: 'a-galeria',
-      name: 'Galeria',
-      type: 'gallery',
-      owner: 'Banda',
-      locked: false,
-      content: [
-        { id: `${safeSongId}-score`, placeholder: 'Partitura o cifrado' },
-        { id: `${safeSongId}-setup`, placeholder: 'Foto de setup' }
-      ]
-    },
-    {
-      id: 'a-notas',
-      name: 'Notas',
-      type: 'text',
-      owner: 'Banda',
-      locked: true,
-      content: song?.notes ?? ''
-    }
-  );
+  const fields = {
+    title: meta.title.trim(),
+    artist: meta.artist.trim() || null,
+    key: meta.key.trim() || null,
+    tempo: meta.tempo.trim() || null,
+    structure: sectionContent('structure'),
+    progression: sectionContent('progression'),
+    lyrics: sectionContent('lyrics'),
+    notes: sectionContent('notes')
+  };
 
-  return items;
+  const tabs = apartados
+    .filter((item) => item.type !== 'mega' && item.type !== 'gallery')
+    .map((item, index) => {
+      const title = (item.name ?? '').trim();
+      const content = item.content ?? '';
+      if (!title && !String(content).trim()) return null;
+      return { id: item.tabId || undefined, title: title || 'Tab', content, position: index };
+    })
+    .filter(Boolean);
+
+  return { fields, tabs };
 }
 
 function glyphFor(type) {
   if (type === 'code') return '⌗';
-  if (type === 'gallery') return '▧';
+  if (type === 'gallery') return '◫';
+  if (type === 'mega') return '≡';
   return '¶';
+}
+
+function typeLabelKey(type) {
+  if (type === 'mega') return 'type.mega_label';
+  if (type === 'code') return 'type.code_label';
+  if (type === 'gallery') return 'type.gallery_label';
+  return 'type.text_label';
+}
+
+function apartadoLabel(apartado, t) {
+  if (!apartado) return '';
+  if (apartado.type === 'mega') return t('apartado.all');
+  if (apartado.id === 'a-galeria') return t('type.gallery_label');
+  return apartado.name;
+}
+
+function StatusToggle({ value, onChange, disabled, t }) {
+  return html`
+    <div class="sd-status-toggle" role="group" aria-label=${t('aria.status')}>
+      ${STATUS_OPTIONS.map((option) => html`
+        <button
+          key=${option.id}
+          type="button"
+          class=${value === option.id ? 'sd-status-btn is-active' : 'sd-status-btn'}
+          style=${`--s-color:${option.color}`}
+          aria-pressed=${value === option.id}
+          disabled=${disabled}
+          onClick=${() => onChange(option.id)}
+        >
+          <span class="sd-status-dot" aria-hidden="true"></span>
+          <span>${t(`status.${option.id}`)}</span>
+        </button>
+      `)}
+    </div>
+  `;
 }
 
 function Metronome({ initialTempo }) {
@@ -287,10 +297,46 @@ function ApartadoComposer({ composer, setComposer, presets, onCancel, onCommit }
   `;
 }
 
-function ApartadoBody({ active, canEdit, onChange }) {
-  const t = useTranslation('songs');
+function ReadBlock({ type, content, t }) {
+  if (!String(content ?? '').trim()) {
+    return html`<p class=${type === 'code' ? 'sd-read-code' : 'sd-read-text'}><em class="sd-empty-hint">${t('apartado.empty_section')}</em></p>`;
+  }
+  if (type === 'code') return html`<pre class="sd-read-code">${content}</pre>`;
+  return html`<p class="sd-read-text">${content}</p>`;
+}
+
+function EditBlock({ type, content, onChange, t }) {
+  const lines = String(content || '').split('\n').length + 2;
+  return html`
+    <textarea
+      class=${type === 'code' ? 'sd-code' : 'sd-text'}
+      value=${content || ''}
+      spellCheck=${type !== 'code'}
+      rows=${Math.max(type === 'code' ? 8 : 5, lines)}
+      placeholder=${t('apartado.notes_placeholder')}
+      onInput=${(event) => onChange(event.currentTarget.value)}
+    ></textarea>
+  `;
+}
+
+function ApartadoBody({ active, editMode, canEdit, onChangeContent, onChangeSection, t }) {
   if (!active) {
     return html`<p class="sd-panel-owner">${t('apartado.empty')}</p>`;
+  }
+
+  if (active.type === 'mega') {
+    return html`
+      <div class="sd-mega">
+        ${active.sections.map((section) => html`
+          <div class="sd-mega-section" key=${section.id}>
+            <h3 class="sd-mega-section-title">${t(section.titleKey)}</h3>
+            ${editMode
+              ? html`<${EditBlock} type=${section.type} content=${section.content} t=${t} onChange=${(value) => onChangeSection(section.id, value)} />`
+              : html`<${ReadBlock} type=${section.type} content=${section.content} t=${t} />`}
+          </div>
+        `)}
+      </div>
+    `;
   }
 
   if (active.type === 'gallery') {
@@ -309,11 +355,11 @@ function ApartadoBody({ active, canEdit, onChange }) {
             <div class="sd-gallery-caption">${slot.placeholder}</div>
           </div>
         `)}
-        ${canEdit && html`
+        ${editMode && canEdit && html`
           <button
             class="sd-gallery-add"
             type="button"
-            onClick=${() => onChange([
+            onClick=${() => onChangeContent([
               ...slots,
               { id: `g-${Math.random().toString(36).slice(2, 8)}`, placeholder: t('gallery.new_image') }
             ])}
@@ -326,25 +372,16 @@ function ApartadoBody({ active, canEdit, onChange }) {
     `;
   }
 
-  const lines = String(active.content || '').split('\n').length + 2;
-  return html`
-    <textarea
-      class=${active.type === 'code' ? 'sd-code' : 'sd-text'}
-      value=${active.content || ''}
-      readOnly=${!canEdit}
-      spellCheck=${active.type !== 'code'}
-      rows=${Math.max(active.type === 'code' ? 10 : 8, lines)}
-      placeholder=${t('apartado.notes_placeholder')}
-      onInput=${(event) => onChange(event.currentTarget.value)}
-    ></textarea>
-  `;
+  // text / code custom apartado
+  return editMode
+    ? html`<${EditBlock} type=${active.type} content=${active.content} t=${t} onChange=${onChangeContent} />`
+    : html`<${ReadBlock} type=${active.type} content=${active.content} t=${t} />`;
 }
 
 export function SongDetail({ bandId, songId, navigate }) {
   const t = useTranslation('songs');
   const isCreate = songId === null;
   const songs = useStoreValue($songs);
-  const songsLoaded = useStoreValue($songsLoaded);
   const bands = useStoreValue($bands);
   const currentUser = useStoreValue($currentUser);
   const band = bands.find((item) => item.id === bandId);
@@ -359,20 +396,21 @@ export function SongDetail({ bandId, songId, navigate }) {
   const [showMetronome, setShowMetronome] = useState(false);
 
   const [editMode, setEditMode] = useState(isCreate);
-  const [form, setForm] = useState(isCreate ? emptyForm() : formFromSong(storeSong));
-  const [tabEdits, setTabEdits] = useState([]);
+  const [meta, setMeta] = useState(() => metaFromSong(storeSong));
+  const [apartados, setApartados] = useState(() => (storeSong ? buildApartados(storeSong, []) : buildApartados(null, [])));
+  const [activeId, setActiveId] = useState('a-todos');
+  const [composer, setComposer] = useState(null);
+  const [snapshot, setSnapshot] = useState(null);
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
 
-  const [apartados, setApartados] = useState(() => (storeSong ? buildDefaultApartados(storeSong, []) : []));
-  const [activeId, setActiveId] = useState(() => apartados[0]?.id ?? '');
-  const [composer, setComposer] = useState(null);
-
-  function resetApartados(nextSong, nextTabs) {
-    const next = buildDefaultApartados(nextSong, nextTabs);
+  function hydrate(nextSong, nextTabs) {
+    setMeta(metaFromSong(nextSong));
+    const next = buildApartados(nextSong, nextTabs);
     setApartados(next);
-    setActiveId(next[0]?.id ?? '');
+    setActiveId((current) => (next.some((item) => item.id === current) ? current : 'a-todos'));
     setComposer(null);
   }
 
@@ -381,6 +419,7 @@ export function SongDetail({ bandId, songId, navigate }) {
     setSaveMsg('');
     setTranspose(0);
     setShowMetronome(false);
+    setComposer(null);
 
     if (isCreate) {
       setSong(null);
@@ -388,21 +427,17 @@ export function SongDetail({ bandId, songId, navigate }) {
       setLoading(false);
       setLoadError('');
       setEditMode(true);
-      setForm(emptyForm());
-      setTabEdits([]);
-      setApartados([]);
-      setActiveId('');
-      setComposer(null);
+      setMeta(metaFromSong(null));
+      setApartados(buildApartados(null, []));
+      setActiveId('a-todos');
       return;
     }
 
     let active = true;
     setSong(storeSong);
     setTabs([]);
-    setForm(formFromSong(storeSong));
     setEditMode(false);
-    setTabEdits([]);
-    if (storeSong) resetApartados(storeSong, []);
+    if (storeSong) hydrate(storeSong, []);
     setLoading(true);
     setLoadError('');
     getSongWithTabs(getSupabase(), { songId, bandId })
@@ -415,8 +450,7 @@ export function SongDetail({ bandId, songId, navigate }) {
         }
         setSong(data);
         setTabs(data.tabs ?? []);
-        setForm(formFromSong(data));
-        resetApartados(data, data.tabs ?? []);
+        hydrate(data, data.tabs ?? []);
         setLoading(false);
       })
       .catch((err) => {
@@ -429,8 +463,9 @@ export function SongDetail({ bandId, songId, navigate }) {
   }, [songId, bandId]);
 
   function enterEdit() {
-    setForm(formFromSong(song));
-    setTabEdits(tabs.map((tab) => ({ ...tab, _isNew: false })));
+    setSnapshot({ meta: { ...meta }, apartados: JSON.parse(JSON.stringify(apartados)) });
+    setTranspose(0);
+    setShowMetronome(false);
     setSaveError('');
     setSaveMsg('');
     setEditMode(true);
@@ -441,16 +476,19 @@ export function SongDetail({ bandId, songId, navigate }) {
       navigate(`/band/${bandId}`, { replace: true });
       return;
     }
-    setEditMode(false);
+    if (snapshot) {
+      setMeta(snapshot.meta);
+      setApartados(snapshot.apartados);
+      setActiveId((current) => (snapshot.apartados.some((item) => item.id === current) ? current : 'a-todos'));
+    }
+    setSnapshot(null);
+    setComposer(null);
     setSaveError('');
+    setEditMode(false);
   }
 
-  function updateField(key) {
-    return (event) => setForm((prev) => ({ ...prev, [key]: event.currentTarget.value }));
-  }
-
-  async function onStatusClick(nextStatus) {
-    if (!song || !canEdit) return;
+  async function onStatusChange(nextStatus) {
+    if (!song || !canEdit || nextStatus === song.status) return;
     const prev = song.status;
     setSong((current) => ({ ...current, status: nextStatus }));
     patchSongInStore(songId, { status: nextStatus });
@@ -463,16 +501,48 @@ export function SongDetail({ bandId, songId, navigate }) {
     }
   }
 
-  function addTabEdit() {
-    setTabEdits((prev) => [...prev, { id: null, title: '', content: '', position: prev.length, _isNew: true }]);
+  function updateMegaSection(sectionId, content) {
+    setApartados((prev) => prev.map((item) => (item.id === 'a-todos' && item.type === 'mega'
+      ? { ...item, sections: item.sections.map((section) => (section.id === sectionId ? { ...section, content } : section)) }
+      : item)));
   }
 
-  function updateTabEdit(index, key, value) {
-    setTabEdits((prev) => prev.map((tab, itemIndex) => (itemIndex === index ? { ...tab, [key]: value } : tab)));
+  function updateActiveContent(active, content) {
+    if (!active) return;
+    setApartados((prev) => prev.map((item) => (item.id === active.id ? { ...item, content } : item)));
   }
 
-  function removeTabEdit(index) {
-    setTabEdits((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  function openComposer(preset = null) {
+    setComposer(preset || { name: '', type: 'text', owner: ownerFromUser(currentUser) });
+  }
+
+  function commitComposer() {
+    if (!composer?.name?.trim()) return;
+    const id = `a-${Math.random().toString(36).slice(2, 8)}`;
+    const initialContent = composer.type === 'gallery'
+      ? [{ id: `g-${id}`, placeholder: composer.name.trim() }]
+      : '';
+    const next = {
+      id,
+      tabId: null,
+      name: composer.name.trim(),
+      type: composer.type,
+      owner: composer.owner || ownerFromUser(currentUser),
+      locked: false,
+      content: initialContent
+    };
+    setApartados((prev) => [...prev, next]);
+    setActiveId(id);
+    setComposer(null);
+  }
+
+  function deleteActive(active) {
+    if (!active || active.locked) return;
+    setApartados((prev) => {
+      const next = prev.filter((item) => item.id !== active.id);
+      setActiveId((current) => (current === active.id ? (next[0]?.id ?? 'a-todos') : current));
+      return next;
+    });
   }
 
   async function onSave(event) {
@@ -482,7 +552,7 @@ export function SongDetail({ bandId, songId, navigate }) {
       setSaveError(t('action.admin_required'));
       return;
     }
-    if (!form.title.trim()) {
+    if (!meta.title.trim()) {
       setSaveError(t('action.title_required'));
       return;
     }
@@ -492,29 +562,25 @@ export function SongDetail({ bandId, songId, navigate }) {
     try {
       const supabase = getSupabase();
       if (!supabase) throw new Error('Supabase no esta configurado.');
+      const { fields, tabs: tabPayload } = collectPayload(meta, apartados);
       const saved = await saveSongWithTabs(supabase, {
         bandId,
         songId: isCreate ? null : songId,
-        fields: fieldsFromForm(form),
-        tabs: normalizeTabEdits(tabEdits)
+        fields,
+        tabs: tabPayload
       });
+      setSong(saved);
+      setTabs(saved.tabs ?? []);
+      hydrate(saved, saved.tabs ?? []);
+      setSnapshot(null);
+      setEditMode(false);
       if (isCreate) {
         addSongToStore(saved);
-        setSong(saved);
-        setTabs(saved.tabs ?? []);
-        setForm(formFromSong(saved));
-        setTabEdits([]);
-        setEditMode(false);
-        resetApartados(saved, saved.tabs ?? []);
         navigate(`/band/${bandId}/song/${saved.id}`, { replace: true });
         return;
       }
-      setSong(saved);
-      setTabs(saved.tabs ?? []);
-      resetApartados(saved, saved.tabs ?? []);
       patchSongInStore(songId, saved);
       setSaveMsg(t('action.saved'));
-      setEditMode(false);
     } catch (err) {
       console.error('saveSongWithTabs failed', err);
       const detail = err?.message;
@@ -543,55 +609,26 @@ export function SongDetail({ bandId, songId, navigate }) {
     }
   }
 
-  function openComposer(preset = null) {
-    const seed = preset || { name: '', type: 'text', owner: ownerFromUser(currentUser) };
-    setComposer(seed);
-  }
+  const active = apartados.find((item) => item.id === activeId) ?? apartados[0] ?? null;
+  const availablePresets = PRESETS.filter((preset) => !apartados.some((item) => item.name === preset.name));
+  const status = song?.status ?? 'pending';
+  const hasChords = Boolean(song?.progression || song?.key);
+  const showTranspose = !editMode && active?.type === 'mega' && hasChords;
 
-  function commitComposer() {
-    if (!composer?.name?.trim()) return;
-    const id = `a-${Math.random().toString(36).slice(2, 8)}`;
-    const initialContent = composer.type === 'gallery'
-      ? [{ id: `g-${id}`, placeholder: composer.name.trim() }]
-      : '';
-    const next = {
-      id,
-      name: composer.name.trim(),
-      type: composer.type,
-      owner: composer.owner || ownerFromUser(currentUser),
-      locked: false,
-      content: initialContent
-    };
-    setApartados((prev) => [...prev, next]);
-    setActiveId(id);
-    setComposer(null);
-  }
-
-  function deleteActive(active) {
-    if (!active || active.locked) return;
-    const next = apartados.filter((item) => item.id !== active.id);
-    setApartados(next);
-    setActiveId(next[0]?.id ?? '');
-  }
-
-  function updateActiveContent(active, content) {
-    if (!active) return;
-    if (active.id === 'a-acordes' && transpose !== 0) setTranspose(0);
-    setApartados((prev) => prev.map((item) => (item.id === active.id ? { ...item, content } : item)));
-  }
+  // Apply transpose to the displayed chords section (read mode only).
+  const activeForBody = (showTranspose && transpose !== 0 && active?.type === 'mega')
+    ? {
+        ...active,
+        sections: active.sections.map((section) => (section.field === 'progression'
+          ? { ...section, content: transposeText(section.content, transpose) }
+          : section))
+      }
+    : active;
 
   const displayKey = song?.key
     ? (transpose === 0 ? song.key : (transposeNote(song.key, transpose) ?? song.key))
     : '';
-  const displayProgression = song?.progression
-    ? (transpose === 0 ? song.progression : transposeText(song.progression, transpose))
-    : '';
 
-  const active = apartados.find((item) => item.id === activeId) ?? apartados[0] ?? null;
-  const activeForBody = active?.id === 'a-acordes' && displayProgression
-    ? { ...active, content: displayProgression }
-    : active;
-  const availablePresets = PRESETS.filter((preset) => !apartados.some((item) => item.name === preset.name));
   const songNumber = useMemo(() => {
     const index = songs.findIndex((item) => item.id === songId);
     return index >= 0 ? String(index + 1).padStart(2, '0') : '00';
@@ -633,153 +670,7 @@ export function SongDetail({ bandId, songId, navigate }) {
     `;
   }
 
-  if (editMode) {
-    return html`
-      <div class="app-root">
-        <${AtrilHeader} band=${band} bandId=${bandId} navigate=${navigate} view="detail" />
-        <main class="app-main">
-          <form class="form-shell" onSubmit=${onSave}>
-            <div class="form-actions">
-              <div>
-                <div class="sl-eyebrow">${t(isCreate ? 'form.create_eyebrow' : 'form.edit_eyebrow')}</div>
-                <h1 class="form-title">${isCreate ? t('action.new_song') : (song?.title ?? t('action.new_song'))}</h1>
-              </div>
-              <div class="form-actions-right">
-                <button class="ap-btn ap-btn-ghost" type="button" onClick=${cancelEdit} disabled=${saving}>
-                  ${t('common:action.cancel')}
-                </button>
-                <button class="ap-btn ap-btn-accent" type="submit" disabled=${saving}>
-                  ${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}
-                </button>
-              </div>
-            </div>
-
-            ${saveError && html`<p role="alert" class="ap-alert">${saveError}</p>`}
-
-            <section class="form-card">
-              <div class="form-grid-2">
-                <label class="form-field">
-                  <span class="form-label">${t('field.title')}</span>
-                  <input
-                    class="form-input form-input-title"
-                    name="title"
-                    value=${form.title}
-                    onInput=${updateField('title')}
-                    required
-                    disabled=${saving}
-                  />
-                </label>
-                <label class="form-field">
-                  <span class="form-label">${t('field.artist')}</span>
-                  <input
-                    class="form-input"
-                    name="artist"
-                    value=${form.artist}
-                    onInput=${updateField('artist')}
-                    disabled=${saving}
-                  />
-                </label>
-                <label class="form-field">
-                  <span class="form-label">${t('field.key')}</span>
-                  <input class="form-input" name="key" value=${form.key} onInput=${updateField('key')} disabled=${saving} />
-                </label>
-                <label class="form-field">
-                  <span class="form-label">${t('field.tempo')}</span>
-                  <input class="form-input" name="tempo" value=${form.tempo} onInput=${updateField('tempo')} disabled=${saving} />
-                </label>
-              </div>
-            </section>
-
-            <section class="form-card">
-              <div class="form-grid-2">
-                <label class="form-field">
-                  <span class="form-label">${t('section.structure')}</span>
-                  <textarea class="form-textarea" name="structure" value=${form.structure} onInput=${updateField('structure')} disabled=${saving} rows="5"></textarea>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">${t('section.progression')}</span>
-                  <textarea class="form-textarea form-textarea-code" name="progression" value=${form.progression} onInput=${updateField('progression')} disabled=${saving} rows="5"></textarea>
-                </label>
-              </div>
-            </section>
-
-            <section class="form-card">
-              <div class="sd-panel-head" style="margin-bottom:14px">
-                <div>
-                  <span class="sd-panel-type">${t('section.tabs')}</span>
-                  <h2 class="sd-panel-title" style="font-size:1.6rem">${t('form.extra_tabs_label')}</h2>
-                </div>
-                <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${addTabEdit} disabled=${saving}>
-                  ${t('action.add_tab')}
-                </button>
-              </div>
-              <div class="form-shell">
-                ${tabEdits.map((tab, index) => html`
-                  <div key=${index} class="form-card" style="padding:16px;background:var(--bg)">
-                    <div class="form-grid-2" style="grid-template-columns:minmax(0,1fr) auto">
-                      <label class="form-field">
-                        <span class="form-label">${t('placeholder.tab_name')}</span>
-                        <input
-                          class="form-input"
-                          value=${tab.title}
-                          onInput=${(event) => updateTabEdit(index, 'title', event.currentTarget.value)}
-                          disabled=${saving}
-                        />
-                      </label>
-                      <button class="ap-btn ap-btn-danger-sm" type="button" onClick=${() => removeTabEdit(index)} disabled=${saving}>
-                        ${t('common:action.delete')}
-                      </button>
-                    </div>
-                    <label class="form-field" style="margin-top:12px">
-                      <span class="form-label">${t('placeholder.tab_content')}</span>
-                      <textarea
-                        class="form-textarea form-textarea-code"
-                        value=${tab.content}
-                        onInput=${(event) => updateTabEdit(index, 'content', event.currentTarget.value)}
-                        rows="6"
-                        disabled=${saving}
-                      ></textarea>
-                    </label>
-                  </div>
-                `)}
-                ${tabEdits.length === 0 && html`<p class="sd-panel-owner">${t('placeholder.no_tabs')}</p>`}
-              </div>
-            </section>
-
-            <section class="form-card">
-              <div class="form-grid-2">
-                <label class="form-field">
-                  <span class="form-label">${t('section.lyrics')}</span>
-                  <textarea class="form-textarea" name="lyrics" value=${form.lyrics} onInput=${updateField('lyrics')} disabled=${saving} rows="10" style="font-family:var(--serif);line-height:1.7"></textarea>
-                </label>
-                <label class="form-field">
-                  <span class="form-label">${t('section.notes')}</span>
-                  <textarea class="form-textarea" name="notes" value=${form.notes} onInput=${updateField('notes')} disabled=${saving} rows="10"></textarea>
-                </label>
-              </div>
-            </section>
-
-            ${!isCreate && html`
-              <section class="form-card" style="border-color:var(--red-line);background:color-mix(in srgb,var(--red-line),transparent 92%)">
-                <div class="form-actions" style="margin-bottom:0">
-                  <div>
-                    <span class="sd-panel-type" style="color:var(--red)">${t('danger.title')}</span>
-                    <p class="sd-panel-owner">${t('danger.delete_warning')}</p>
-                  </div>
-                  <button class="ap-btn ap-btn-danger-sm" type="button" onClick=${onDelete} disabled=${saving}>
-                    ${t('common:action.delete')}
-                  </button>
-                </div>
-              </section>
-            `}
-          </form>
-        </main>
-      </div>
-    `;
-  }
-
-  const status = song?.status ?? 'pending';
-  const statusLabel = t(`status.${status}`);
+  const eyebrow = isCreate ? t('form.create_eyebrow') : t('form.song_number', { number: songNumber });
 
   return html`
     <div class="app-root">
@@ -787,60 +678,94 @@ export function SongDetail({ bandId, songId, navigate }) {
       <main class="app-main">
         <section class="sd" aria-labelledby="song-detail-title">
           <header class="sd-hero">
-            <div>
-              <div class="sd-eyebrow">${t('form.song_number', { number: songNumber })}</div>
-              <h1 id="song-detail-title" class="sd-title">${song?.title ?? t('action.new_song')}</h1>
-              <p class="sd-artist">
-                ${song?.artist || t('panel.no_artist')}
-                ${song && html`
-                  <button
-                    type="button"
-                    class="sc-status sc-status-button"
-                    style="margin-left:10px"
-                    disabled=${!canEdit}
-                    onClick=${() => onStatusClick(STATUS_NEXT[status] ?? 'pending')}
-                    aria-label=${t('aria.status_change', { status: statusLabel })}
-                  >
-                    <span class="sc-status-dot" style=${`background:${STATUS_COLOR[status] ?? 'var(--muted)'}`}></span>
-                    <span>${statusLabel}</span>
-                  </button>
-                `}
-              </p>
+            <div class="sd-hero-meta">
+              <div class="sd-eyebrow">${eyebrow}</div>
+              ${editMode ? html`
+                <div class="sd-meta-fields">
+                  <input
+                    class="sd-meta-input sd-meta-title"
+                    value=${meta.title}
+                    placeholder=${t('field.title')}
+                    aria-label=${t('field.title')}
+                    onInput=${(event) => setMeta((prev) => ({ ...prev, title: event.currentTarget.value }))}
+                  />
+                  <input
+                    class="sd-meta-input sd-meta-artist"
+                    value=${meta.artist}
+                    placeholder=${t('field.artist')}
+                    aria-label=${t('field.artist')}
+                    onInput=${(event) => setMeta((prev) => ({ ...prev, artist: event.currentTarget.value }))}
+                  />
+                </div>
+              ` : html`
+                <h1 id="song-detail-title" class="sd-title">${song?.title ?? t('action.new_song')}</h1>
+                <p class="sd-artist">${song?.artist || t('panel.no_artist')}</p>
+              `}
             </div>
 
-            <div class="sd-hero-stats">
-              ${displayKey && html`
+            <div class="sd-hero-right">
+              <div class="sd-hero-stats">
                 <div class="sd-stat">
                   <span class="sd-stat-label">${t('panel.key_stat')}</span>
-                  <span class="sd-stat-value sd-stat-key">${transpose !== 0 ? `${song.key} -> ${displayKey}` : displayKey}</span>
+                  ${editMode ? html`
+                    <input
+                      class="sd-stat-input sd-stat-input-key"
+                      value=${meta.key}
+                      placeholder="Dm"
+                      aria-label=${t('field.key')}
+                      onInput=${(event) => setMeta((prev) => ({ ...prev, key: event.currentTarget.value }))}
+                    />
+                  ` : (displayKey && html`
+                    <span class="sd-stat-value sd-stat-key">${transpose !== 0 ? `${song.key} → ${displayKey}` : displayKey}</span>
+                  `)}
                 </div>
-              `}
-              ${song?.tempo && html`
                 <div class="sd-stat">
                   <span class="sd-stat-label">Tempo</span>
-                  <span class="sd-stat-value sd-stat-bpm">${song.tempo}</span>
+                  ${editMode ? html`
+                    <input
+                      class="sd-stat-input sd-stat-input-bpm"
+                      value=${meta.tempo}
+                      placeholder="120 BPM"
+                      aria-label=${t('field.tempo')}
+                      onInput=${(event) => setMeta((prev) => ({ ...prev, tempo: event.currentTarget.value }))}
+                    />
+                  ` : (song?.tempo && html`
+                    <span class="sd-stat-value sd-stat-bpm">${song.tempo}</span>
+                  `)}
                 </div>
-              `}
-              <div class="sd-stat sd-stat-action">
-                ${song?.tempo && html`
-                  <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${() => setShowMetronome((value) => !value)}>
-                    ${t(showMetronome ? 'panel.hide_metronome' : 'panel.show_metronome')}
-                  </button>
+              </div>
+
+              <div class="sd-hero-actions">
+                ${song && html`
+                  <${StatusToggle} value=${status} onChange=${onStatusChange} disabled=${!canEdit} t=${t} />
                 `}
-                <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${() => window.print()}>
-                  ${t('panel.export_pdf')}
-                </button>
-                ${canEdit && !isCreate && html`
-                  <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${enterEdit}>
-                    ${t('common:action.edit')}
+                ${!editMode ? html`
+                  ${song?.tempo && html`
+                    <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${() => setShowMetronome((value) => !value)}>
+                      ${t(showMetronome ? 'panel.hide_metronome' : 'panel.show_metronome')}
+                    </button>
+                  `}
+                  ${canEdit && !isCreate && html`
+                    <button class="ap-btn ap-btn-edit" type="button" onClick=${enterEdit}>
+                      <span aria-hidden="true">✎</span> ${t('common:action.edit')}
+                    </button>
+                  `}
+                ` : html`
+                  <span class="sd-edit-badge">${t('form.edit_badge')}</span>
+                  <button class="ap-btn ap-btn-ghost" type="button" onClick=${cancelEdit} disabled=${saving}>
+                    ${t('common:action.cancel')}
+                  </button>
+                  <button class="ap-btn ap-btn-accent" type="button" onClick=${onSave} disabled=${saving}>
+                    ${saving ? t('common:saving') : (isCreate ? t('common:action.create') : t('common:action.save'))}
                   </button>
                 `}
               </div>
             </div>
           </header>
 
+          ${saveError && html`<p role="alert" class="ap-alert">${saveError}</p>`}
           ${saveMsg && html`<p aria-live="polite" style="color:var(--green);margin:0 0 12px;font-family:var(--mono);font-size:0.85rem">${saveMsg}</p>`}
-          ${showMetronome && song?.tempo && html`<div class="sd-inline-tool"><${Metronome} initialTempo=${song.tempo} /></div>`}
+          ${showMetronome && !editMode && song?.tempo && html`<div class="sd-inline-tool"><${Metronome} initialTempo=${song.tempo} /></div>`}
 
           <div class="sd-tabs" role="tablist" aria-label=${t('aria.sections_list')}>
             <div class="sd-tabs-scroll">
@@ -854,11 +779,10 @@ export function SongDetail({ bandId, songId, navigate }) {
                   onClick=${() => setActiveId(item.id)}
                 >
                   <span class="sd-tab-glyph" aria-hidden="true">${glyphFor(item.type)}</span>
-                  <span class="sd-tab-name">${item.name}</span>
-                  <span class="sd-tab-owner">${item.owner}</span>
+                  <span class="sd-tab-name">${apartadoLabel(item, t)}</span>
                 </button>
               `)}
-              ${canEdit && html`
+              ${editMode && canEdit && html`
                 <button class="sd-tab sd-tab-add" type="button" onClick=${() => openComposer(null)}>
                   <span aria-hidden="true">+</span>
                   <span>${t('apartado.add')}</span>
@@ -867,7 +791,7 @@ export function SongDetail({ bandId, songId, navigate }) {
             </div>
           </div>
 
-          ${composer && html`
+          ${editMode && composer && html`
             <${ApartadoComposer}
               composer=${composer}
               setComposer=${setComposer}
@@ -877,18 +801,18 @@ export function SongDetail({ bandId, songId, navigate }) {
             />
           `}
 
-          <div class="sd-panel">
+          <div class=${editMode ? 'sd-panel is-editing' : 'sd-panel'}>
             <div class="sd-panel-head">
               <div>
-                <span class="sd-panel-type">${active ? `${glyphFor(active.type)} ${t('type.' + active.type + '_label')}` : 'APARTADO'}</span>
-                <h2 class="sd-panel-title">${active?.name ?? t('apartado.no_active')}</h2>
+                <span class="sd-panel-type">${active ? `${glyphFor(active.type)} ${t(typeLabelKey(active.type))}` : 'APARTADO'}</span>
+                <h2 class="sd-panel-title">${apartadoLabel(active, t) || t('apartado.no_active')}</h2>
                 <p class="sd-panel-owner">
-                  Apartado de <strong>${active?.owner ?? 'Banda'}</strong>
+                  ${t('apartado.section_owned_by', { owner: active?.owner ?? 'Banda' })}
                   ${active?.locked ? ` · ${t('apartado.section_base')}` : ` · ${t('apartado.section_custom')}`}
                 </p>
               </div>
               <div class="sd-panel-actions">
-                ${active?.id === 'a-acordes' && (song?.progression || song?.key) && html`
+                ${showTranspose && html`
                   <div class="sd-transpose" aria-label=${t('panel.transpose')}>
                     <span class="sd-transpose-label">${t('panel.transpose')}</span>
                     <button class="ap-btn ap-btn-ghost-sm" type="button" onClick=${() => setTranspose((value) => value - 1)}>-</button>
@@ -899,21 +823,9 @@ export function SongDetail({ bandId, songId, navigate }) {
                     `}
                   </div>
                 `}
-                ${active?.type === 'gallery' && canEdit && html`
-                  <button
-                    class="ap-btn ap-btn-ghost-sm"
-                    type="button"
-                    onClick=${() => updateActiveContent(active, [
-                      ...(Array.isArray(active.content) ? active.content : []),
-                      { id: `g-${Math.random().toString(36).slice(2, 8)}`, placeholder: t('gallery.new_image') }
-                    ])}
-                  >
-                    ${t('gallery.add_image_inline')}
-                  </button>
-                `}
-                ${active && !active.locked && canEdit && html`
+                ${editMode && active && !active.locked && canEdit && html`
                   <button class="ap-btn ap-btn-danger-sm" type="button" onClick=${() => deleteActive(active)}>
-                    ${t('common:action.delete')}
+                    ${t('apartado.delete')}
                   </button>
                 `}
               </div>
@@ -921,15 +833,27 @@ export function SongDetail({ bandId, songId, navigate }) {
 
             <${ApartadoBody}
               active=${activeForBody}
+              editMode=${editMode}
               canEdit=${canEdit}
-              onChange=${(content) => updateActiveContent(active, content)}
+              onChangeContent=${(content) => updateActiveContent(active, content)}
+              onChangeSection=${updateMegaSection}
+              t=${t}
             />
           </div>
+
+          ${editMode && !isCreate && canEdit && html`
+            <div class="sd-danger">
+              <span class="sd-danger-label">${t('danger.delete_warning')}</span>
+              <button class="ap-btn ap-btn-danger-sm" type="button" onClick=${onDelete} disabled=${saving}>
+                ${t('action.delete_song')}
+              </button>
+            </div>
+          `}
         </section>
       </main>
 
       <footer class="app-foot">
-        <span>Atril</span>
+        <span>Pulso</span>
         <span class="app-foot-dot">•</span>
         <span>${band?.name ?? t('panel.footer_band')}</span>
       </footer>

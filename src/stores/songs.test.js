@@ -118,12 +118,12 @@ describe('stores/songs', () => {
     assert.equal(songs.find((s) => s.id === 's2').title, 'Other');
   });
 
-  it('addSongToStore appends song', () => {
+  it('addSongToStore prepends song', () => {
     $songs.set([SONG]);
     const newSong = { ...SONG, id: 's2', title: 'New' };
     addSongToStore(newSong);
     assert.equal($songs.get().length, 2);
-    assert.equal($songs.get()[1].id, 's2');
+    assert.equal($songs.get()[0].id, 's2');
   });
 
   it('removeSongFromStore removes by id', () => {

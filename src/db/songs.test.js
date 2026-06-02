@@ -70,7 +70,7 @@ const TAB_ROW = {
 // ── getSongs ─────────────────────────────────────────────────────────────────
 
 describe('getSongs', () => {
-  it('queries songs by band_id ordered by sort_order and maps to camelCase', async () => {
+  it('queries songs by band_id ordered by created_at and maps to camelCase', async () => {
     const calls = [];
     const client = fakeClient((table) => {
       assert.equal(table, 'songs');
@@ -78,7 +78,7 @@ describe('getSongs', () => {
     });
     const songs = await getSongs(client, { bandId: 'b1' });
     assert.ok(calls.some(([op, col]) => op === 'eq' && col === 'band_id'));
-    assert.ok(calls.some(([op, col]) => op === 'order' && col === 'sort_order'));
+    assert.ok(calls.some(([op, col]) => op === 'order' && col === 'created_at'));
     assert.equal(songs.length, 1);
     const s = songs[0];
     assert.equal(s.id, 's1');

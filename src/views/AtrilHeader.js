@@ -3,7 +3,7 @@ import { shouldHandleLinkClick } from '@/lib/dom.js';
 import { useTranslation } from '@/stores/useTranslation.js';
 
 const BRAND = {
-  name: 'Atril',
+  name: 'Pulso',
   tag: 'Repertorio de banda'
 };
 
