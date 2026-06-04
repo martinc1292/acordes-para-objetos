@@ -58,16 +58,21 @@ export async function listBandMembers(client, { bandId }) {
   const userIds = [...new Set(rows.map((row) => row.user_id))];
   const profiles = unwrap(await client
     .from('profiles')
-    .select('id, email')
+    .select('id, email, display_name, avatar_url')
     .in('id', userIds)) ?? [];
-  const emailByUserId = new Map(profiles.map((profile) => [profile.id, profile.email]));
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
 
-  return rows.map((row) => ({
-    userId: row.user_id,
-    email: emailByUserId.get(row.user_id) ?? null,
-    role: row.role,
-    joinedAt: row.joined_at
-  }));
+  return rows.map((row) => {
+    const profile = profileById.get(row.user_id) ?? null;
+    return {
+      userId: row.user_id,
+      email: profile?.email ?? null,
+      displayName: profile?.display_name ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
+      role: row.role,
+      joinedAt: row.joined_at
+    };
+  });
 }
 
 export async function listInvitations(client, { bandId }) {

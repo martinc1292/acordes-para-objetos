@@ -11,7 +11,8 @@
     "tab": {
       "general": "General",
       "members": "Members",
-      "advanced": "Advanced"
+      "advanced": "Advanced",
+      "profile": "My profile"
     },
     "field": {
       "name": "Name",
@@ -23,7 +24,20 @@
       "title": "Members",
       "remove": "Remove",
       "remove_confirm": "Remove {{name}}?",
-      "role_aria": "Role of {{name}}"
+      "role_aria": "Role of {{name}}",
+      "you": "you"
+    },
+    "profile": {
+      "title": "My profile",
+      "name_label": "Name",
+      "photo_label": "Photo",
+      "change_photo": "Change photo",
+      "remove_photo": "Remove photo",
+      "hint": "JPG, PNG or WebP, up to 3 MB.",
+      "saved": "Profile updated.",
+      "uploading": "Uploading…",
+      "error_type": "Unsupported format (use JPG, PNG or WebP).",
+      "error_size": "Image exceeds 3 MB."
     },
     "role": {
       "admin": "Admin",

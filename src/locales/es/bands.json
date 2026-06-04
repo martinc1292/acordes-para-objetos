@@ -11,7 +11,8 @@
     "tab": {
       "general": "General",
       "members": "Miembros",
-      "advanced": "Avanzado"
+      "advanced": "Avanzado",
+      "profile": "Mi perfil"
     },
     "field": {
       "name": "Nombre",
@@ -23,7 +24,20 @@
       "title": "Miembros",
       "remove": "Quitar",
       "remove_confirm": "Quitar a {{name}}?",
-      "role_aria": "Rol de {{name}}"
+      "role_aria": "Rol de {{name}}",
+      "you": "vos"
+    },
+    "profile": {
+      "title": "Mi perfil",
+      "name_label": "Nombre",
+      "photo_label": "Foto",
+      "change_photo": "Cambiar foto",
+      "remove_photo": "Quitar foto",
+      "hint": "JPG, PNG o WebP, hasta 3 MB.",
+      "saved": "Perfil actualizado.",
+      "uploading": "Subiendo…",
+      "error_type": "Formato no soportado (usá JPG, PNG o WebP).",
+      "error_size": "La imagen supera los 3 MB."
     },
     "role": {
       "admin": "Admin",
